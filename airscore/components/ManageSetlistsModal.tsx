@@ -17,6 +17,7 @@ const ManageSetlistsModal: React.FC<ManageSetlistsModalProps> = (
     const [setlists, setSetlists] = useState<SetlistSummary[]>([]);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [searchText, setSearchText] = useState("");
+    const [addNewSetlist, setAddNewSetlist] = useState(false);
     const [newSetlistName, setNewSetlistName] = useState("");
 
     useEffect(() => {
@@ -47,6 +48,7 @@ const ManageSetlistsModal: React.FC<ManageSetlistsModalProps> = (
 
 
     const handleCreateSetlist = async () => {
+        console.log("Creating setlist with name:", newSetlistName);
         const name = newSetlistName.trim();
         if (!name) return;
 
@@ -157,20 +159,69 @@ const ManageSetlistsModal: React.FC<ManageSetlistsModalProps> = (
                     }}
                 />
 
-                <TouchableOpacity
-                    onPress={handleCreateSetlist}
-                    style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    marginTop: 14,
-                    paddingVertical: 10,
-                    }}
-                >
-                    <Ionicons name="add" size={22} color="#2563EB" />
-                    <Text style={{ marginLeft: 8, color: "#2563EB", fontWeight: "700" }}>
-                    New Setlist
-                    </Text>
-                </TouchableOpacity>
+                {addNewSetlist && (
+                    <View style={{ marginTop: 16, marginBottom: 8, padding: 12, borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 10 }}>
+                    <TextInput
+                        placeholder="New setlist name..."
+                        value={newSetlistName}
+                        onChangeText={setNewSetlistName}
+                        style={{
+                            borderWidth: 1,
+                            borderColor: "#D1D5DB",
+                            borderRadius: 10,
+                            paddingHorizontal: 12,
+                            paddingVertical: 10,
+                            fontSize: 16,
+                            marginTop: 14,
+                        }}
+                    />
+                    <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 16 }} >
+                        <TouchableOpacity
+                        onPress={setAddNewSetlist.bind(null, false)}
+                        style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginTop: 14,
+                        paddingVertical: 10,
+                        }}
+                    >
+                        <Text style={{ marginLeft: 8, color: "#6B7280", fontWeight: "700" }}>
+                        Cancel
+                        </Text>
+                    </TouchableOpacity>
+                        <TouchableOpacity
+                        onPress={handleCreateSetlist}
+                        style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginTop: 14,
+                        paddingVertical: 10,
+                        }}
+                    >
+                        <Text style={{ marginLeft: 8, color: "#2563EB", fontWeight: "700" }}>
+                        Add Setlist
+                        </Text>
+                    </TouchableOpacity>
+                    </View>
+                    </View>
+                )}
+
+                {!addNewSetlist && (
+                    <TouchableOpacity
+                        onPress={() => setAddNewSetlist(true)}
+                        style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginTop: 14,
+                        paddingVertical: 10,
+                        }}
+                    >
+                        <Ionicons name="add" size={22} color="#2563EB" />
+                        <Text style={{ marginLeft: 8, color: "#2563EB", fontWeight: "700" }}>
+                        New Setlist
+                        </Text>
+                    </TouchableOpacity>
+                )}
 
                 <View
                     style={{
