@@ -101,6 +101,7 @@ type SortMode =
     onDelete: () => void;
   }) {
     const description = item.description?.trim();
+    const isEmpty = item.item_count === 0;
 
     return (
       <TouchableOpacity
@@ -119,8 +120,8 @@ type SortMode =
       >
         <View
           style={{
-            width: 58,
-            height: 72,
+            width: 54,
+            height: 66,
             borderRadius: 12,
             backgroundColor: "#EFF6FF",
             alignItems: "center",
@@ -134,44 +135,68 @@ type SortMode =
         <View style={{ flex: 1 }}>
           <Text
             numberOfLines={1}
-            style={{ fontSize: 18, fontWeight: "700", color: "#111827" }}
+            style={{
+              fontSize: 19,
+              fontWeight: "700",
+              color: "#111827",
+            }}
           >
             {item.name}
           </Text>
 
-          <Text
-            numberOfLines={1}
-            style={{ color: "#6B7280", marginTop: 4, fontSize: 14 }}
-          >
-            {description || "No description"}
-          </Text>
+          {!!description && (
+            <Text
+              numberOfLines={1}
+              style={{
+                color: "#6B7280",
+                marginTop: 3,
+                fontSize: 14,
+              }}
+            >
+              {description}
+            </Text>
+          )}
 
-          <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 10 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              marginTop: description ? 10 : 8,
+            }}
+          >
             <StatChip
-              label={`${item.item_count} ${
-                item.item_count === 1 ? "score" : "scores"
-              }`}
+              label={
+                isEmpty
+                  ? "No scores yet"
+                  : `${item.item_count} ${item.item_count === 1 ? "score" : "scores"}`
+              }
             />
 
-            {typeof item.total_pages === "number" && (
+            {!isEmpty && typeof item.total_pages === "number" && (
               <StatChip
                 label={`${item.total_pages} ${
                   item.total_pages === 1 ? "page" : "pages"
                 }`}
               />
             )}
+          </View>
 
-            {/* <View style={{ marginTop: 8 }}> */}
-              <DateMeta
-                icon="time-outline"
-                label={`Opened ${formatRelativeDate(item.last_opened_at)}`}
-              />
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              marginTop: 8,
+            }}
+          >
+            <DateMeta
+              icon="time-outline"
+              label={formatOpened(item.last_opened_at)}
+            />
 
-              <DateMeta
-                icon="create-outline"
-                label={`Updated ${formatRelativeDate(item.updated_at)}`}
-              />
-            {/* </View> */}
+            <DateMeta
+              icon="create-outline"
+              label={formatUpdated(item.updated_at)}
+            />
           </View>
         </View>
 
@@ -207,7 +232,7 @@ type SortMode =
   }
 
   const formatRelativeDate = (value?: string | null) => {
-    if (!value) return "Never";
+    if (!value) return null;
 
     const date = new Date(value);
     const diffMs = Date.now() - date.getTime();
@@ -215,16 +240,26 @@ type SortMode =
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays === 1) return "Yesterday";
+    if (diffDays === 1) return "yesterday";
     if (diffDays < 7) return `${diffDays}d ago`;
 
     return date.toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
     });
+  };
+
+  const formatOpened = (value?: string | null) => {
+    const formatted = formatRelativeDate(value);
+    return formatted ? `Opened ${formatted}` : "Never opened";
+  };
+
+  const formatUpdated = (value?: string | null) => {
+    const formatted = formatRelativeDate(value);
+    return formatted ? `Updated ${formatted}` : "Updated unknown";
   };
 
   function DateMeta({
@@ -235,7 +270,14 @@ type SortMode =
     label: string;
   }) {
     return (
-      <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4, marginRight: 8 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          marginRight: 12,
+          marginTop: 2,
+        }}
+      >
         <Ionicons name={icon} size={13} color="#9CA3AF" />
         <Text style={{ marginLeft: 4, color: "#6B7280", fontSize: 12 }}>
           {label}
@@ -531,7 +573,11 @@ const SetlistsScreen = () => {
 
         <Text style={{ color: "#6B7280", fontSize: 13 }}>
           {setlists.length} {setlists.length === 1 ? "setlist" : "setlists"} ·{" "}
-          {setlists.reduce((sum, s) => sum + s.item_count, 0)} scores
+          {(() => {
+            const totalScores = setlists.reduce((sum, s) => sum + s.item_count, 0);
+
+            return `${totalScores} ${totalScores === 1 ? "score" : "scores"}`;
+          })()}
         </Text>
       </View>
       <FlatList
