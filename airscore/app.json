@@ -3,7 +3,7 @@
     "name": "AirScore",
     "slug": "airscore",
     "scheme": "airscore",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "default",
     "icon": "./assets/adaptive-icon.png",
     "userInterfaceStyle": "light",
@@ -22,7 +22,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0099FF"
       },
-      "versionCode": 6,
+      "versionCode": 7,
       "edgeToEdgeEnabled": true,
       "intentFilters": [
         {
@@ -30,13 +30,16 @@
           "data": [
             {
               "mimeType": "application/pdf"
-            }, 
+            },
             {
               "mimeType": "application/pdf",
               "scheme": "file"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         },
         {
           "action": "SEND",
@@ -45,7 +48,9 @@
               "mimeType": "application/pdf"
             }
           ],
-          "category": ["DEFAULT"]
+          "category": [
+            "DEFAULT"
+          ]
         }
       ]
     },
