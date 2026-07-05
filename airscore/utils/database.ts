@@ -69,7 +69,8 @@ export const initDB = async (): Promise<void> => {
           name TEXT NOT NULL UNIQUE,
           description TEXT,
           created_at TEXT DEFAULT (datetime('now')),
-          updated_at TEXT DEFAULT (datetime('now'))
+          updated_at TEXT DEFAULT (datetime('now')),
+          last_opened_at TEXT
         );
       `);
 
@@ -245,6 +246,16 @@ export const initDB = async (): Promise<void> => {
         `
         ALTER TABLE music
         ADD COLUMN original_filename TEXT;
+        `
+      );
+
+      await ensureColumn(
+        db,
+        "setlists",
+        "last_opened_at",
+        `
+        ALTER TABLE setlists
+        ADD COLUMN last_opened_at TEXT;
         `
       );
 
@@ -1363,17 +1374,34 @@ export const getSetlistSummaries = async () => {
   return db.getAllAsync<{
     id: number;
     name: string;
-    description?: string;
+    description?: string | null;
     item_count: number;
+    total_pages: number;
+    created_at?: string | null;
+    updated_at?: string | null;
+    last_opened_at?: string | null;
   }>(`
     SELECT
       s.id,
       s.name,
       s.description,
-      COUNT(ms.music_id) AS item_count
+      s.created_at,
+      s.updated_at,
+      s.last_opened_at,
+      COUNT(ms.music_id) AS item_count,
+      COALESCE(SUM(COALESCE(mm.page_count, 0)), 0) AS total_pages
     FROM setlists s
-    LEFT JOIN music_setlists ms ON s.id = ms.setlist_id
-    GROUP BY s.id, s.name, s.description
+    LEFT JOIN music_setlists ms
+      ON s.id = ms.setlist_id
+    LEFT JOIN music_metadata mm
+      ON ms.music_id = mm.id
+    GROUP BY
+      s.id,
+      s.name,
+      s.description,
+      s.created_at,
+      s.updated_at,
+      s.last_opened_at
     ORDER BY s.name ASC
   `);
 };
@@ -1386,13 +1414,17 @@ export const getSetlistById = async (id: number) => {
     name: string;
     description: string | null;
     created_at: string;
+    updated_at: string;
+    last_opened_at: string | null;
   }>(
     `
     SELECT
       id,
       name,
       description,
-      created_at
+      created_at,
+      updated_at,
+      last_opened_at
     FROM setlists
     WHERE id = ?
     `,
@@ -1514,6 +1546,18 @@ export const updateSetlistOrder = async (
     }
   });
 };
+
+export async function markSetlistOpened(id: number) {
+  const db = await openDatabase();
+  await db.runAsync(
+    `
+    UPDATE setlists
+    SET last_opened_at = datetime('now')
+    WHERE id = ?
+    `,
+    [id]
+  );
+}
 
 // BOOKMARK HELPERS
 

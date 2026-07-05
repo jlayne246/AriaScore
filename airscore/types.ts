@@ -185,14 +185,16 @@ export const GENRE_OPTIONS = [
   "Hymn Reharmonisation"
 ];
 
-export interface SetlistSummary {
+export type SetlistSummary = {
   id: number;
   name: string;
   description?: string | null;
   item_count: number;
-  created_at?: string;
-  updated_at?: string;
-}
+  total_pages: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+  last_opened_at?: string | null;
+};
 
 export const qualityScaleMap = {
     standard: 2.0,

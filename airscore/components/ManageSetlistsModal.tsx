@@ -3,6 +3,9 @@ import { useMemo, useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { MusicItemWithAllData, SetlistSummary } from '../types';
 import {createSetlist, getSetlistSummaries, getSetlistsForMusicByIds, setMusicSetlistsByIds} from '../utils/database'
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../types";
 
 interface ManageSetlistsModalProps {
   visible: boolean;
@@ -19,6 +22,10 @@ const ManageSetlistsModal: React.FC<ManageSetlistsModalProps> = (
     const [searchText, setSearchText] = useState("");
     const [addNewSetlist, setAddNewSetlist] = useState(false);
     const [newSetlistName, setNewSetlistName] = useState("");
+
+    type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+    const navigation = useNavigation<NavigationProp>();
 
     useEffect(() => {
         if (!visible) return;
@@ -41,6 +48,13 @@ const ManageSetlistsModal: React.FC<ManageSetlistsModalProps> = (
             : [...prev, id]
         );
     };
+
+    const navigateToSetlist = (id: number) => {
+        onClose(); // Close the modal before navigating
+        // Navigate to the setlist detail screen
+        // Assuming you have a navigation prop or useNavigation hook available
+        navigation.navigate("SetlistDetail", { setlistId: id });
+    }
 
     const filteredSetlists = setlists.filter(setlist =>
         setlist.name.toLowerCase().includes(searchText.trim().toLowerCase())
@@ -121,6 +135,11 @@ const ManageSetlistsModal: React.FC<ManageSetlistsModalProps> = (
                     }}
                 />
 
+                <Text style={{ fontSize: 13, color: "#717376", marginBottom: 8 }}>
+                    Tap a setlist to select it. Press and hold to open it.
+                    You can also create a new setlist below.
+                </Text>
+
                 <FlatList
                     data={filteredSetlists}
                     keyExtractor={(item) => item.id.toString()}
@@ -131,6 +150,7 @@ const ManageSetlistsModal: React.FC<ManageSetlistsModalProps> = (
                     return (
                         <TouchableOpacity
                         onPress={() => toggleSetlist(item.id)}
+                        onLongPress={() => navigateToSetlist(item.id)}
                         style={{
                             flexDirection: "row",
                             alignItems: "center",
@@ -154,6 +174,8 @@ const ManageSetlistsModal: React.FC<ManageSetlistsModalProps> = (
                             {item.item_count} scores
                             </Text>
                         </View>
+
+                        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
                         </TouchableOpacity>
                     );
                     }}

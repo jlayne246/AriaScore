@@ -5,8 +5,8 @@ import DraggableFlatList, {
 } from 'react-native-draggable-flatlist';
 import { MusicItemWithAllData, Setlist } from '../types';
 import { addMusicToSetlistById, getMusicIdsForSetlist, getMusicWithAllData, getSetlistById, removeMusicFromSetlistById, updateSetlistOrder, updateSetlist,
-deleteSetlist, 
-removeMusicFromSetlist} from '../utils/database';
+deleteSetlist,
+markSetlistOpened} from '../utils/database';
 import MusicItemCard from '../components/MusicItemCard';
 import AddScoreToSetlistModal from '../components/AddScoreToSetlistModal'
 import { Ionicons } from '@expo/vector-icons';
@@ -46,6 +46,8 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
 
         if (result != null) {
           setSetlist(result as Setlist);
+
+          await markSetlistOpened(setlistId);
         }
       } catch (err) {
         console.error("Failed to load setlist", err);
@@ -644,3 +646,7 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
 };
 
 export default SetlistDetailScreen;
+
+function markSetlistAsOpened(setlistId: any) {
+  throw new Error('Function not implemented.');
+}
