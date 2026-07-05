@@ -1,14 +1,22 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Alert, Modal, TextInput } from 'react-native';
 import DraggableFlatList, {
   RenderItemParams,
 } from 'react-native-draggable-flatlist';
 import { MusicItemWithAllData, Setlist } from '../types';
-import { addMusicToSetlistById, getMusicIdsForSetlist, getMusicWithAllData, getSetlistById, removeMusicFromSetlistById, updateSetlistOrder } from '../utils/database';
+import { addMusicToSetlistById, getMusicIdsForSetlist, getMusicWithAllData, getSetlistById, removeMusicFromSetlistById, updateSetlistOrder, updateSetlist,
+deleteSetlist, 
+removeMusicFromSetlist} from '../utils/database';
 import MusicItemCard from '../components/MusicItemCard';
 import AddScoreToSetlistModal from '../components/AddScoreToSetlistModal'
 import { Ionicons } from '@expo/vector-icons';
 import MetadataForm from '../components/MetadataForm';
+import {
+  Menu,
+  MenuOptions,
+  MenuOption,
+  MenuTrigger,
+} from "react-native-popup-menu";
 
 const ACCENT_COLOR = '#2563EB';
 
@@ -22,27 +30,31 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
   const [allScores, setAllScores] = useState<MusicItemWithAllData[]>([]);
   const [addScoresVisible, setAddScoresVisible] = useState(false);
   const [selectedMusicId, setSelectedMusicId] = useState<number | undefined>();
-    const [selectedPdfUri, setSelectedPdfUri] = useState<string | undefined>();
-    const [metadataFormVisible, setMetadataFormVisible] = useState(false);
-
-    useEffect(() => {
-    scoresRef.current = scores;
-    }, [scores]);
+  const [selectedPdfUri, setSelectedPdfUri] = useState<string | undefined>();
+  const [metadataFormVisible, setMetadataFormVisible] = useState(false);
+  const [editSetlistVisible, setEditSetlistVisible] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
 
   useEffect(() => {
-    const loadSetlist = async () => {
-        try {
-            const result = await getSetlistById(setlistId);
+    scoresRef.current = scores;
+  }, [scores]);
 
-            if (result != null)
-                setSetlist(result as Setlist);
-        } catch (err) {
-            console.error("Failed to load setlist", err);
+    const loadSetlist = async () => {
+      try {
+        const result = await getSetlistById(setlistId);
+
+        if (result != null) {
+          setSetlist(result as Setlist);
         }
+      } catch (err) {
+        console.error("Failed to load setlist", err);
+      }
     };
 
+  useEffect(() => {
     loadSetlist();
-    }, [setlistId]);
+  }, [setlistId]);
 
     const loadScores = async () => {
         const ids = await getMusicIdsForSetlist(setlistId);
@@ -72,6 +84,52 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
         } catch (error) {
             console.error("Failed to add scores to setlist:", error);
         }
+    };
+
+    const getScoreTitle = (item: MusicItemWithAllData) =>
+      item.metadata?.title?.trim() ||
+      item.title?.trim() ||
+      "Untitled Score";
+
+    const confirmDeleteSetlistItem = (item: MusicItemWithAllData) => {
+      if (!item.id) return;
+
+      const title = getScoreTitle(item);
+
+      Alert.alert(
+        `Remove "${title}"?`,
+        "This removes the score from this setlist only. It will remain in your library.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await removeMusicFromSetlistById(item.id!, setlistId);
+
+                const updatedScores = scoresRef.current.filter(
+                  score => score.id !== item.id
+                );
+
+                scoresRef.current = updatedScores;
+                setScores(updatedScores);
+
+                const orderedIds = updatedScores
+                  .map(score => score.id)
+                  .filter((id): id is number => typeof id === "number");
+
+                await updateSetlistOrder(setlistId, orderedIds);
+              } catch (error) {
+                Alert.alert(
+                  "Could not remove score",
+                  "Please try again."
+                );
+              }
+            },
+          },
+        ]
+      );
     };
 
   useLayoutEffect(() => {
@@ -140,25 +198,70 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                 </View>
             </View>
 
-            <TouchableOpacity
-                onPress={() => setAddScoresVisible(true)}
-            >
-                <Ionicons
-                name="add"
-                size={28}
-                color="#2563EB"
+            <Menu>
+              <MenuTrigger>
+                <Ionicons name="ellipsis-vertical" size={24} color={ACCENT_COLOR} />
+              </MenuTrigger>
+
+              <MenuOptions
+                customStyles={{
+                  optionsContainer: {
+                    width: 240,
+                    borderRadius: 14,
+                    paddingVertical: 6,
+                    backgroundColor: "white",
+                    elevation: 10,
+                  },
+                }}
+              >
+                <MenuItem
+                  icon="add-outline"
+                  label="Add Scores"
+                  onPress={() => setAddScoresVisible(true)}
                 />
-            </TouchableOpacity>
-            <TouchableOpacity
-                onPress={() =>
-                    navigation.navigate("SetlistSettings", {
-                    setlistId,
-                    })
-                }
-                style={{marginLeft: 12}}
-                >
-                <Ionicons name="settings-outline" size={26} color={ACCENT_COLOR} />
-            </TouchableOpacity>
+
+                <MenuItem
+                  icon="create-outline"
+                  label="Edit Setlist"
+                  onPress={() => {
+                    setEditName(setlist?.name ?? "");
+                    setEditDescription(setlist?.description ?? "");
+                    setEditSetlistVisible(true);
+                  }}
+                />
+
+                <MenuItem
+                  icon="settings-outline"
+                  label="Setlist Settings"
+                  onPress={() => {
+                    navigation.navigate("SetlistSettings", { setlistId });
+                  }}
+                />
+
+                <MenuItem
+                  icon="trash-outline"
+                  label="Delete Setlist"
+                  destructive
+                  onPress={() => {
+                    Alert.alert(
+                      "Delete setlist?",
+                      "This removes the setlist, but not the scores in your library.",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Delete",
+                          style: "destructive",
+                          onPress: async () => {
+                            await deleteSetlist(setlistId);
+                            navigation.goBack();
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                />
+              </MenuOptions>
+            </Menu>
             </View>
         </View>
         ),
@@ -190,6 +293,44 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
   const totalPages = scores.reduce((sum, score) => {
     return sum + (score.metadata?.page_count ?? 0);
   }, 0);
+
+  function MenuItem({
+    icon,
+    label,
+    onPress,
+    destructive = false,
+  }: {
+    icon: keyof typeof Ionicons.glyphMap;
+    label: string;
+    onPress: () => void;
+    destructive?: boolean;
+  }) {
+    return (
+      <MenuOption onSelect={onPress}>
+        <View style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+        }}>
+          <Ionicons
+            name={icon}
+            size={20}
+            color={destructive ? "#DC2626" : "#374151"}
+            style={{ width: 28 }}
+          />
+
+          <Text style={{
+            marginLeft: 10,
+            fontSize: 16,
+            color: destructive ? "#DC2626" : "#111827",
+          }}>
+            {label}
+          </Text>
+        </View>
+      </MenuOption>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
@@ -337,20 +478,9 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                             setSelectedPdfUri(item.uri);
                             setMetadataFormVisible(true);
                         }}
-                        onDelete={async () => {
-                            if (!item.id) return;
-
-                            await removeMusicFromSetlistById(item.id, setlistId);
-
-                            const updatedScores = scores.filter(score => score.id !== item.id);
-                            setScores(updatedScores);
-
-                            const orderedIds = updatedScores
-                                .map(score => score.id)
-                                .filter((id): id is number => typeof id === "number");
-
-                            await updateSetlistOrder(setlistId, orderedIds);
-                        }}
+                        onDelete={() => confirmDeleteSetlistItem(item)}
+                        deleteTitle={`Remove "${item?.title}"?`}
+                        deleteMessage="This removes the score from this setlist only. The score remains in your library."
                         onShare={() => {}}
                     />
                     </View>
@@ -422,6 +552,93 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
         onClose={() => setAddScoresVisible(false)}
         onAdd={handleAddScores}
     />
+
+    <Modal visible={editSetlistVisible} transparent animationType="fade">
+      <View style={{
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.35)",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}>
+        <View style={{
+          width: "70%",
+          maxWidth: 520,
+          backgroundColor: "white",
+          borderRadius: 18,
+          padding: 20,
+        }}>
+          <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
+            Edit Setlist
+          </Text>
+
+          <TextInput
+            value={editName}
+            onChangeText={setEditName}
+            placeholder="Setlist name"
+            style={{
+              borderWidth: 1,
+              borderColor: "#D1D5DB",
+              borderRadius: 10,
+              padding: 12,
+              fontSize: 16,
+              marginBottom: 12,
+            }}
+          />
+
+          <TextInput
+            value={editDescription}
+            onChangeText={setEditDescription}
+            placeholder="Description optional"
+            multiline
+            style={{
+              borderWidth: 1,
+              borderColor: "#D1D5DB",
+              borderRadius: 10,
+              padding: 12,
+              fontSize: 16,
+              minHeight: 90,
+              textAlignVertical: "top",
+            }}
+          />
+
+          <View style={{
+            flexDirection: "row",
+            justifyContent: "flex-end",
+            gap: 12,
+            marginTop: 20,
+          }}>
+            <TouchableOpacity onPress={() => setEditSetlistVisible(false)}>
+              <Text style={{ color: "#6B7280", fontSize: 16 }}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={async () => {
+                const name = editName.trim();
+
+                if (!name) {
+                  Alert.alert("Name required", "Please enter a setlist name.");
+                  return;
+                }
+
+                await updateSetlist(
+                  setlistId,
+                  name,
+                  editDescription.trim()
+                );
+
+                setEditSetlistVisible(false);
+                await loadSetlist();
+              }}
+            >
+              <Text style={{ color: ACCENT_COLOR, fontWeight: "700", fontSize: 16 }}>
+                Save
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
     </View>
   );
 };

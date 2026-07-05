@@ -119,9 +119,9 @@ const AddScoreToSetlistModal = ({
                     </Text>
 
                     <Text style={{ color: '#6B7280' }}>
-                      {item.metadata?.composer ??
-                        item.metadata?.editor ??
-                        item.metadata?.publisher ??
+                      {item.metadata?.composer?.trim() ||
+                        item.metadata?.editor?.trim() ||
+                        item.metadata?.publisher?.trim() ||
                         'Unknown'}
                     </Text>
                   </View>

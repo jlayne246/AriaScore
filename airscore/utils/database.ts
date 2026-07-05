@@ -1330,6 +1330,33 @@ export const createSetlist = async (
   return result.lastInsertRowId;
 };
 
+export async function updateSetlist(
+  id: number,
+  name: string,
+  description?: string
+) {
+  const db = await openDatabase();
+  await db.runAsync(
+    `
+    UPDATE setlists
+    SET name = ?, description = ?, updated_at = datetime('now')
+    WHERE id = ?
+    `,
+    [name, description ?? null, id]
+  );
+}
+
+export const deleteSetlist = async (id: number) => {
+  const db = await openDatabase();
+  await db.runAsync(
+    `
+    DELETE FROM setlists
+    WHERE id = ?
+    `,
+    [id]
+  );
+}
+
 export const getSetlistSummaries = async () => {
   const db = await openDatabase();
 
@@ -1511,18 +1538,13 @@ export const addBookmark = async (
     }
 }
 
-export const removeBookmark = async (musicId: number, pageNumber: number): Promise<void> => {
-    const db = await openDatabase();
+export async function removeBookmark(bookmarkId: number) {
+  const db = await openDatabase();
 
-    try {
-        await db.runAsync(
-            `DELETE FROM music_bookmarks WHERE music_id = ? AND page_number = ?`,
-            [musicId, pageNumber]
-        );
-    } catch (error) {
-        console.error("Error removing bookmark:", error);
-        throw error;
-    }
+  await db.runAsync(
+    `DELETE FROM music_bookmarks WHERE id = ?`,
+    [bookmarkId]
+  );
 }
 
 export const getBookmarksForScore = async (musicId: number): Promise<Array<{ id: number, page_number: number, label?: string }>> => {

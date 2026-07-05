@@ -57,6 +57,7 @@ import ManageSetlistsModal from './ManageSetlistsModal';
 import MetadataForm from './MetadataForm';
 import { saveSetlistProgress } from "../utils/database";
 import { ReaderSettings } from '../utils/settings/types';
+import * as ScreenOrientation from "expo-screen-orientation";
 
 interface BufferedPDFViewerProps {
   uri: string;
@@ -248,24 +249,24 @@ function ActionRow({
 function OverflowMenuItem({
   icon,
   label,
+  sublabel,
   onPress,
   accent = false,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  sublabel?: string;
   onPress: () => void;
   accent?: boolean;
 }) {
   return (
     <MenuOption onSelect={onPress}>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-        }}
-      >
+      <View style={{
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        paddingVertical: sublabel ? 10 : 12,
+      }}>
         <Ionicons
           name={icon}
           size={20}
@@ -273,16 +274,21 @@ function OverflowMenuItem({
           style={{ width: 28 }}
         />
 
-        <Text
-          style={{
-            marginLeft: 10,
+        <View style={{ marginLeft: 10, flex: 1 }}>
+          <Text style={{
             fontSize: 16,
             color: accent ? ACCENT_COLOR : "#111827",
             fontWeight: accent ? "700" : "400",
-          }}
-        >
-          {label}
-        </Text>
+          }}>
+            {label}
+          </Text>
+
+          {sublabel && (
+            <Text style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>
+              {sublabel}
+            </Text>
+          )}
+        </View>
       </View>
     </MenuOption>
   );
@@ -342,6 +348,13 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const [scoreInfoVisible, setScoreInfoVisible] = useState(false);
   const [metadataFormVisible, setMetadataFormVisible] = useState(false);
   const [manageSetlistsVisible, setManageSetlistsVisible] = useState(false);
+
+  const [displayOptionsVisible, setDisplayOptionsVisible] = useState(false);
+
+  type OrientationLockMode = "auto" | "portrait" | "landscape";
+
+  const [orientationLock, setOrientationLock] =
+    useState<OrientationLockMode>("auto");
 
   const [performanceModeOverride, setPerformanceModeOverride] =
   useState<boolean | null>(null);
@@ -424,6 +437,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     !labelOverlayVisible &&
     !scoreInfoVisible &&
     effectiveSettings.tapZones &&
+    !displayOptionsVisible &&
     totalPages > 0 &&
     currentPage >= 1 &&
     currentPage <= totalPages;
@@ -470,6 +484,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   console.log("BufferedPDFViewer onNextScore exists:", !!onNextScore);
   console.log("BufferedPDFViewer context:", context);
   // const buffer = getBuffer(effectiveDisplayMode);
+
 
   const saveCurrentSetlistProgress = useCallback(async () => {
     if (!context?.setlistId || !musicId) return;
@@ -657,6 +672,49 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   //   longPress
   // );
 
+  const applyDisplayMode = useCallback(
+    (nextMode: DisplayMode) => {
+      setDisplayMode(nextMode);
+
+      const nextIndex =
+        nextMode === "double"
+          ? coverOffset
+            ? currentPage <= 1
+              ? 0
+              : Math.ceil((currentPage - 1) / 2)
+            : Math.floor((currentPage - 1) / 2)
+          : currentPage - 1;
+
+      setInitialPagerIndex(nextIndex);
+
+      requestAnimationFrame(() => {
+        pagerRef.current?.setPageWithoutAnimation(nextIndex);
+      });
+
+      renderBufferAround(currentPage);
+    },
+    [currentPage, coverOffset, renderBufferAround]
+  );
+
+  const applyOrientationLock = useCallback(
+    async (mode: OrientationLockMode) => {
+      setOrientationLock(mode);
+
+      if (mode === "portrait") {
+        await ScreenOrientation.lockAsync(
+          ScreenOrientation.OrientationLock.PORTRAIT_UP
+        );
+      } else if (mode === "landscape") {
+        await ScreenOrientation.lockAsync(
+          ScreenOrientation.OrientationLock.LANDSCAPE
+        );
+      } else {
+        await ScreenOrientation.unlockAsync();
+      }
+    },
+    []
+  );
+
   useEffect(() => {
     const subscription = AppState.addEventListener(
       "change",
@@ -796,6 +854,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         safePage = Math.min(initialPage, detectedTotal);
       } else if (effectiveSettings.resumeLastPage) {
         const saved = await AsyncStorage.getItem(`pdf:lastPage:${uri}`);
+
+        // const curr_saved = saved && displayMode == "double" ? Number(saved) / 2 : Number(saved);
+
         const savedPage = saved ? Number(saved) : 1;
 
         safePage =
@@ -823,13 +884,18 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         }, 5000);
       };
 
+      const initialIndex =
+        displayMode === "double"
+          ? Math.floor((safePage - 1) / 2)
+          : safePage - 1;
+
       setCurrentPage(safePage);
-      setInitialPagerIndex(safePage - 1);
+      setInitialPagerIndex(initialIndex);
       setReaderReady(true);
       showInitialChrome();
 
       requestAnimationFrame(() => {
-        pagerRef.current?.setPageWithoutAnimation(safePage - 1);
+        pagerRef.current?.setPageWithoutAnimation(initialIndex);
       });
     };
 
@@ -875,24 +941,24 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     ]
   );
 
-  const toggleBookmark = useCallback(async () => {
-    if (!musicId) return;
+  // const toggleBookmark = useCallback(async () => {
+  //   if (!musicId) return;
 
-    if (bookmarked) {
-      await removeBookmark(musicId, currentPage);
-      setBookmarked(false);
-    } else {
-      await addBookmark(musicId, currentPage);
-      setBookmarked(true);
-    }
+  //   if (bookmarked) {
+  //     await removeBookmark(bookmarkId);
+  //     setBookmarked(false);
+  //   } else {
+  //     await addBookmark(musicId, currentPage);
+  //     setBookmarked(true);
+  //   }
 
-    await loadBookmarks();
-  }, [
-    musicId,
-    currentPage,
-    bookmarked,
-    loadBookmarks,
-  ]);
+  //   await loadBookmarks();
+  // }, [
+  //   musicId,
+  //   currentPage,
+  //   bookmarked,
+  //   loadBookmarks,
+  // ]);
 
   const hideChrome = useCallback(() => {
     if (chromeHideTimer.current) {
@@ -1144,12 +1210,32 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                   }}
                 />
 
-                <OverflowMenuItem
+                {/* <OverflowMenuItem
                   icon="bookmark-outline"
                   label="Bookmarks"
                   onPress={() => {
                     loadBookmarks();
                     setBookmarksOverlayVisible(true);
+                  }}
+                /> */}
+
+                <OverflowMenuItem
+                  icon="albums-outline"
+                  label="Display"
+                  onPress={() => {
+                    setDisplayOptionsVisible(true);
+                    setChromeVisible(true);
+                  }}
+                />
+
+                <OverflowMenuItem
+                  icon="bookmark-outline"
+                  label="Add Bookmark"
+                  sublabel={`Page ${currentPage}`}
+                  onPress={() => {
+                    setBookmarkLabel("");
+                    setLabelOverlayVisible(true);
+                    setChromeVisible(true);
                   }}
                 />
 
@@ -1498,7 +1584,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                 </Text>
 
                 {score.document_type === "Single Work" ? (
-                  <Text style={{ fontWeight: 'bold' }}>`${score.composer} ${score.arranger && `(Arr. ${score.arranger})`}`</Text>
+                  <Text style={{ fontWeight: 'bold' }}>{score.composer} {score.arranger && `(Arr. ${score.arranger})`}</Text>
                 ) : (
                   <Text style={{ fontWeight: 'bold' }}>{score.editor} </Text>
                 )}
@@ -1857,6 +1943,80 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         </View>
       )}
 
+      {displayOptionsVisible && (
+        <View style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: 2200,
+          backgroundColor: "rgba(0,0,0,0.35)",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
+          <View style={{
+            width: 420,
+            backgroundColor: "white",
+            borderRadius: 16,
+            padding: 20,
+          }}>
+            <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
+              Display
+            </Text>
+
+            <ActionRow
+              icon={displayMode === "single" ? "radio-button-on" : "radio-button-off"}
+              label="Single page"
+              onPress={() => applyDisplayMode("single")}
+            />
+
+            <ActionRow
+              icon={displayMode === "double" ? "radio-button-on" : "radio-button-off"}
+              label="Two pages"
+              onPress={() => applyDisplayMode("double")}
+            />
+
+            <InfoSection title="Orientation">
+              <ActionRow
+                icon={orientationLock === "auto" ? "radio-button-on" : "radio-button-off"}
+                label="Auto rotate"
+                onPress={() => applyOrientationLock("auto")}
+              />
+
+              <ActionRow
+                icon={orientationLock === "portrait" ? "radio-button-on" : "radio-button-off"}
+                label="Portrait"
+                onPress={() => applyOrientationLock("portrait")}
+              />
+
+              <ActionRow
+                icon={orientationLock === "landscape" ? "radio-button-on" : "radio-button-off"}
+                label="Landscape"
+                onPress={() => applyOrientationLock("landscape")}
+              />
+            </InfoSection>
+
+            <TouchableOpacity
+              onPress={() => {
+                setDisplayOptionsVisible(false);
+                showChromeTemporarily();
+              }}
+              style={{
+                marginTop: 18,
+                alignSelf: "flex-end",
+                backgroundColor: ACCENT_COLOR,
+                paddingHorizontal: 18,
+                paddingVertical: 10,
+                borderRadius: 8,
+              }}
+            >
+              <Text style={{ color: "white", fontWeight: "700" }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {bookmarksOverlayVisible && (
         <View
           style={{
@@ -1886,24 +2046,18 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
             <TouchableOpacity
               onPress={() => {
-                if (bookmarked) {
-                  toggleBookmark();
-                } else {
-                  setBookmarkLabel('');
-                  setLabelOverlayVisible(true);
-                }
+                setBookmarkLabel("");
+                setLabelOverlayVisible(true);
               }}
               style={{
                 padding: 12,
-                backgroundColor: '#f5f5f5',
+                backgroundColor: "#f5f5f5",
                 borderRadius: 8,
                 marginBottom: 16,
               }}
             >
-              <Text style={{ fontSize: 16, color: '#2563EB', fontWeight: '600' }}>
-                {bookmarked
-                  ? `Remove bookmark from page ${currentPage}`
-                  : `Bookmark page ${currentPage}`}
+              <Text style={{ fontSize: 16, color: "#2563EB", fontWeight: "600" }}>
+                Add bookmark on page {currentPage}
               </Text>
             </TouchableOpacity>
 
@@ -1946,8 +2100,17 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                       </Text>
                     </View>
 
-                    <Ionicons name="bookmark" size={22} color="#2563EB" />
+                    {/* <Ionicons name="bookmark" size={22} color="#2563EB" /> */}
+                    <TouchableOpacity
+                      onPress={async () => {
+                        await removeBookmark(bookmark.id);
+                        await loadBookmarks();
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={22} color="#DC2626" />
+                    </TouchableOpacity>
                   </TouchableOpacity>
+                  
                 ))
               )}
             </ScrollView>
@@ -2063,16 +2226,12 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                 onPress={async () => {
                   if (!musicId) return;
 
-                  await addBookmark(
-                    musicId,
-                    currentPage,
-                    bookmarkLabel.trim()
-                  );
+                  await addBookmark(musicId, currentPage, bookmarkLabel.trim());
 
                   await loadBookmarks();
 
-                  setBookmarked(true);
                   setLabelOverlayVisible(false);
+                  setBookmarksOverlayVisible(true);
 
                   showChromeTemporarily();
                 }}

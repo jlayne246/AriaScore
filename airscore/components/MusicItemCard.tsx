@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
 import { Entypo, Ionicons } from '@expo/vector-icons';
 import { Menu, MenuOption, MenuOptions, MenuTrigger } from 'react-native-popup-menu';
 
@@ -12,7 +12,53 @@ type Props = {
   onDelete: (id: number | undefined) => void;
   onShare?: (id: number | undefined) => void;
   onOpen?: () => void;
+  deleteTitle?: string;
+  deleteMessage?: string;
 };
+
+const ACCENT_COLOR = "#2563EB";
+
+function MusicMenuItem({
+  icon,
+  label,
+  onPress,
+  destructive = false,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  destructive?: boolean;
+}) {
+  return (
+    <MenuOption onSelect={onPress}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+        }}
+      >
+        <Ionicons
+          name={icon}
+          size={20}
+          color={destructive ? "#DC2626" : "#374151"}
+          style={{ width: 28 }}
+        />
+
+        <Text
+          style={{
+            marginLeft: 10,
+            fontSize: 16,
+            color: destructive ? "#DC2626" : "#111827",
+          }}
+        >
+          {label}
+        </Text>
+      </View>
+    </MenuOption>
+  );
+}
 
 const MusicItemCard: React.FC<Props> = ({
   item,
@@ -20,6 +66,8 @@ const MusicItemCard: React.FC<Props> = ({
   onDelete,
   onShare,
   onOpen,
+  deleteTitle,
+  deleteMessage,
 }) => {
   const [thumbnailUri, setThumbnailUri] = useState("");
 
@@ -165,31 +213,64 @@ const MusicItemCard: React.FC<Props> = ({
       </View>
 
       <Menu>
-        <MenuTrigger>
+        <MenuTrigger style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
           <Ionicons name="ellipsis-vertical" size={22} color="#777" />
         </MenuTrigger>
 
-        <MenuOptions>
-          <MenuOption
-            text="Edit Details"
-            onSelect={() =>
-              item.id &&
-              onEditMetadata(
-                item.id,
-                title,
-                item.uri
-              )
-            }
+        <MenuOptions
+          customStyles={{
+            optionsContainer: {
+              width: 220,
+              borderRadius: 14,
+              paddingVertical: 6,
+              backgroundColor: "white",
+              elevation: 10,
+            },
+          }}
+        >
+          <MusicMenuItem
+            icon="open-outline"
+            label="Open"
+            onPress={() => onOpen?.()}
           />
 
-          <MenuOption
-            text="Share"
-            onSelect={() => onShare?.(item.id)}
+          <MusicMenuItem
+            icon="create-outline"
+            label="Edit Details"
+            onPress={() => {
+              if (!item.id) return;
+              onEditMetadata(item.id, title, item.uri);
+            }}
           />
 
-          <MenuOption
-            text="Delete"
-            onSelect={() => onDelete(item.id)}
+          <MusicMenuItem
+            icon="share-outline"
+            label="Share"
+            onPress={() => onShare?.(item.id)}
+          />
+
+          <MusicMenuItem
+            icon="trash-outline"
+            label="Delete"
+            destructive
+            onPress={() => {
+              Alert.alert(
+                deleteTitle ?? `Delete "${title}"?`,
+                deleteMessage ??
+                  "This will permanently remove this score from your library.",
+                [
+                  {
+                    text: "Cancel",
+                    style: "cancel",
+                  },
+                  {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: () => onDelete(item.id),
+                  },
+                ]
+              );
+            }}
           />
         </MenuOptions>
       </Menu>
