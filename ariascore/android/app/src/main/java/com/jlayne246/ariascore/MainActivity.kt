@@ -1,4 +1,4 @@
-package com.jlayne246.airscore
+package com.jlayne246.ariascore
 
 import android.os.Build
 import android.os.Bundle

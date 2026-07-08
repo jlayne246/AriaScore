@@ -1,4 +1,4 @@
-package com.jlayne246.airscore
+package com.jlayne246.ariascore
 
 import android.app.Application
 import android.content.res.Configuration
@@ -13,7 +13,8 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
 
-import com.jlayne246.airscore.AriaScorePdfRendererPackage
+import com.jlayne246.ariascore.AriaScorePdfRendererPackage
+import com.jlayne246.ariascore.AriaScorePdfImportPackage
 
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper

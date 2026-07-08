@@ -1,4 +1,4 @@
-package com.jlayne246.airscore
+package com.jlayne246.ariascore
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
