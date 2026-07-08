@@ -2,11 +2,23 @@
   "build": {
     "production": {
       "developmentClient": false,
-      "distribution": "store"
+      "distribution": "store",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "simulator": false
+      }
     },
     "preview": {
       "developmentClient": false,
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
+      }
     },
     "development": {
       "developmentClient": true,
