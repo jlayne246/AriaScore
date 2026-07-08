@@ -1,6 +1,6 @@
 # AriaScore Landing Page
 
-A small Vite + React landing page for AriaScore.
+A Vite + React landing page using real AriaScore screenshots and the app logo.
 
 ## Local development
 
@@ -16,21 +16,17 @@ npm run dev
 npm run build
 ```
 
-## Deploying on Vercel
+## Vercel
 
-If this folder is inside the main app repository, set the Vercel project **Root Directory** to:
+Set the Vercel project Root Directory to:
 
 ```txt
 landing
 ```
 
-Then use:
+Use:
 
 ```txt
 Build Command: npm run build
 Output Directory: dist
 ```
-
-## Notes
-
-Update the contact email, copy, and screenshots when the app is closer to release.
