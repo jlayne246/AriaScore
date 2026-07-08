@@ -10,10 +10,6 @@ jobs:
   android:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: airscore
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,7 +19,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: ariascore/package-lock.json
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -32,17 +28,20 @@ jobs:
           java-version: 21
 
       - name: Install dependencies
+        working-directory: ariascore
         run: npm ci
 
       - name: TypeScript check
+        working-directory: ariascore
         run: npx tsc --noEmit
 
       - name: Expo doctor
+        working-directory: ariascore
         run: npx expo-doctor
         continue-on-error: true
 
       - name: Build Android debug APK
+        working-directory: ariascore/android
         run: |
-          cd android
           chmod +x gradlew
           ./gradlew assembleDebug
