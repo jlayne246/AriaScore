@@ -30,11 +30,11 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/jlayne246/AirScore">
-    <img src="https://github.com/jlayne246/AirScore/blob/main/airscore/assets/icon.png" alt="Logo" width="80" height="80">
+  <a href="https://github.com/jlayne246/AriaScore">
+    <img src="https://github.com/jlayne246/AriaScore/blob/main/airscore/assets/icon.png" alt="Logo" width="80" height="80">
   </a>
 
-<h3 align="center">AirScore</h3>
+<h3 align="center">AriaScore</h3>
 
   <p align="center">
     A hands-free PDF reader optimized for musicians, allowing users to turn pages via facial gestures like blinking or head turns.  
@@ -44,9 +44,9 @@
     <br />
     <!-- <a href="https://github.com/jlayne246/airscore">View Demo</a>
     &middot;
-    <a href="https://github.com/jlayne246/AirScore/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
+    <a href="https://github.com/jlayne246/AriaScore/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
     &middot;
-    <a href="https://github.com/jlayne246/AirScore/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a> -->
+    <a href="https://github.com/jlayne246/AriaScore/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a> -->
   </p>
 </div>
 
@@ -125,7 +125,7 @@ v2.0
 ✓ Foundation for future advanced PDF capabilities
 ```
 
-See the [open issues](https://github.com/jlayne246/AirScore/issues) for a full list of proposed features (and known issues).
+See the [open issues](https://github.com/jlayne246/AriaScore/issues) for a full list of proposed features (and known issues).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -149,8 +149,8 @@ Don't forget to give the project a star! Thanks again!
 
 ### Top contributors:
 
-<a href="https://github.com/jlayne246/AirScore/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=jlayne246/AirScore" alt="contrib.rocks image" />
+<a href="https://github.com/jlayne246/AriaScore/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=jlayne246/AriaScore" alt="contrib.rocks image" />
 </a>
 
 
@@ -169,23 +169,23 @@ Distributed under the project_license. See `LICENSE.txt` for more information.
 
 Joshua Layne - joshua.r.layne@gmail.com
 
-Project Link: [https://github.com/jlayne246/AirScore](https://github.com/jlayne246/AirScore)
+Project Link: [https://github.com/jlayne246/AriaScore](https://github.com/jlayne246/AriaScore)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/jlayne246/AirScore.svg?style=for-the-badge
-[contributors-url]: https://github.com/jlayne246/AirScore/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/jlayne246/AirScore.svg?style=for-the-badge
-[forks-url]: https://github.com/jlayne246/AirScore/network/members
-[stars-shield]: https://img.shields.io/github/stars/jlayne246/AirScore.svg?style=for-the-badge
-[stars-url]: https://github.com/jlayne246/AirScore/stargazers
-[issues-shield]: https://img.shields.io/github/issues/jlayne246/AirScore.svg?style=for-the-badge
-[issues-url]: https://github.com/jlayne246/AirScore/issues
-[license-shield]: https://img.shields.io/github/license/jlayne246/AirScore.svg?style=for-the-badge
-[license-url]: https://github.com/jlayne246/AirScore/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/jlayne246/AriaScore.svg?style=for-the-badge
+[contributors-url]: https://github.com/jlayne246/AriaScore/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/jlayne246/AriaScore.svg?style=for-the-badge
+[forks-url]: https://github.com/jlayne246/AriaScore/network/members
+[stars-shield]: https://img.shields.io/github/stars/jlayne246/AriaScore.svg?style=for-the-badge
+[stars-url]: https://github.com/jlayne246/AriaScore/stargazers
+[issues-shield]: https://img.shields.io/github/issues/jlayne246/AriaScore.svg?style=for-the-badge
+[issues-url]: https://github.com/jlayne246/AriaScore/issues
+[license-shield]: https://img.shields.io/github/license/jlayne246/AriaScore.svg?style=for-the-badge
+[license-url]: https://github.com/jlayne246/AriaScore/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/linkedin_username
 [product-screenshot]: images/screenshot.png

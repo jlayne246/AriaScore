@@ -4,7 +4,7 @@ import { Entypo, Ionicons } from '@expo/vector-icons';
 import { Menu, MenuOption, MenuOptions, MenuTrigger } from 'react-native-popup-menu';
 
 import { MusicItemWithAllData } from '../types'; // Adjust the import path as necessary
-import AirScorePdfRenderer from '../native/AirScorePdfRenderer';
+import AriaScorePdfRenderer from '../native/AriaScorePdfRenderer';
 
 type Props = {
   item: MusicItemWithAllData;
@@ -76,7 +76,7 @@ const MusicItemCard: React.FC<Props> = ({
       if (!item.uri) return;
 
       try {
-        const result = await AirScorePdfRenderer.renderPage({
+        const result = await AriaScorePdfRenderer.renderPage({
           pdfPath: item.uri,
           page: 1,
           width: 220,

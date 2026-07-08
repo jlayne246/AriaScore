@@ -36,7 +36,7 @@ import {
   deactivateKeepAwake,
 } from "expo-keep-awake";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import AirScorePdfRenderer from '../native/AirScorePdfRenderer';
+import AriaScorePdfRenderer from '../native/AriaScorePdfRenderer';
 import {
   addBookmark,
   removeBookmark,
@@ -516,7 +516,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       try {
         const start = performance.now();
 
-        const result = await AirScorePdfRenderer.renderPage({
+        const result = await AriaScorePdfRenderer.renderPage({
           pdfPath: uri,
           page,
           width: renderSize.width,
@@ -565,7 +565,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       renderingThumbnails.current.add(page);
 
       try {
-        const result = await AirScorePdfRenderer.renderPage({
+        const result = await AriaScorePdfRenderer.renderPage({
           pdfPath: uri,
           page,
           width: 180,
@@ -842,7 +842,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       setPageImages({});
       renderingPages.current.clear();
 
-      const detectedTotal = await AirScorePdfRenderer.getPageCount(uri);
+      const detectedTotal = await AriaScorePdfRenderer.getPageCount(uri);
 
       if (cancelled) return;
 

@@ -17,7 +17,7 @@ import { initDB, insertMusic, getMusicWithAllData, getMusicByMultipleSetlists, d
 
 import * as troubleshooting from "../utils/troubleshooting";
 import DeleteModal from '../components/DeleteModal';
-import AirScorePdfRenderer from '../native/AirScorePdfRenderer';
+import AriaScorePdfRenderer from '../native/AriaScorePdfRenderer';
 import { Pressable } from 'react-native-gesture-handler';
 
 const DashboardScreen = ({}) => {
@@ -72,7 +72,7 @@ const DashboardScreen = ({}) => {
                                 marginTop: 12,
                             }}
                         >
-                            AirScore
+                            AriaScore
                         </Text>
                         {/* <Menu>
                           <MenuTrigger>
@@ -97,7 +97,7 @@ const DashboardScreen = ({}) => {
                             </MenuOption>
                     
                             <MenuOption style={styles.menuOption} onSelect={() => Alert.alert('Coming Soon')}>
-                              <Text style={styles.menuItem}>About AirScore</Text>
+                              <Text style={styles.menuItem}>About AriaScore</Text>
                             </MenuOption>
                           </MenuOptions>
                         </Menu> */}
@@ -223,7 +223,7 @@ const DashboardScreen = ({}) => {
                 now
             );
 
-            const pageCount = await AirScorePdfRenderer.getPageCount(pendingPdfUri);
+            const pageCount = await AriaScorePdfRenderer.getPageCount(pendingPdfUri);
 
             console.log("Page Count Dash: ", pageCount)
 

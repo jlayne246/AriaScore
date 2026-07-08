@@ -1,7 +1,7 @@
-# AirScore Product Concept Document
+# AriaScore Product Concept Document
 
 ## 1. Product Overview
-**Name:** AirScore  
+**Name:** AriaScore  
 **Type:** Mobile App (iOS & Android)  
 **Concept:** A hands-free PDF reader optimized for musicians, allowing users to turn pages via facial gestures like blinking or head turns. It also supports organizing sheet music into collections and includes performance-specific modes (singing/playing).
 

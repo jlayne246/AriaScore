@@ -1,6 +1,6 @@
-Sure. Keep this as a future implementation note. The important point is that your current `AirScorePdfRenderer` architecture already supports this — **do not change the renderer**. The display mode should only affect how rendered images are arranged and how page turns calculate.
+Sure. Keep this as a future implementation note. The important point is that your current `AriaScorePdfRenderer` architecture already supports this — **do not change the renderer**. The display mode should only affect how rendered images are arranged and how page turns calculate.
 
-# AirScore Display Modes Implementation Guide
+# AriaScore Display Modes Implementation Guide
 
 ## Goal
 
@@ -23,7 +23,7 @@ Architecture:
 ```text
 PDF
  ↓
-AirScorePdfRenderer
+AriaScorePdfRenderer
  ↓
 Individual page images
  ↓
@@ -329,4 +329,4 @@ Page 10 → Page 6
 
 The key rule:
 
-**AirScorePdfRenderer should only know about pages. The reader decides how musicians see those pages.**
+**AriaScorePdfRenderer should only know about pages. The reader decides how musicians see those pages.**

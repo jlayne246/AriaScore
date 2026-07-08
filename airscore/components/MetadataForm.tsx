@@ -24,7 +24,7 @@ import {
   metadataExists
 } from '../utils/database';
 import ManageSetlistsModal from '../components/ManageSetlistsModal'
-import AirScorePdfRenderer from '../native/AirScorePdfRenderer';
+import AriaScorePdfRenderer from '../native/AriaScorePdfRenderer';
 
 interface MetadataFormProps {
   musicId?: number;
@@ -179,7 +179,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
       if (!pdfUri) return;
 
       try {
-        const pageCount = await AirScorePdfRenderer.getPageCount(pdfUri);
+        const pageCount = await AriaScorePdfRenderer.getPageCount(pdfUri);
         console.log(`URI: ${pdfUri} | Page Count: ${pageCount}`)
 
         setFormData(prev => {
@@ -196,7 +196,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
 
         // console.log(`FormData Page Count: ${formData.page_count}`)
 
-        const result = await AirScorePdfRenderer.renderPage({
+        const result = await AriaScorePdfRenderer.renderPage({
           pdfPath: pdfUri,
           page: 1,
           width: 400,
@@ -312,7 +312,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
 
     const resolvedPageCount =
       pdfUri
-        ? await AirScorePdfRenderer.getPageCount(pdfUri)
+        ? await AriaScorePdfRenderer.getPageCount(pdfUri)
         : Number(formData.page_count) || 0;
 
     const cleanedFormData = {

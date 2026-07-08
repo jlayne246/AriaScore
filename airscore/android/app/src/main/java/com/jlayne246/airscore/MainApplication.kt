@@ -13,7 +13,7 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
 
-import com.jlayne246.airscore.AirScorePdfRendererPackage
+import com.jlayne246.airscore.AriaScorePdfRendererPackage
 
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
@@ -32,8 +32,8 @@ class MainApplication : Application(), ReactApplication {
 
           override fun getPackages(): List<ReactPackage> =
             PackageList(this).packages.apply {
-                add(AirScorePdfRendererPackage())
-                add(AirScorePdfImportPackage())
+                add(AriaScorePdfRendererPackage())
+                add(AriaScorePdfImportPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"

@@ -5,15 +5,15 @@ Implement it as an **iOS native module with the same API as your Android module*
 Create something like:
 
 ```swift
-// ios/AirScorePdfRenderer.swift
+// ios/AriaScorePdfRenderer.swift
 
 import Foundation
 import PDFKit
 import UIKit
 import CryptoKit
 
-@objc(AirScorePdfRenderer)
-class AirScorePdfRenderer: NSObject {
+@objc(AriaScorePdfRenderer)
+class AriaScorePdfRenderer: NSObject {
 
   @objc
   func getPageCount(
@@ -38,27 +38,27 @@ class AirScorePdfRenderer: NSObject {
   ) {
     do {
       guard let pdfPath = options["pdfPath"] as? String else {
-        throw NSError(domain: "AirScorePdfRenderer", code: 1, userInfo: [
+        throw NSError(domain: "AriaScorePdfRenderer", code: 1, userInfo: [
           NSLocalizedDescriptionKey: "pdfPath is required"
         ])
       }
 
       guard let pageNumber = options["page"] as? Int else {
-        throw NSError(domain: "AirScorePdfRenderer", code: 2, userInfo: [
+        throw NSError(domain: "AriaScorePdfRenderer", code: 2, userInfo: [
           NSLocalizedDescriptionKey: "page is required"
         ])
       }
 
       guard let width = options["width"] as? Int,
             let height = options["height"] as? Int else {
-        throw NSError(domain: "AirScorePdfRenderer", code: 3, userInfo: [
+        throw NSError(domain: "AriaScorePdfRenderer", code: 3, userInfo: [
           NSLocalizedDescriptionKey: "width and height are required"
         ])
       }
 
       guard let fileUrl = resolveUrl(pdfPath),
             let document = PDFDocument(url: fileUrl) else {
-        throw NSError(domain: "AirScorePdfRenderer", code: 4, userInfo: [
+        throw NSError(domain: "AriaScorePdfRenderer", code: 4, userInfo: [
           NSLocalizedDescriptionKey: "Unable to open PDF"
         ])
       }
@@ -66,13 +66,13 @@ class AirScorePdfRenderer: NSObject {
       let pageIndex = pageNumber - 1
 
       if pageIndex < 0 || pageIndex >= document.pageCount {
-        throw NSError(domain: "AirScorePdfRenderer", code: 5, userInfo: [
+        throw NSError(domain: "AriaScorePdfRenderer", code: 5, userInfo: [
           NSLocalizedDescriptionKey: "Invalid page number: \(pageNumber)"
         ])
       }
 
       guard let page = document.page(at: pageIndex) else {
-        throw NSError(domain: "AirScorePdfRenderer", code: 6, userInfo: [
+        throw NSError(domain: "AriaScorePdfRenderer", code: 6, userInfo: [
           NSLocalizedDescriptionKey: "Unable to open page: \(pageNumber)"
         ])
       }
@@ -96,7 +96,7 @@ class AirScorePdfRenderer: NSObject {
       }
 
       if renderWidth <= 0 || renderHeight <= 0 {
-        throw NSError(domain: "AirScorePdfRenderer", code: 7, userInfo: [
+        throw NSError(domain: "AriaScorePdfRenderer", code: 7, userInfo: [
           NSLocalizedDescriptionKey: "Invalid render size: \(renderWidth)x\(renderHeight)"
         ])
       }
@@ -107,7 +107,7 @@ class AirScorePdfRenderer: NSObject {
 
       guard let context = UIGraphicsGetCurrentContext() else {
         UIGraphicsEndImageContext()
-        throw NSError(domain: "AirScorePdfRenderer", code: 8, userInfo: [
+        throw NSError(domain: "AriaScorePdfRenderer", code: 8, userInfo: [
           NSLocalizedDescriptionKey: "Unable to create graphics context"
         ])
       }
@@ -134,7 +134,7 @@ class AirScorePdfRenderer: NSObject {
 
       guard let image = UIGraphicsGetImageFromCurrentImageContext() else {
         UIGraphicsEndImageContext()
-        throw NSError(domain: "AirScorePdfRenderer", code: 9, userInfo: [
+        throw NSError(domain: "AriaScorePdfRenderer", code: 9, userInfo: [
           NSLocalizedDescriptionKey: "Unable to render page image"
         ])
       }
@@ -142,7 +142,7 @@ class AirScorePdfRenderer: NSObject {
       UIGraphicsEndImageContext()
 
       guard let pngData = image.pngData() else {
-        throw NSError(domain: "AirScorePdfRenderer", code: 10, userInfo: [
+        throw NSError(domain: "AriaScorePdfRenderer", code: 10, userInfo: [
           NSLocalizedDescriptionKey: "Unable to encode PNG"
         ])
       }
@@ -267,11 +267,11 @@ class AirScorePdfRenderer: NSObject {
 Create:
 
 ```objc
-// ios/AirScorePdfRendererBridge.m
+// ios/AriaScorePdfRendererBridge.m
 
 #import <React/RCTBridgeModule.h>
 
-@interface RCT_EXTERN_MODULE(AirScorePdfRenderer, NSObject)
+@interface RCT_EXTERN_MODULE(AriaScorePdfRenderer, NSObject)
 
 RCT_EXTERN_METHOD(getPageCount:
                   (NSString *)pdfPath
@@ -308,7 +308,7 @@ to:
 ```ts
 if (!["android", "ios"].includes(Platform.OS) || !nativeModule) {
   throw new Error(
-    "AirScorePdfRenderer is only available in the native Android/iOS build."
+    "AriaScorePdfRenderer is only available in the native Android/iOS build."
   );
 }
 ```

@@ -5,7 +5,7 @@
 AIRScore currently imports PDFs on Android through a native Kotlin module:
 
 ```txt
-AirScorePdfImporter.importPdf(sourceUri)
+AriaScorePdfImporter.importPdf(sourceUri)
 ```
 
 The Android importer copies a selected PDF from a content URI into AIRScore's internal app storage, then returns a stable internal file URI and the original filename.
@@ -19,7 +19,7 @@ iOS needs an equivalent native importer so the rest of AIRScore can treat import
 The iOS implementation should expose the same native module name:
 
 ```ts
-AirScorePdfImporter
+AriaScorePdfImporter
 ```
 
 and the same method:
@@ -83,14 +83,14 @@ FileManager.default.urls(
 Create:
 
 ```txt
-ios/AirScorePdfImporter.swift
+ios/AriaScorePdfImporter.swift
 ```
 
 ```swift
 import Foundation
 
-@objc(AirScorePdfImporter)
-class AirScorePdfImporter: NSObject {
+@objc(AriaScorePdfImporter)
+class AriaScorePdfImporter: NSObject {
 
   @objc
   func importPdf(
@@ -101,7 +101,7 @@ class AirScorePdfImporter: NSObject {
     do {
       guard let sourceUrl = resolveUrl(sourceUriString) else {
         throw NSError(
-          domain: "AirScorePdfImporter",
+          domain: "AriaScorePdfImporter",
           code: 1,
           userInfo: [NSLocalizedDescriptionKey: "Invalid source URI"]
         )
@@ -189,13 +189,13 @@ class AirScorePdfImporter: NSObject {
 Create:
 
 ```txt
-ios/AirScorePdfImporterBridge.m
+ios/AriaScorePdfImporterBridge.m
 ```
 
 ```objc
 #import <React/RCTBridgeModule.h>
 
-@interface RCT_EXTERN_MODULE(AirScorePdfImporter, NSObject)
+@interface RCT_EXTERN_MODULE(AriaScorePdfImporter, NSObject)
 
 RCT_EXTERN_METHOD(importPdf:
                   (NSString *)sourceUriString
@@ -219,17 +219,17 @@ type ImportPdfResult = {
   originalFilename: string;
 };
 
-type AirScorePdfImporterModule = {
+type AriaScorePdfImporterModule = {
   importPdf(sourceUri: string): Promise<ImportPdfResult>;
 };
 
-const getNativeModule = (): AirScorePdfImporterModule => {
+const getNativeModule = (): AriaScorePdfImporterModule => {
   const nativeModule =
-    NativeModules.AirScorePdfImporter as AirScorePdfImporterModule | undefined;
+    NativeModules.AriaScorePdfImporter as AriaScorePdfImporterModule | undefined;
 
   if (!["android", "ios"].includes(Platform.OS) || !nativeModule) {
     throw new Error(
-      "AirScorePdfImporter is only available in the native Android/iOS build."
+      "AriaScorePdfImporter is only available in the native Android/iOS build."
     );
   }
 
@@ -319,8 +319,8 @@ The renderer should not care whether the file was imported on Android or iOS.
 
 When a Mac/Xcode environment is available:
 
-- [ ] Add `AirScorePdfImporter.swift` to the iOS target.
-- [ ] Add `AirScorePdfImporterBridge.m` to the iOS target.
+- [ ] Add `AriaScorePdfImporter.swift` to the iOS target.
+- [ ] Add `AriaScorePdfImporterBridge.m` to the iOS target.
 - [ ] Run `pod install` if needed.
 - [ ] Build from Xcode or `npx expo run:ios`.
 - [ ] Import a PDF from the Files app.
@@ -347,7 +347,7 @@ Blocked – requires macOS/Xcode environment.
 
 ## Description
 
-Implement an iOS native PDF importer equivalent to the Android `AirScorePdfImporter` module.
+Implement an iOS native PDF importer equivalent to the Android `AriaScorePdfImporter` module.
 
 The importer should copy selected PDF files into AIRScore's private app storage and return a stable internal URI for use by the database and renderer.
 
@@ -368,7 +368,7 @@ The importer should copy selected PDF files into AIRScore's private app storage 
 
 - PDFs can be imported on iOS.
 - Imported files persist after app restart.
-- Imported URI can be rendered by `AirScorePdfRenderer`.
+- Imported URI can be rendered by `AriaScorePdfRenderer`.
 - Android importer behaviour remains unchanged.
 - Shared JS code works on both platforms.
 ```
@@ -382,11 +382,11 @@ This importer should be implemented alongside, or before, the iOS PDF renderer.
 Recommended native iOS pipeline:
 
 ```txt
-AirScorePdfImporter.swift
+AriaScorePdfImporter.swift
     ↓
 Application Support/scores/<timestamp>-filename.pdf
     ↓
-AirScorePdfRenderer.swift
+AriaScorePdfRenderer.swift
     ↓
 Caches/airscore-rendered-pages/<pdfKey>/page_<n>_<w>x<h>.png
     ↓

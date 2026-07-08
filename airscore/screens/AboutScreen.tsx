@@ -114,7 +114,7 @@ export default function AboutScreen() {
             />
 
             <Text style={{ fontSize: 36, fontWeight: "800", color: "#111", alignSelf: "center" }}>
-            AirScore
+            AriaScore
             </Text>
         <View style={{ marginBottom: 2 }}>
             <Text style={{ fontSize: 15, color: "#777", alignSelf: "center" }}>
@@ -326,7 +326,7 @@ export default function AboutScreen() {
             marginBottom: 14,
           }}
         >
-          AirScore is built using a number of open-source software libraries. We are grateful to the developers and communities that make these projects possible.
+          AriaScore is built using a number of open-source software libraries. We are grateful to the developers and communities that make these projects possible.
         </Text>
 
         <Pressable
@@ -355,7 +355,7 @@ export default function AboutScreen() {
         }}
       >
         Developed by Joshua Layne{"\n"}{"\n"}
-        © 2026 AirScore{"\n"}
+        © 2026 AriaScore{"\n"}
         All rights reserved.
       </Text>
     </ScrollView>

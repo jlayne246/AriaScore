@@ -33,12 +33,12 @@ import { RootStackParamList } from './types';
 import { useEffect, useState } from 'react';
 import { initDB } from './utils/database';
 import { importPdfFromUri } from './utils/fileUtils';
-import { importPdfNative } from "./native/AirScorePdfImport";
+import { importPdfNative } from "./native/AriaScorePdfImport";
 
 import { NativeModules } from "react-native";
 
 console.log(NativeModules);
-console.log(NativeModules.AirScorePdfImportModule);
+console.log(NativeModules.AriaScorePdfImportModule);
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

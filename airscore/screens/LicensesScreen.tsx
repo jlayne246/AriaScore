@@ -311,7 +311,7 @@ export default function OpenSourceLicensesScreen() {
                 marginTop: 12,
               }}
             >
-              AirScore uses open-source software. Each package remains the
+              AriaScore uses open-source software. Each package remains the
               property of its respective authors and is used under its own
               licence.
             </Text>
@@ -345,7 +345,7 @@ export default function OpenSourceLicensesScreen() {
                 marginBottom: 16,
               }}
             >
-              These are the main open-source projects AirScore is built on.
+              These are the main open-source projects AriaScore is built on.
             </Text>
 
             {featuredEntries.map((entry) => (
@@ -381,7 +381,7 @@ export default function OpenSourceLicensesScreen() {
                 marginBottom: 16,
               }}
             >
-              This includes AirScore&apos;s transitive dependencies. It is
+              This includes AriaScore&apos;s transitive dependencies. It is
               provided for transparency and licence compliance.
             </Text>
 
@@ -451,7 +451,7 @@ export default function OpenSourceLicensesScreen() {
             marginTop: 8,
           }}
         >
-          Licence information is generated from AirScore&apos;s production
+          Licence information is generated from AriaScore&apos;s production
           dependencies.
         </Text>
       }

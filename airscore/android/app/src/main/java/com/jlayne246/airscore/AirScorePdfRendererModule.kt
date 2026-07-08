@@ -11,12 +11,12 @@ import com.facebook.react.bridge.*
 import java.io.File
 import java.io.FileOutputStream
 
-class AirScorePdfRendererModule(
+class AriaScorePdfRendererModule(
     reactContext: ReactApplicationContext
 ) : ReactContextBaseJavaModule(reactContext) {
 
     override fun getName(): String {
-        return "AirScorePdfRenderer"
+        return "AriaScorePdfRenderer"
     }
 
     @ReactMethod
@@ -90,7 +90,7 @@ class AirScorePdfRendererModule(
             }
 
             Log.d(
-                "AirScorePdfRenderer",
+                "AriaScorePdfRenderer",
                 "Requested=${width}x${height}, Rendered=${renderWidth}x${renderHeight}, PDF=${pageWidth}x${pageHeight}, Page=$pageNumber"
             )
 

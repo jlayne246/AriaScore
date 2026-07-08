@@ -12,7 +12,7 @@ import 'dotenv/config';
 
 export default ({ config }) => ({
   ...config,
-  name: "AirScore",
+  name: "AriaScore",
   slug: "airscore",
   scheme: "airscore",
   version: "1.0.4",

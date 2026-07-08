@@ -10,7 +10,7 @@ import BufferedPDFViewer from '../components/BufferedPDFViewer';
 import { RouteProp } from '@react-navigation/native';
 import { MusicMetadataWithLabels, ReaderContext, RootStackParamList } from '../types';
 import { getMusicWithAllData, getMusicWithMetadata, markMusicAsOpened, saveSetlistProgress } from '../utils/database';
-import AirScorePdfRenderer from '../native/AirScorePdfRenderer';
+import AriaScorePdfRenderer from '../native/AriaScorePdfRenderer';
 import { getResolvedReaderSettings } from '../utils/settings/resolver';
 import { ReaderSettings } from '../utils/settings/types';
 
@@ -89,7 +89,7 @@ const ReaderScreen = ({ route }: ReaderScreenProps) => {
         let startPage = 1;
 
         if (openAt === "last") {
-            startPage = await AirScorePdfRenderer.getPageCount(fullItem.uri);
+            startPage = await AriaScorePdfRenderer.getPageCount(fullItem.uri);
         }
 
         navigation.replace("Reader", {

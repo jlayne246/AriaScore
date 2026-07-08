@@ -10,12 +10,12 @@ import com.facebook.react.bridge.WritableNativeMap
 import java.io.File
 import java.io.FileOutputStream
 
-class AirScorePdfImportModule(
+class AriaScorePdfImportModule(
   reactContext: ReactApplicationContext
 ) : ReactContextBaseJavaModule(reactContext) {
 
   override fun getName(): String {
-    return "AirScorePdfImporter"
+    return "AriaScorePdfImporter"
   }
 
   @ReactMethod

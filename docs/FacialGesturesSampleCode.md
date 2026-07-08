@@ -366,7 +366,7 @@ Every input method ends up calling exactly the same Reader functions.
 
 ---
 
-I actually think there's an even cleaner abstraction for AirScore in the future.
+I actually think there's an even cleaner abstraction for AriaScore in the future.
 
 Instead of calling the Reader directly, define a `ReaderController`:
 
@@ -396,7 +396,7 @@ ReaderController
 BufferedPDFViewer
 ```
 
-That would make AirScore extremely extensible. Whether the input comes from a finger tap, facial gesture, external keyboard, or something you haven't even thought of yet, they're all just different "controllers" driving the same reader API. Given how you've been refactoring the app over the past few weeks, that architecture fits very naturally with the direction you're already taking.
+That would make AriaScore extremely extensible. Whether the input comes from a finger tap, facial gesture, external keyboard, or something you haven't even thought of yet, they're all just different "controllers" driving the same reader API. Given how you've been refactoring the app over the past few weeks, that architecture fits very naturally with the direction you're already taking.
 
 ---
 
