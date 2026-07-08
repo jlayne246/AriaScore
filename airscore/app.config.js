@@ -13,8 +13,8 @@ import 'dotenv/config';
 export default ({ config }) => ({
   ...config,
   name: "AriaScore",
-  slug: "airscore",
-  scheme: "airscore",
+  slug: "ariascore",
+  scheme: "ariascore",
   version: "1.0.4",
   orientation: "default",
   icon: "./assets/adaptive-icon.png",
@@ -35,7 +35,7 @@ export default ({ config }) => ({
     },
     versionCode: 7,
     edgeToEdgeEnabled: true,
-    package: "com.jlayne246.airscore"
+    package: "com.jlayne246.ariascore"
   },
   updates: {
     fallbackToCacheTimeout: 0
