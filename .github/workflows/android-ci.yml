@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: airscore/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Setup Java
         uses: actions/setup-java@v4
