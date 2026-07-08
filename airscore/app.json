@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "AriaScore",
-    "slug": "airscore",
-    "scheme": "airscore",
+    "slug": "ariascore",
+    "scheme": "ariascore",
     "version": "1.0.4",
     "orientation": "default",
     "icon": "./assets/adaptive-icon.png",
