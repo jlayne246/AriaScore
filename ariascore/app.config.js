@@ -45,7 +45,7 @@ export default ({ config }) => ({
   },
   extra: {
     eas: {
-      projectId: "6490c77f-eb62-400f-ba45-9165be425a35",
+      projectId: "3d7912dd-b338-46d4-9545-b1933e85224a",
     },
   },
   owner: "jlayne246",
