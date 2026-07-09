@@ -27,6 +27,7 @@ export default ({ config }) => ({
   },
   ios: {
     supportsTablet: true,
+    bundleIdentifier: "com.jlayne246.ariascore"
   },
   android: {
     adaptiveIcon: {
