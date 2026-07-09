@@ -26,9 +26,9 @@ const getNativeModule = (): AriaScorePdfRendererModule => {
   const nativeModule =
     NativeModules.AriaScorePdfRenderer as AriaScorePdfRendererModule | undefined;
 
-  if (Platform.OS !== "android" || !nativeModule) {
+  if (!["android", "ios"].includes(Platform.OS) || !nativeModule) {
     throw new Error(
-      "AriaScorePdfRenderer is only available in the Android native build."
+      "AriaScorePdfRenderer is only available in the native Android/iOS build."
     );
   }
 

@@ -13,9 +13,9 @@ const getNativeImporter = (): AriaScorePdfImporterModule => {
   const nativeModule =
     NativeModules.AriaScorePdfImporter as AriaScorePdfImporterModule | undefined;
 
-  if (Platform.OS !== "android" || !nativeModule?.importPdf) {
+  if (!["android", "ios"].includes(Platform.OS) || !nativeModule) {
     throw new Error(
-      "AriaScorePdfImporter is only available in the Android native build."
+      "AriaScorePdfImporter is only available in the native Android/iOS build."
     );
   }
 
