@@ -31,7 +31,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/jlayne246/AriaScore">
-    <img src="https://github.com/jlayne246/AriaScore/blob/main/airscore/assets/icon.png" alt="Logo" width="80" height="80">
+    <img src="https://github.com/jlayne246/AriaScore/blob/main/ariascore/assets/icon.png" alt="Logo" width="80" height="80">
   </a>
 
 <h3 align="center">AriaScore</h3>
@@ -39,7 +39,7 @@
   <p align="center">
     A hands-free PDF reader optimized for musicians, allowing users to turn pages via facial gestures like blinking or head turns.  
     <br />
-    <a href="https://github.com/jlayne246/airscore/docs"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/jlayne246/ariascore/docs"><strong>Explore the docs »</strong></a>
     <br />
     <br />
     <!-- <a href="https://github.com/jlayne246/airscore">View Demo</a>
