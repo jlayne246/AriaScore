@@ -15,7 +15,8 @@
       "imageWidth": 449
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jlayne246.ariascore"
     },
     "android": {
       "adaptiveIcon": {
