@@ -58,6 +58,10 @@ import MetadataForm from './MetadataForm';
 import { saveSetlistProgress } from "../utils/database";
 import { ReaderSettings } from '../utils/settings/types';
 import * as ScreenOrientation from "expo-screen-orientation";
+import {
+  getTapZoneRatio,
+  resolveTapAction,
+} from "../utils/readerGestures";
 
 interface BufferedPDFViewerProps {
   uri: string;
@@ -88,6 +92,12 @@ const THUMB_ITEM_WIDTH = 120;
 const THUMB_ROW_HEIGHT = 180;
 
 const TOP_CHROME_HEIGHT = 112;
+
+const TAP_ZONE_RATIO = {
+  portrait: 0.22,
+  landscape: 0.32,
+  performance: 0.4,
+} as const;
 
 type DisplayMode =
   | "single"
@@ -401,6 +411,12 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
+  const zoneRatio = getTapZoneRatio({
+    isLandscape,
+    isPerformanceMode: effectivePerformanceMode,
+  });
+
+  const edgeZoneWidth = width * zoneRatio;
 
   const qualityScale =
     qualityScaleMap[effectiveSettings.pageRenderQuality];
@@ -1005,6 +1021,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       }
     };
   }, []);
+
+  
 
   const centerTapGesture = Gesture.Tap()
   .maxDuration(220)
@@ -2295,10 +2313,10 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
               left: 0,
               top: 0,
               bottom: 0,
-              width: '7%',
+              width: edgeZoneWidth,
               zIndex: 999,
               elevation: 999,
-              // backgroundColor: 'rgba(255, 0, 0, 0.12)',
+              backgroundColor: 'rgba(255, 0, 0, 0.12)',
             }}
             onPress={async () => {
               if (currentPage < 1 || currentPage > totalPages) return;
@@ -2334,10 +2352,10 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
               right: 0,
               top: 0,
               bottom: 0,
-              width: '7%',
+              width: edgeZoneWidth,
               zIndex: 999,
               elevation: 999,
-              // backgroundColor: 'rgba(255, 0, 0, 0.12)',
+              backgroundColor: 'rgba(255, 0, 0, 0.12)',
             }}
             onPress={async () => {
               console.log("Right tap zone pressed", {
