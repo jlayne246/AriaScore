@@ -1,13 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, SafeAreaView, Alert } from 'react-native';
 
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, RouteProp, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import PDFViewer from '../components/PDFViewer';
 import BufferedPDFViewer from '../components/BufferedPDFViewer';
 
-import { RouteProp } from '@react-navigation/native';
 import { MusicMetadataWithLabels, ReaderContext, RootStackParamList } from '../types';
 import { getMusicWithAllData, getMusicWithMetadata, markMusicAsOpened, saveSetlistProgress } from '../utils/database';
 import AriaScorePdfRenderer from '../native/AriaScorePdfRenderer';
@@ -31,17 +30,59 @@ const ReaderScreen = ({ route }: ReaderScreenProps) => {
     const [toastMessage, setToastMessage] = useState("");
     const [settings, setSettings] = useState<ReaderSettings>()
 
-    useEffect(() => {
-        (async () => {
+    const loadSettings = useCallback(async () => {
+        if (!musicId) return;
+
+        try {
             const resolved = await getResolvedReaderSettings(
                 musicId,
                 context?.setlistId
             );
 
             setSettings(resolved);
-        })();
-    }, [musicId, context?.setlistId])
+        } catch (error) {
+            console.error("Failed to load reader settings:", error);
+        }
+    }, [musicId, context?.setlistId]);
+
+    useFocusEffect(
+        useCallback(() => {
+            void loadSettings();
+        }, [loadSettings])
+    );
     
+
+    const loadReaderData = useCallback(async () => {
+        if (!musicId) return;
+
+        try {
+            const [resolved, items] = await Promise.all([
+                getResolvedReaderSettings(
+                    musicId,
+                    context?.setlistId
+                ),
+                getMusicWithMetadata(musicId),
+            ]);
+
+            const item = Array.isArray(items)
+                ? items[0]
+                : items;
+
+            setSettings(resolved);
+
+            if (item) {
+                setMusic(item);
+            }
+        } catch (error) {
+            console.error("Failed to load reader data:", error);
+        }
+    }, [musicId, context?.setlistId]);
+
+    useFocusEffect(
+        useCallback(() => {
+            void loadReaderData();
+        }, [loadReaderData])
+    );
 
     const showToast = (message: string) => {
         setToastMessage(message);
@@ -59,9 +100,9 @@ const ReaderScreen = ({ route }: ReaderScreenProps) => {
         setMusic(item);
     };
 
-    useEffect(() => {
-        loadMetadata();
-    }, [musicId]);
+    // useEffect(() => {
+    //     loadMetadata();
+    // }, [musicId]);
 
     const openSetlistScore = async (
         nextIndex: number,

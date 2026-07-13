@@ -62,6 +62,7 @@ import {
   getTapZoneRatio,
   resolveTapAction,
 } from "../utils/readerGestures";
+import { saveMusicReaderSetting } from '../utils/settings/repository';
 
 interface BufferedPDFViewerProps {
   uri: string;
@@ -416,7 +417,15 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   
 
-  
+  const attribution =
+  score.document_type === "Single Work"
+    ? [
+        score.composer,
+        score.arranger && `(Arr. ${score.arranger})`,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    : score.editor;
 
   const edgeZoneWidth = width * zoneRatio;
 
@@ -430,8 +439,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   // const [coverOffset, setCoverOffset] = useState(false);
 
-  const pageStep =
-    effectiveDisplayMode === 'double' ? 2 : 1;
+  // const pageStep =
+  //   effectiveDisplayMode === 'double' ? 2 : 1;
 
   type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -529,6 +538,41 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       if (effectiveDisplayMode === 'single') return page - 1;
       if (coverOffset) return page <= 1 ? 0 : Math.ceil((page - 1) / 2);
       return Math.floor((page - 1) / 2);
+    },
+    [effectiveDisplayMode, coverOffset]
+  );
+
+  const getPreviousPage = useCallback(
+    (page: number) => {
+      if (effectiveDisplayMode === "single") {
+        return page - 1;
+      }
+
+      if (coverOffset) {
+        // The first regular spread is pages 2–3.
+        // Its previous spread is the cover, page 1.
+        if (page === 2) {
+          return 1;
+        }
+      }
+
+      return page - 2;
+    },
+    [effectiveDisplayMode, coverOffset]
+  );
+
+  const getNextPage = useCallback(
+    (page: number) => {
+      if (effectiveDisplayMode === "single") {
+        return page + 1;
+      }
+
+      if (coverOffset && page === 1) {
+        // Move from the cover to the first regular spread, pages 2–3.
+        return 2;
+      }
+
+      return page + 2;
     },
     [effectiveDisplayMode, coverOffset]
   );
@@ -685,7 +729,11 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
       pages.forEach(renderPage);
     },
-    [renderPage, totalPages, getBuffer]
+    [
+      effectiveDisplayMode,
+      renderPage,
+      totalPages,
+    ]
   );
 
   // const singleTap = Gesture.Tap()
@@ -701,8 +749,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   // );
 
   const applyDisplayMode = useCallback(
-    (nextMode: DisplayMode) => {
-      setDisplayMode(nextMode);
+    async (nextMode: DisplayMode) => {
+      const previousMode = displayMode;
 
       const nextIndex =
         nextMode === "double"
@@ -713,6 +761,50 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             : Math.floor((currentPage - 1) / 2)
           : currentPage - 1;
 
+      setDisplayMode(nextMode);
+      setInitialPagerIndex(nextIndex);
+
+      try {
+        await saveMusicReaderSetting(
+          musicId,
+          "viewMode",
+          nextMode
+        );
+      } catch (error) {
+        console.error("Failed to save display mode:", error);
+
+        // Roll back the optimistic reader change.
+        setDisplayMode(previousMode);
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        pagerRef.current?.setPageWithoutAnimation(nextIndex);
+      });
+
+      renderBufferAround(currentPage);
+    },
+    [
+      musicId,
+      displayMode,
+      currentPage,
+      coverOffset,
+      renderBufferAround,
+    ]
+  );
+
+  const applyCoverOffset = useCallback(
+    async (enabled: boolean) => {
+      setCoverOffset(enabled);
+
+      await saveMusicReaderSetting(
+        musicId,
+        "coverOffset",
+        enabled
+      );
+
+      const nextIndex = getPagerIndexForPage(currentPage);
+
       setInitialPagerIndex(nextIndex);
 
       requestAnimationFrame(() => {
@@ -721,7 +813,12 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
       renderBufferAround(currentPage);
     },
-    [currentPage, coverOffset, renderBufferAround]
+    [
+      musicId,
+      currentPage,
+      getPagerIndexForPage,
+      renderBufferAround,
+    ]
   );
 
   const applyOrientationLock = useCallback(
@@ -973,7 +1070,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     if (changingScoreRef.current) return;
     if (currentPage < 1 || currentPage > totalPages) return;
 
-    const previousPage = currentPage - pageStep;
+    const previousPage = getPreviousPage(currentPage);
 
     if (previousPage < 1) {
       if (!context?.setlistId) return;
@@ -990,12 +1087,14 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       return;
     }
 
-    goToPage(previousPage, { showChrome: false });
+    goToPage(previousPage, {
+      showChrome: false,
+    });
   }, [
     currentPage,
     totalPages,
-    pageStep,
     context?.setlistId,
+    getPreviousPage,
     saveCurrentSetlistProgress,
     onPreviousScoreFromPageTurn,
     goToPage,
@@ -1005,7 +1104,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     if (changingScoreRef.current) return;
     if (currentPage < 1 || currentPage > totalPages) return;
 
-    const nextPage = currentPage + pageStep;
+    const nextPage = getNextPage(currentPage);
 
     if (nextPage > totalPages) {
       if (!context?.setlistId) return;
@@ -1022,12 +1121,14 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       return;
     }
 
-    goToPage(nextPage, { showChrome: false });
+    goToPage(nextPage, {
+      showChrome: false,
+    });
   }, [
     currentPage,
     totalPages,
-    pageStep,
     context?.setlistId,
+    getNextPage,
     saveCurrentSetlistProgress,
     onNextScoreFromPageTurn,
     goToPage,
@@ -1296,9 +1397,15 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                 {score.title}
               </Text>
 
-              <Text style={{ fontSize: 14, color: '#666' }} numberOfLines={1}>
-                {score.document_type === 'Single Work' ? `${score.composer} ${score.arranger && `(Arr. ${score.arranger})`}` : score.editor}
-              </Text>
+              {attribution ? (
+                <Text style={{ fontSize: 14, color: '#666' }} numberOfLines={1}>
+                  {attribution}
+                </Text>
+              ) : (
+                <Text style={{ fontSize: 14, color: '#666', fontStyle: 'italic' }} numberOfLines={1}>
+                  No composer/editor information available
+                </Text>
+              )}
 
               {context?.setlistName && (
                 <Text style={{ fontSize: 13, color: '#888' }} numberOfLines={1}>
@@ -1466,6 +1573,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       {/* <GestureDetector gesture={gesture}> */}
         {readerReady ? (
           <PagerView
+            key={`${effectiveDisplayMode}-${coverOffset ? "cover" : "no-cover"}`}
             ref={pagerRef}
             style={{ flex: 1 }}
             initialPage={initialPagerIndex}
@@ -1614,7 +1722,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           ) : (
             <TouchableOpacity
               style={{ alignItems: 'center' }}
-              onPress={() => goToPage(currentPage - pageStep)}
+              onPress={() => {
+                void goToPreviousPage();
+              }}
             >
               <Ionicons name="arrow-back" size={28} color={ACCENT_COLOR} />
               <Text style={{ fontSize: 14, color: ACCENT_COLOR }}>
@@ -1672,7 +1782,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           ) : (
             <TouchableOpacity
               style={{ alignItems: 'center' }}
-              onPress={() => goToPage(currentPage + pageStep)}
+              onPress={() => {
+                void goToNextPage();
+              }}
             >
               <Ionicons name="arrow-forward" size={28} color={ACCENT_COLOR} />
               <Text style={{ fontSize: 14, color: ACCENT_COLOR }}>
@@ -1752,10 +1864,14 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                   {score.title ?? 'Untitled'}
                 </Text>
 
-                {score.document_type === "Single Work" ? (
-                  <Text style={{ fontWeight: 'bold' }}>{score.composer} {score.arranger && `(Arr. ${score.arranger})`}</Text>
+                {attribution ? (
+                  <Text style={{ fontWeight: "bold" }}>
+                    {attribution}
+                  </Text>
                 ) : (
-                  <Text style={{ fontWeight: 'bold' }}>{score.editor} </Text>
+                  <Text style={{ fontStyle: 'italic' }}>
+                    No composer/editor information available
+                  </Text>
                 )}
 
                 <Text style={{ fontSize: 14, color: '#777', marginTop: 4 }}>
@@ -2130,21 +2246,61 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             borderRadius: 16,
             padding: 20,
           }}>
-            <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
+            <Text
+              style={{
+                fontSize: 22,
+                fontWeight: "700",
+                marginBottom: 16,
+              }}
+            >
               Display
             </Text>
 
             <ActionRow
-              icon={displayMode === "single" ? "radio-button-on" : "radio-button-off"}
+              icon={
+                displayMode === "single"
+                  ? "radio-button-on"
+                  : "radio-button-off"
+              }
               label="Single page"
               onPress={() => applyDisplayMode("single")}
             />
 
             <ActionRow
-              icon={displayMode === "double" ? "radio-button-on" : "radio-button-off"}
+              icon={
+                displayMode === "double"
+                  ? "radio-button-on"
+                  : "radio-button-off"
+              }
               label="Two pages"
               onPress={() => applyDisplayMode("double")}
             />
+
+            {displayMode === "double" && (
+              <InfoSection title="Two-Page Layout">
+                <ActionRow
+                  icon={
+                    coverOffset
+                      ? "checkbox"
+                      : "square-outline"
+                  }
+                  label="Treat first page as cover"
+                  onPress={() => applyCoverOffset(!coverOffset)}
+                />
+
+                <Text
+                  style={{
+                    color: "#6B7280",
+                    fontSize: 13,
+                    marginTop: 4,
+                    marginLeft: 38,
+                  }}
+                >
+                  Starts the score with a single cover page before
+                  showing page spreads.
+                </Text>
+              </InfoSection>
+            )}
 
             <InfoSection title="Orientation">
               <ActionRow
