@@ -58,6 +58,11 @@ import MetadataForm from './MetadataForm';
 import { saveSetlistProgress } from "../utils/database";
 import { ReaderSettings } from '../utils/settings/types';
 import * as ScreenOrientation from "expo-screen-orientation";
+import {
+  getTapZoneRatio,
+  resolveTapAction,
+} from "../utils/readerGestures";
+import { saveMusicReaderSetting } from '../utils/settings/repository';
 
 interface BufferedPDFViewerProps {
   uri: string;
@@ -79,6 +84,9 @@ interface BufferedPDFViewerProps {
   initialPage?: number;
 
   settings: ReaderSettings;
+
+  toastVisible?: boolean;
+  toastMessage?: string;
 }
 
 const ACCENT_COLOR = '#2563EB';
@@ -307,7 +315,7 @@ function OverflowMenuDivider() {
   );
 }
 
-const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings, onMetadataUpdated, onNextScore, onPreviousScore, onNextScoreFromPageTurn, onPreviousScoreFromPageTurn }: BufferedPDFViewerProps) => {
+const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings, toastVisible, toastMessage, onMetadataUpdated, onNextScore, onPreviousScore, onNextScoreFromPageTurn, onPreviousScoreFromPageTurn }: BufferedPDFViewerProps) => {
   const pagerRef = useRef<PagerView>(null);
   const renderingPages = useRef<Set<number>>(new Set());
 
@@ -350,6 +358,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const [manageSetlistsVisible, setManageSetlistsVisible] = useState(false);
 
   const [displayOptionsVisible, setDisplayOptionsVisible] = useState(false);
+
+  const pageTurnInProgressRef = useRef(false);
 
   type OrientationLockMode = "auto" | "portrait" | "landscape";
 
@@ -401,9 +411,22 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
+  const zoneRatio = getTapZoneRatio({
+    isLandscape,
+    isPerformanceMode: effectivePerformanceMode,
+  });
 
-  const qualityScale =
-    qualityScaleMap[effectiveSettings.pageRenderQuality];
+  
+
+  const attribution =
+  score.document_type === "Single Work"
+    ? [
+        score.composer,
+        score.arranger && `(Arr. ${score.arranger})`,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    : score.editor;
 
   const effectiveDisplayMode: DisplayMode =
     isLandscape ? displayMode : 'single';
@@ -412,8 +435,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   // const [coverOffset, setCoverOffset] = useState(false);
 
-  const pageStep =
-    effectiveDisplayMode === 'double' ? 2 : 1;
+  // const pageStep =
+  //   effectiveDisplayMode === 'double' ? 2 : 1;
 
   type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -431,16 +454,15 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     (_, index) => index + 1
   );
 
-  const canUseTapZones =
+  const canUseReaderGestures =
+    readerReady &&
     !jumpOverlayVisible &&
     !bookmarksOverlayVisible &&
     !labelOverlayVisible &&
     !scoreInfoVisible &&
-    effectiveSettings.tapZones &&
-    !displayOptionsVisible &&
-    totalPages > 0 &&
-    currentPage >= 1 &&
-    currentPage <= totalPages;
+    !metadataFormVisible &&
+    !manageSetlistsVisible &&
+    !displayOptionsVisible;
 
   const PAGE_ASPECT_RATIO = 1.414;
 
@@ -449,6 +471,15 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     high: { scale: 1.25, maxWidth: 3000, minWidth: 2200 },
     ultra: { scale: 1.5, maxWidth: 3800, minWidth: 2800 },
   } as const;
+
+  const BOTTOM_CHROME_MIN_HEIGHT = 84;
+  const TOAST_CHROME_GAP = 16;
+
+  const toastBottom = chromeVisible
+    ? Math.max(insets.bottom, 12) +
+      BOTTOM_CHROME_MIN_HEIGHT +
+      TOAST_CHROME_GAP
+    : Math.max(insets.bottom, 24);
 
   const getRenderSize = (
     widthDp: number,
@@ -497,12 +528,81 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   }, [context?.setlistId, musicId, currentPage]);
 
   const getPagerIndexForPage = useCallback(
-    (page: number) => {
-      if (effectiveDisplayMode === 'single') return page - 1;
-      if (coverOffset) return page <= 1 ? 0 : Math.ceil((page - 1) / 2);
+    (
+      page: number,
+      options?: {
+        mode?: DisplayMode;
+        coverOffset?: boolean;
+      },
+    ) => {
+      const mode = options?.mode ?? effectiveDisplayMode;
+      const hasCoverOffset = options?.coverOffset ?? coverOffset;
+
+      if (mode === "single") {
+        return page - 1;
+      }
+
+      if (hasCoverOffset) {
+        return page <= 1
+          ? 0
+          : Math.ceil((page - 1) / 2);
+      }
+
       return Math.floor((page - 1) / 2);
     },
+    [effectiveDisplayMode, coverOffset],
+  );
+
+  const getPreviousPage = useCallback(
+    (page: number) => {
+      if (effectiveDisplayMode === "single") {
+        return page - 1;
+      }
+
+      if (coverOffset) {
+        // The first regular spread is pages 2–3.
+        // Its previous spread is the cover, page 1.
+        if (page === 2) {
+          return 1;
+        }
+      }
+
+      return page - 2;
+    },
     [effectiveDisplayMode, coverOffset]
+  );
+
+  const getNextPage = useCallback(
+    (page: number) => {
+      if (effectiveDisplayMode === "single") {
+        return page + 1;
+      }
+
+      if (coverOffset && page === 1) {
+        // Move from the cover to the first regular spread, pages 2–3.
+        return 2;
+      }
+
+      return page + 2;
+    },
+    [effectiveDisplayMode, coverOffset]
+  );
+
+  const runPageTurn = useCallback(
+    async (action: () => Promise<void> | void) => {
+      if (pageTurnInProgressRef.current) return;
+
+      pageTurnInProgressRef.current = true;
+
+      try {
+        await action();
+      } finally {
+        setTimeout(() => {
+          pageTurnInProgressRef.current = false;
+        }, 180);
+      }
+    },
+    [],
   );
 
   const renderPage = useCallback(
@@ -657,7 +757,11 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
       pages.forEach(renderPage);
     },
-    [renderPage, totalPages, getBuffer]
+    [
+      effectiveDisplayMode,
+      renderPage,
+      totalPages,
+    ]
   );
 
   // const singleTap = Gesture.Tap()
@@ -673,8 +777,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   // );
 
   const applyDisplayMode = useCallback(
-    (nextMode: DisplayMode) => {
-      setDisplayMode(nextMode);
+    async (nextMode: DisplayMode) => {
+      const previousMode = displayMode;
 
       const nextIndex =
         nextMode === "double"
@@ -685,7 +789,22 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             : Math.floor((currentPage - 1) / 2)
           : currentPage - 1;
 
+      setDisplayMode(nextMode);
       setInitialPagerIndex(nextIndex);
+
+      try {
+        await saveMusicReaderSetting(
+          musicId,
+          "viewMode",
+          nextMode
+        );
+      } catch (error) {
+        console.error("Failed to save display mode:", error);
+
+        // Roll back the optimistic reader change.
+        setDisplayMode(previousMode);
+        return;
+      }
 
       requestAnimationFrame(() => {
         pagerRef.current?.setPageWithoutAnimation(nextIndex);
@@ -693,7 +812,58 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
       renderBufferAround(currentPage);
     },
-    [currentPage, coverOffset, renderBufferAround]
+    [
+      musicId,
+      displayMode,
+      currentPage,
+      coverOffset,
+      renderBufferAround,
+    ]
+  );
+
+  const applyCoverOffset = useCallback(
+    async (enabled: boolean) => {
+      const previousValue = coverOffset;
+
+      const nextIndex = getPagerIndexForPage(currentPage, {
+        coverOffset: enabled,
+      });
+
+      setCoverOffset(enabled);
+      setInitialPagerIndex(nextIndex);
+
+      try {
+        await saveMusicReaderSetting(
+          musicId,
+          "coverOffset",
+          enabled,
+        );
+      } catch (error) {
+        console.error("Failed to save cover offset:", error);
+
+        setCoverOffset(previousValue);
+
+        const previousIndex = getPagerIndexForPage(currentPage, {
+          coverOffset: previousValue,
+        });
+
+        setInitialPagerIndex(previousIndex);
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        pagerRef.current?.setPageWithoutAnimation(nextIndex);
+      });
+
+      renderBufferAround(currentPage);
+    },
+    [
+      musicId,
+      currentPage,
+      coverOffset,
+      getPagerIndexForPage,
+      renderBufferAround,
+    ],
   );
 
   const applyOrientationLock = useCallback(
@@ -941,6 +1111,77 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     ]
   );
 
+  const goToPreviousPage = useCallback(async () => {
+    if (changingScoreRef.current) return;
+    if (currentPage < 1 || currentPage > totalPages) return;
+
+    const previousPage = getPreviousPage(currentPage);
+
+    if (previousPage < 1) {
+      if (!context?.setlistId) return;
+
+      changingScoreRef.current = true;
+
+      try {
+        await saveCurrentSetlistProgress();
+        await onPreviousScoreFromPageTurn?.();
+      } finally {
+        changingScoreRef.current = false;
+      }
+
+      return;
+    }
+
+    goToPage(previousPage, {
+      showChrome: false,
+    });
+  }, [
+    currentPage,
+    totalPages,
+    context?.setlistId,
+    getPreviousPage,
+    saveCurrentSetlistProgress,
+    onPreviousScoreFromPageTurn,
+    goToPage,
+  ]);
+
+  const goToNextPage = useCallback(async () => {
+    if (changingScoreRef.current) return;
+    if (currentPage < 1 || currentPage > totalPages) return;
+
+    const nextPage = getNextPage(currentPage);
+
+    if (nextPage > totalPages) {
+      if (!context?.setlistId) return;
+
+      changingScoreRef.current = true;
+
+      try {
+        await saveCurrentSetlistProgress();
+        await onNextScoreFromPageTurn?.();
+      } finally {
+        changingScoreRef.current = false;
+      }
+
+      return;
+    }
+
+    goToPage(nextPage, {
+      showChrome: false,
+    });
+  }, [
+    currentPage,
+    totalPages,
+    context?.setlistId,
+    getNextPage,
+    saveCurrentSetlistProgress,
+    onNextScoreFromPageTurn,
+    goToPage,
+  ]);
+
+
+  
+
   // const toggleBookmark = useCallback(async () => {
   //   if (!musicId) return;
 
@@ -998,6 +1239,53 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     });
   }, [effectiveSettings.autoHideControls]);
 
+  const handleTap = useCallback(
+    (x: number) => {
+      if (!effectiveSettings.tapZones) {
+        toggleChrome();
+        return;
+      }
+
+      const zoneRatio = getTapZoneRatio({
+        isLandscape,
+        isPerformanceMode: effectivePerformanceMode,
+      });
+
+      const action = resolveTapAction(
+        x,
+        width,
+        zoneRatio,
+        effectivePerformanceMode,
+      );
+
+      switch (action) {
+        case "previous":
+          void runPageTurn(goToPreviousPage);
+          break;
+
+        case "next":
+          void runPageTurn(goToNextPage);
+          break;
+
+        case "toggleChrome":
+          toggleChrome();
+          break;
+
+        case "none":
+          break;
+      }
+    },
+    [
+      width,
+      isLandscape,
+      effectivePerformanceMode,
+      effectiveSettings.tapZones,
+      goToPreviousPage,
+      goToNextPage,
+      toggleChrome,
+    ],
+  );
+
   useEffect(() => {
     return () => {
       if (chromeHideTimer.current) {
@@ -1006,30 +1294,71 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     };
   }, []);
 
-  const centerTapGesture = Gesture.Tap()
+  // const swipeDistanceThreshold = isLandscape ? 35 : 45;
+
+  const SWIPE_DISTANCE_THRESHOLD =
+    isLandscape ? 35 : 45;
+
+  const SWIPE_VELOCITY_THRESHOLD = 400;
+
+  const SWIPE_VERTICAL_TOLERANCE = 40;
+
+  const swipeGesture = Gesture.Pan()
+  .enabled(canUseReaderGestures && effectiveSettings.swipeNavigation)
+  .activeOffsetX([-10, 10])
+  .failOffsetY([
+    -SWIPE_VERTICAL_TOLERANCE,
+    SWIPE_VERTICAL_TOLERANCE,
+  ])
+  .onEnd((event) => {
+    const movedFarEnough =
+      Math.abs(event.translationX) >=
+      SWIPE_DISTANCE_THRESHOLD;
+
+    const movedFastEnough =
+      Math.abs(event.velocityX) >=
+      SWIPE_VELOCITY_THRESHOLD;
+
+    if (!movedFarEnough && !movedFastEnough) {
+      return;
+    }
+
+    const direction = movedFarEnough
+      ? event.translationX
+      : event.velocityX;
+
+    if (direction < 0) {
+      runOnJS(goToNextPage)();
+    } else {
+      runOnJS(goToPreviousPage)();
+    }
+  });
+
+  const tapGesture = Gesture.Tap()
   .maxDuration(220)
   .maxDistance(6)
+  .onEnd((event, success) => {
+    if (!success) return;
+
+    runOnJS(handleTap)(event.x);
+  });
+
+  const doubleTapGesture = Gesture.Tap()
+  .numberOfTaps(2)
+  .maxDuration(300)
+  .maxDistance(12)
+  .enabled(effectivePerformanceMode)
   .onEnd((_event, success) => {
     if (success) {
       runOnJS(toggleChrome)();
     }
   });
 
-  // const singleTap = Gesture.Tap()
-  // .numberOfTaps(1)
-  // .maxDuration(220)
-  // .maxDistance(10)
-  // .onEnd(() => {
-  //   runOnJS(showChromeTemporarily)();
-  // });
-
-  // const doubleTap = Gesture.Tap()
-  //   .numberOfTaps(2)
-  //   .maxDuration(300)
-  //   .maxDistance(20)
-  //   .onEnd(() => {
-  //     runOnJS(console.log)('Double tap: future zoom');
-  //   });
+  const readerGesture = Gesture.Exclusive(
+    swipeGesture,
+    doubleTapGesture,
+    tapGesture,
+  );
 
   // const longPress = Gesture.LongPress()
   //   .minDuration(450)
@@ -1041,15 +1370,6 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   //   .onBegin(() => {
   //     runOnJS(console.log)('Pinch begin: future zoom');
   //   });
-
-  // const gesture = Gesture.Exclusive(
-  //   doubleTap,
-  //   Gesture.Simultaneous(
-  //     pinch,
-  //     longPress,
-  //     singleTap
-  //   )
-  // );
 
   const renderVisibleThumbnailWindow = useCallback(
     (page: number) => {
@@ -1128,9 +1448,15 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                 {score.title}
               </Text>
 
-              <Text style={{ fontSize: 14, color: '#666' }} numberOfLines={1}>
-                {score.document_type === 'Single Work' ? `${score.composer} ${score.arranger && `(Arr. ${score.arranger})`}` : score.editor}
-              </Text>
+              {attribution ? (
+                <Text style={{ fontSize: 14, color: '#666' }} numberOfLines={1}>
+                  {attribution}
+                </Text>
+              ) : (
+                <Text style={{ fontSize: 14, color: '#666', fontStyle: 'italic' }} numberOfLines={1}>
+                  No composer/editor information available
+                </Text>
+              )}
 
               {context?.setlistName && (
                 <Text style={{ fontSize: 13, color: '#888' }} numberOfLines={1}>
@@ -1298,10 +1624,12 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       {/* <GestureDetector gesture={gesture}> */}
         {readerReady ? (
           <PagerView
+            key={`${effectiveDisplayMode}-${coverOffset ? "cover" : "no-cover"}`}
             ref={pagerRef}
             style={{ flex: 1 }}
             initialPage={initialPagerIndex}
             offscreenPageLimit={5}
+            scrollEnabled={false}
             onPageSelected={(event) => {
               const position = event.nativeEvent.position;
 
@@ -1426,7 +1754,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             paddingHorizontal: 12,
             paddingTop: 12,
             paddingBottom: Math.max(insets.bottom, 12),
-            minHeight: 84,
+            minHeight: BOTTOM_CHROME_MIN_HEIGHT,
           }}
         >
           {context?.setlistId ? (
@@ -1445,7 +1773,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           ) : (
             <TouchableOpacity
               style={{ alignItems: 'center' }}
-              onPress={() => goToPage(currentPage - pageStep)}
+              onPress={() => {
+                void goToPreviousPage();
+              }}
             >
               <Ionicons name="arrow-back" size={28} color={ACCENT_COLOR} />
               <Text style={{ fontSize: 14, color: ACCENT_COLOR }}>
@@ -1503,7 +1833,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           ) : (
             <TouchableOpacity
               style={{ alignItems: 'center' }}
-              onPress={() => goToPage(currentPage + pageStep)}
+              onPress={() => {
+                void goToNextPage();
+              }}
             >
               <Ionicons name="arrow-forward" size={28} color={ACCENT_COLOR} />
               <Text style={{ fontSize: 14, color: ACCENT_COLOR }}>
@@ -1583,10 +1915,14 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                   {score.title ?? 'Untitled'}
                 </Text>
 
-                {score.document_type === "Single Work" ? (
-                  <Text style={{ fontWeight: 'bold' }}>{score.composer} {score.arranger && `(Arr. ${score.arranger})`}</Text>
+                {attribution ? (
+                  <Text style={{ fontWeight: "bold" }}>
+                    {attribution}
+                  </Text>
                 ) : (
-                  <Text style={{ fontWeight: 'bold' }}>{score.editor} </Text>
+                  <Text style={{ fontStyle: 'italic' }}>
+                    No composer/editor information available
+                  </Text>
                 )}
 
                 <Text style={{ fontSize: 14, color: '#777', marginTop: 4 }}>
@@ -1961,21 +2297,61 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             borderRadius: 16,
             padding: 20,
           }}>
-            <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
+            <Text
+              style={{
+                fontSize: 22,
+                fontWeight: "700",
+                marginBottom: 16,
+              }}
+            >
               Display
             </Text>
 
             <ActionRow
-              icon={displayMode === "single" ? "radio-button-on" : "radio-button-off"}
+              icon={
+                displayMode === "single"
+                  ? "radio-button-on"
+                  : "radio-button-off"
+              }
               label="Single page"
               onPress={() => applyDisplayMode("single")}
             />
 
             <ActionRow
-              icon={displayMode === "double" ? "radio-button-on" : "radio-button-off"}
+              icon={
+                displayMode === "double"
+                  ? "radio-button-on"
+                  : "radio-button-off"
+              }
               label="Two pages"
               onPress={() => applyDisplayMode("double")}
             />
+
+            {displayMode === "double" && (
+              <InfoSection title="Two-Page Layout">
+                <ActionRow
+                  icon={
+                    coverOffset
+                      ? "checkbox"
+                      : "square-outline"
+                  }
+                  label="Treat first page as cover"
+                  onPress={() => applyCoverOffset(!coverOffset)}
+                />
+
+                <Text
+                  style={{
+                    color: "#6B7280",
+                    fontSize: 13,
+                    marginTop: 4,
+                    marginLeft: 38,
+                  }}
+                >
+                  Starts the score with a single cover page before
+                  showing page spreads.
+                </Text>
+              </InfoSection>
+            )}
 
             <InfoSection title="Orientation">
               <ActionRow
@@ -2013,6 +2389,42 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             >
               <Text style={{ color: "white", fontWeight: "700" }}>Done</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {toastVisible && toastMessage && toastMessage.length > 0 && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: toastBottom,
+            zIndex: 1500,
+            elevation: 1500,
+            alignItems: "center",
+            paddingHorizontal: 20,
+          }}
+        >
+          <View
+            style={{
+              maxWidth: "90%",
+              backgroundColor: "rgba(0,0,0,0.85)",
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              borderRadius: 20,
+            }}
+          >
+            <Text
+              style={{
+                color: "white",
+                fontSize: 14,
+                textAlign: "center",
+              }}
+            >
+              {toastMessage}
+            </Text>
           </View>
         </View>
       )}
@@ -2268,110 +2680,21 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         }}
       />
 
-      {!jumpOverlayVisible && !bookmarksOverlayVisible && !labelOverlayVisible && !scoreInfoVisible && (
-        <GestureDetector gesture={centerTapGesture}>
+      {canUseReaderGestures && (
+        <GestureDetector gesture={readerGesture}>
           <View
             collapsable={false}
             style={{
               position: 'absolute',
-              left: '25%',
-              right: '25%',
-              top: '25%',
-              bottom: '25%',
-              zIndex: 900,
-              // backgroundColor: 'rgba(255, 0, 0, 0.12)',
-            }}
-          />
-        </GestureDetector>
-      )}
-
-      {canUseTapZones && (
-        <>
-          {/* left Pressable */}
-
-           <Pressable
-            style={{
-              position: 'absolute',
               left: 0,
-              top: 0,
-              bottom: 0,
-              width: '7%',
-              zIndex: 999,
-              elevation: 999,
-              // backgroundColor: 'rgba(255, 0, 0, 0.12)',
-            }}
-            onPress={async () => {
-              if (currentPage < 1 || currentPage > totalPages) return;
-
-              const previousPage = currentPage - pageStep;
-
-              if (previousPage < 1) {
-                if (!context?.setlistId || changingScoreRef.current) {
-                  return;
-                }
-
-                changingScoreRef.current = true;
-
-                try {
-                  await saveCurrentSetlistProgress();
-                  await onPreviousScoreFromPageTurn?.();
-                } finally {
-                  changingScoreRef.current = false;
-                }
-
-                return;
-              }
-
-              goToPage(previousPage, {showChrome: false});
-              // showChromeTemporarily();
-            }}
-          />
-
-          {/* right Pressable */}
-          <Pressable
-            style={{
-              position: 'absolute',
               right: 0,
               top: 0,
               bottom: 0,
-              width: '7%',
-              zIndex: 999,
-              elevation: 999,
-              // backgroundColor: 'rgba(255, 0, 0, 0.12)',
-            }}
-            onPress={async () => {
-              console.log("Right tap zone pressed", {
-                currentPage,
-                pageStep,
-                totalPages,
-                hasNextScore: !!onNextScore,
-              });
-
-              if (currentPage < 1 || currentPage > totalPages) return;
-
-              const nextPage = currentPage + pageStep;
-
-              if (nextPage > totalPages) {
-                if (!context?.setlistId || changingScoreRef.current) {
-                  return;
-                }
-
-                changingScoreRef.current = true;
-
-                try {
-                  await saveCurrentSetlistProgress();
-                  await onNextScoreFromPageTurn?.();
-                } finally {
-                  changingScoreRef.current = false;
-                }
-                return;
-              }
-
-              goToPage(nextPage, {showChrome: false});
-              // showChromeTemporarily();
+              zIndex: 900,
+              // backgroundColor: 'rgba(255, 153, 0, 0.12)',
             }}
           />
-        </>
+        </GestureDetector>
       )}
     </View>
   );

@@ -1,13 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, SafeAreaView, Alert } from 'react-native';
 
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, RouteProp, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import PDFViewer from '../components/PDFViewer';
 import BufferedPDFViewer from '../components/BufferedPDFViewer';
 
-import { RouteProp } from '@react-navigation/native';
 import { MusicMetadataWithLabels, ReaderContext, RootStackParamList } from '../types';
 import { getMusicWithAllData, getMusicWithMetadata, markMusicAsOpened, saveSetlistProgress } from '../utils/database';
 import AriaScorePdfRenderer from '../native/AriaScorePdfRenderer';
@@ -26,27 +25,73 @@ const ReaderScreen = ({ route }: ReaderScreenProps) => {
     const [title, setTitle] = useState("Untitled");
     const [composer, setComposer] = useState("");
     const [setlistLabel, setSetlistLabel] = useState("");
-    const [music, setMusic] = useState<any>(null);
     const [toastVisible, setToastVisible] = useState(false);
     const [toastMessage, setToastMessage] = useState("");
+    const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [music, setMusic] = useState<any>(null);
     const [settings, setSettings] = useState<ReaderSettings>()
+    
 
-    useEffect(() => {
-        (async () => {
+    const loadSettings = useCallback(async () => {
+        if (!musicId) return;
+
+        try {
             const resolved = await getResolvedReaderSettings(
                 musicId,
                 context?.setlistId
             );
 
             setSettings(resolved);
-        })();
-    }, [musicId, context?.setlistId])
-    
+        } catch (error) {
+            console.error("Failed to load reader settings:", error);
+        }
+    }, [musicId, context?.setlistId]);
 
-    const showToast = (message: string) => {
-        setToastMessage(message);
-        setToastVisible(true);
-    };
+    useFocusEffect(
+        useCallback(() => {
+            void loadSettings();
+        }, [loadSettings])
+    );
+
+      useEffect(() => {
+          return () => {
+              if (toastTimeoutRef.current) {
+                  clearTimeout(toastTimeoutRef.current);
+              }
+          };
+      }, []);
+    
+    const loadReaderData = useCallback(async () => {
+        if (!musicId) return;
+
+        try {
+            const [resolved, items] = await Promise.all([
+                getResolvedReaderSettings(
+                    musicId,
+                    context?.setlistId
+                ),
+                getMusicWithMetadata(musicId),
+            ]);
+
+            const item = Array.isArray(items)
+                ? items[0]
+                : items;
+
+            setSettings(resolved);
+
+            if (item) {
+                setMusic(item);
+            }
+        } catch (error) {
+            console.error("Failed to load reader data:", error);
+        }
+    }, [musicId, context?.setlistId]);
+
+    useFocusEffect(
+        useCallback(() => {
+            void loadReaderData();
+        }, [loadReaderData])
+    );
 
     const loadMetadata = async () => {
         if (!musicId) return;
@@ -59,9 +104,23 @@ const ReaderScreen = ({ route }: ReaderScreenProps) => {
         setMusic(item);
     };
 
-    useEffect(() => {
-        loadMetadata();
-    }, [musicId]);
+    // useEffect(() => {
+    //     loadMetadata();
+    // }, [musicId]);
+
+    const showToast = useCallback((message: string) => {
+        setToastMessage(message);
+        setToastVisible(true);
+
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current);
+        }
+
+        toastTimeoutRef.current = setTimeout(() => {
+            setToastVisible(false);
+            toastTimeoutRef.current = null;
+        }, 3000); // 3 seconds
+    }, []);
 
     const openSetlistScore = async (
         nextIndex: number,
@@ -167,25 +226,9 @@ const ReaderScreen = ({ route }: ReaderScreenProps) => {
                 context={context}
                 initialPage={startPage}
                 settings={settings}
+                toastVisible = {toastVisible}
+                toastMessage = {toastMessage}
             />
-
-            {toastVisible && (
-                <View
-                    style={{
-                    position: "absolute",
-                    bottom: 30,
-                    alignSelf: "center",
-                    backgroundColor: "rgba(0,0,0,0.85)",
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: 20,
-                    }}
-                >
-                    <Text style={{ color: "white" }}>
-                    {toastMessage}
-                    </Text>
-                </View>
-            )}
         </SafeAreaView>
     );
 };
