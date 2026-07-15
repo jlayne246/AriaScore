@@ -528,12 +528,29 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   }, [context?.setlistId, musicId, currentPage]);
 
   const getPagerIndexForPage = useCallback(
-    (page: number) => {
-      if (effectiveDisplayMode === 'single') return page - 1;
-      if (coverOffset) return page <= 1 ? 0 : Math.ceil((page - 1) / 2);
+    (
+      page: number,
+      options?: {
+        mode?: DisplayMode;
+        coverOffset?: boolean;
+      },
+    ) => {
+      const mode = options?.mode ?? effectiveDisplayMode;
+      const hasCoverOffset = options?.coverOffset ?? coverOffset;
+
+      if (mode === "single") {
+        return page - 1;
+      }
+
+      if (hasCoverOffset) {
+        return page <= 1
+          ? 0
+          : Math.ceil((page - 1) / 2);
+      }
+
       return Math.floor((page - 1) / 2);
     },
-    [effectiveDisplayMode, coverOffset]
+    [effectiveDisplayMode, coverOffset],
   );
 
   const getPreviousPage = useCallback(
@@ -806,17 +823,33 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   const applyCoverOffset = useCallback(
     async (enabled: boolean) => {
+      const previousValue = coverOffset;
+
+      const nextIndex = getPagerIndexForPage(currentPage, {
+        coverOffset: enabled,
+      });
+
       setCoverOffset(enabled);
-
-      await saveMusicReaderSetting(
-        musicId,
-        "coverOffset",
-        enabled
-      );
-
-      const nextIndex = getPagerIndexForPage(currentPage);
-
       setInitialPagerIndex(nextIndex);
+
+      try {
+        await saveMusicReaderSetting(
+          musicId,
+          "coverOffset",
+          enabled,
+        );
+      } catch (error) {
+        console.error("Failed to save cover offset:", error);
+
+        setCoverOffset(previousValue);
+
+        const previousIndex = getPagerIndexForPage(currentPage, {
+          coverOffset: previousValue,
+        });
+
+        setInitialPagerIndex(previousIndex);
+        return;
+      }
 
       requestAnimationFrame(() => {
         pagerRef.current?.setPageWithoutAnimation(nextIndex);
@@ -827,9 +860,10 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     [
       musicId,
       currentPage,
+      coverOffset,
       getPagerIndexForPage,
       renderBufferAround,
-    ]
+    ],
   );
 
   const applyOrientationLock = useCallback(
@@ -1245,6 +1279,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       width,
       isLandscape,
       effectivePerformanceMode,
+      effectiveSettings.tapZones,
       goToPreviousPage,
       goToNextPage,
       toggleChrome,
