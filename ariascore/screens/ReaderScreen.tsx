@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, SafeAreaView, Alert } from 'react-native';
 
 import { useNavigation, RouteProp, useFocusEffect } from "@react-navigation/native";
@@ -25,10 +25,12 @@ const ReaderScreen = ({ route }: ReaderScreenProps) => {
     const [title, setTitle] = useState("Untitled");
     const [composer, setComposer] = useState("");
     const [setlistLabel, setSetlistLabel] = useState("");
-    const [music, setMusic] = useState<any>(null);
     const [toastVisible, setToastVisible] = useState(false);
     const [toastMessage, setToastMessage] = useState("");
+    const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [music, setMusic] = useState<any>(null);
     const [settings, setSettings] = useState<ReaderSettings>()
+    
 
     const loadSettings = useCallback(async () => {
         if (!musicId) return;
@@ -50,8 +52,15 @@ const ReaderScreen = ({ route }: ReaderScreenProps) => {
             void loadSettings();
         }, [loadSettings])
     );
-    
 
+      useEffect(() => {
+          return () => {
+              if (toastTimeoutRef.current) {
+                  clearTimeout(toastTimeoutRef.current);
+              }
+          };
+      }, []);
+    
     const loadReaderData = useCallback(async () => {
         if (!musicId) return;
 
@@ -84,11 +93,6 @@ const ReaderScreen = ({ route }: ReaderScreenProps) => {
         }, [loadReaderData])
     );
 
-    const showToast = (message: string) => {
-        setToastMessage(message);
-        setToastVisible(true);
-    };
-
     const loadMetadata = async () => {
         if (!musicId) return;
 
@@ -103,6 +107,20 @@ const ReaderScreen = ({ route }: ReaderScreenProps) => {
     // useEffect(() => {
     //     loadMetadata();
     // }, [musicId]);
+
+    const showToast = useCallback((message: string) => {
+        setToastMessage(message);
+        setToastVisible(true);
+
+        if (toastTimeoutRef.current) {
+            clearTimeout(toastTimeoutRef.current);
+        }
+
+        toastTimeoutRef.current = setTimeout(() => {
+            setToastVisible(false);
+            toastTimeoutRef.current = null;
+        }, 3000); // 3 seconds
+    }, []);
 
     const openSetlistScore = async (
         nextIndex: number,
@@ -208,25 +226,9 @@ const ReaderScreen = ({ route }: ReaderScreenProps) => {
                 context={context}
                 initialPage={startPage}
                 settings={settings}
+                toastVisible = {toastVisible}
+                toastMessage = {toastMessage}
             />
-
-            {toastVisible && (
-                <View
-                    style={{
-                    position: "absolute",
-                    bottom: 30,
-                    alignSelf: "center",
-                    backgroundColor: "rgba(0,0,0,0.85)",
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: 20,
-                    }}
-                >
-                    <Text style={{ color: "white" }}>
-                    {toastMessage}
-                    </Text>
-                </View>
-            )}
         </SafeAreaView>
     );
 };

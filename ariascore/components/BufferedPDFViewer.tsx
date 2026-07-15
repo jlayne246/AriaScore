@@ -84,6 +84,9 @@ interface BufferedPDFViewerProps {
   initialPage?: number;
 
   settings: ReaderSettings;
+
+  toastVisible?: boolean;
+  toastMessage?: string;
 }
 
 const ACCENT_COLOR = '#2563EB';
@@ -93,10 +96,6 @@ const THUMB_ITEM_WIDTH = 120;
 const THUMB_ROW_HEIGHT = 180;
 
 const TOP_CHROME_HEIGHT = 112;
-
-const SWIPE_DISTANCE_THRESHOLD = 45;
-const SWIPE_VELOCITY_THRESHOLD = 450;
-const SWIPE_VERTICAL_TOLERANCE = 35;
 
 type DisplayMode =
   | "single"
@@ -316,7 +315,7 @@ function OverflowMenuDivider() {
   );
 }
 
-const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings, onMetadataUpdated, onNextScore, onPreviousScore, onNextScoreFromPageTurn, onPreviousScoreFromPageTurn }: BufferedPDFViewerProps) => {
+const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings, toastVisible, toastMessage, onMetadataUpdated, onNextScore, onPreviousScore, onNextScoreFromPageTurn, onPreviousScoreFromPageTurn }: BufferedPDFViewerProps) => {
   const pagerRef = useRef<PagerView>(null);
   const renderingPages = useRef<Set<number>>(new Set());
 
@@ -359,6 +358,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const [manageSetlistsVisible, setManageSetlistsVisible] = useState(false);
 
   const [displayOptionsVisible, setDisplayOptionsVisible] = useState(false);
+
+  const pageTurnInProgressRef = useRef(false);
 
   type OrientationLockMode = "auto" | "portrait" | "landscape";
 
@@ -427,11 +428,6 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         .join(" ")
     : score.editor;
 
-  const edgeZoneWidth = width * zoneRatio;
-
-  const qualityScale =
-    qualityScaleMap[effectiveSettings.pageRenderQuality];
-
   const effectiveDisplayMode: DisplayMode =
     isLandscape ? displayMode : 'single';
 
@@ -458,17 +454,6 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     (_, index) => index + 1
   );
 
-  const canUseTapZones =
-    !jumpOverlayVisible &&
-    !bookmarksOverlayVisible &&
-    !labelOverlayVisible &&
-    !scoreInfoVisible &&
-    effectiveSettings.tapZones &&
-    !displayOptionsVisible &&
-    totalPages > 0 &&
-    currentPage >= 1 &&
-    currentPage <= totalPages;
-
   const canUseReaderGestures =
     readerReady &&
     !jumpOverlayVisible &&
@@ -486,6 +471,15 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     high: { scale: 1.25, maxWidth: 3000, minWidth: 2200 },
     ultra: { scale: 1.5, maxWidth: 3800, minWidth: 2800 },
   } as const;
+
+  const BOTTOM_CHROME_MIN_HEIGHT = 84;
+  const TOAST_CHROME_GAP = 16;
+
+  const toastBottom = chromeVisible
+    ? Math.max(insets.bottom, 12) +
+      BOTTOM_CHROME_MIN_HEIGHT +
+      TOAST_CHROME_GAP
+    : Math.max(insets.bottom, 24);
 
   const getRenderSize = (
     widthDp: number,
@@ -575,6 +569,23 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       return page + 2;
     },
     [effectiveDisplayMode, coverOffset]
+  );
+
+  const runPageTurn = useCallback(
+    async (action: () => Promise<void> | void) => {
+      if (pageTurnInProgressRef.current) return;
+
+      pageTurnInProgressRef.current = true;
+
+      try {
+        await action();
+      } finally {
+        setTimeout(() => {
+          pageTurnInProgressRef.current = false;
+        }, 180);
+      }
+    },
+    [],
   );
 
   const renderPage = useCallback(
@@ -1194,39 +1205,51 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     });
   }, [effectiveSettings.autoHideControls]);
 
-  const handleTap = useCallback((x: number) => {
-  const zoneRatio = getTapZoneRatio({
-    isLandscape,
-    isPerformanceMode: effectivePerformanceMode,
-  });
-
-  const action = resolveTapAction(
-      x,
-      width,
-      zoneRatio,
-    );
-
-    switch (action) {
-      case "previous":
-        goToPreviousPage();
-        break;
-
-      case "next":
-        goToNextPage();
-        break;
-
-      case "toggleChrome":
+  const handleTap = useCallback(
+    (x: number) => {
+      if (!effectiveSettings.tapZones) {
         toggleChrome();
-        break;
-    }
-  }, [
-    width,
-    isLandscape,
-    effectivePerformanceMode,
-    goToPreviousPage,
-    goToNextPage,
-    toggleChrome,
-  ]);
+        return;
+      }
+
+      const zoneRatio = getTapZoneRatio({
+        isLandscape,
+        isPerformanceMode: effectivePerformanceMode,
+      });
+
+      const action = resolveTapAction(
+        x,
+        width,
+        zoneRatio,
+        effectivePerformanceMode,
+      );
+
+      switch (action) {
+        case "previous":
+          void runPageTurn(goToPreviousPage);
+          break;
+
+        case "next":
+          void runPageTurn(goToNextPage);
+          break;
+
+        case "toggleChrome":
+          toggleChrome();
+          break;
+
+        case "none":
+          break;
+      }
+    },
+    [
+      width,
+      isLandscape,
+      effectivePerformanceMode,
+      goToPreviousPage,
+      goToNextPage,
+      toggleChrome,
+    ],
+  );
 
   useEffect(() => {
     return () => {
@@ -1236,34 +1259,40 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     };
   }, []);
 
-  
+  // const swipeDistanceThreshold = isLandscape ? 35 : 45;
 
-  const centerTapGesture = Gesture.Tap()
-  .maxDuration(220)
-  .maxDistance(10)
-  .onEnd((_event, success) => {
-    if (success) {
-      runOnJS(toggleChrome)();
-    }
-  });
+  const SWIPE_DISTANCE_THRESHOLD =
+    isLandscape ? 35 : 45;
+
+  const SWIPE_VELOCITY_THRESHOLD = 400;
+
+  const SWIPE_VERTICAL_TOLERANCE = 40;
 
   const swipeGesture = Gesture.Pan()
-  .enabled(effectiveSettings.swipeNavigation)
-  .activeOffsetX([-12, 12])
-  .failOffsetY([-40, 40])
+  .enabled(canUseReaderGestures && effectiveSettings.swipeNavigation)
+  .activeOffsetX([-10, 10])
+  .failOffsetY([
+    -SWIPE_VERTICAL_TOLERANCE,
+    SWIPE_VERTICAL_TOLERANCE,
+  ])
   .onEnd((event) => {
     const movedFarEnough =
       Math.abs(event.translationX) >=
-      (isLandscape ? 35 : 45);
+      SWIPE_DISTANCE_THRESHOLD;
 
     const movedFastEnough =
-      Math.abs(event.velocityX) >= 400;
+      Math.abs(event.velocityX) >=
+      SWIPE_VELOCITY_THRESHOLD;
 
     if (!movedFarEnough && !movedFastEnough) {
       return;
     }
 
-    if (event.translationX < 0) {
+    const direction = movedFarEnough
+      ? event.translationX
+      : event.velocityX;
+
+    if (direction < 0) {
       runOnJS(goToNextPage)();
     } else {
       runOnJS(goToPreviousPage)();
@@ -1272,33 +1301,29 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   const tapGesture = Gesture.Tap()
   .maxDuration(220)
-  .maxDistance(10)
+  .maxDistance(6)
   .onEnd((event, success) => {
     if (!success) return;
 
     runOnJS(handleTap)(event.x);
   });
 
+  const doubleTapGesture = Gesture.Tap()
+  .numberOfTaps(2)
+  .maxDuration(300)
+  .maxDistance(12)
+  .enabled(effectivePerformanceMode)
+  .onEnd((_event, success) => {
+    if (success) {
+      runOnJS(toggleChrome)();
+    }
+  });
+
   const readerGesture = Gesture.Exclusive(
     swipeGesture,
+    doubleTapGesture,
     tapGesture,
   );
-
-  // const singleTap = Gesture.Tap()
-  // .numberOfTaps(1)
-  // .maxDuration(220)
-  // .maxDistance(10)
-  // .onEnd(() => {
-  //   runOnJS(showChromeTemporarily)();
-  // });
-
-  // const doubleTap = Gesture.Tap()
-  //   .numberOfTaps(2)
-  //   .maxDuration(300)
-  //   .maxDistance(20)
-  //   .onEnd(() => {
-  //     runOnJS(console.log)('Double tap: future zoom');
-  //   });
 
   // const longPress = Gesture.LongPress()
   //   .minDuration(450)
@@ -1310,15 +1335,6 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   //   .onBegin(() => {
   //     runOnJS(console.log)('Pinch begin: future zoom');
   //   });
-
-  // const gesture = Gesture.Exclusive(
-  //   doubleTap,
-  //   Gesture.Simultaneous(
-  //     pinch,
-  //     longPress,
-  //     singleTap
-  //   )
-  // );
 
   const renderVisibleThumbnailWindow = useCallback(
     (page: number) => {
@@ -1703,7 +1719,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             paddingHorizontal: 12,
             paddingTop: 12,
             paddingBottom: Math.max(insets.bottom, 12),
-            minHeight: 84,
+            minHeight: BOTTOM_CHROME_MIN_HEIGHT,
           }}
         >
           {context?.setlistId ? (
@@ -2342,6 +2358,42 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         </View>
       )}
 
+      {toastVisible && toastMessage && toastMessage.length > 0 && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: toastBottom,
+            zIndex: 1500,
+            elevation: 1500,
+            alignItems: "center",
+            paddingHorizontal: 20,
+          }}
+        >
+          <View
+            style={{
+              maxWidth: "90%",
+              backgroundColor: "rgba(0,0,0,0.85)",
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              borderRadius: 20,
+            }}
+          >
+            <Text
+              style={{
+                color: "white",
+                fontSize: 14,
+                textAlign: "center",
+              }}
+            >
+              {toastMessage}
+            </Text>
+          </View>
+        </View>
+      )}
+
       {bookmarksOverlayVisible && (
         <View
           style={{
@@ -2608,96 +2660,6 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             }}
           />
         </GestureDetector>
-      )}
-
-      {canUseTapZones && (
-        <>
-          {/* left Pressable */}
-
-           {/* <Pressable
-            style={{
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: edgeZoneWidth,
-              zIndex: 999,
-              elevation: 999,
-              backgroundColor: 'rgba(255, 0, 0, 0.12)',
-            }}
-            onPress={async () => {
-              if (currentPage < 1 || currentPage > totalPages) return;
-
-              const previousPage = currentPage - pageStep;
-
-              if (previousPage < 1) {
-                if (!context?.setlistId || changingScoreRef.current) {
-                  return;
-                }
-
-                changingScoreRef.current = true;
-
-                try {
-                  await saveCurrentSetlistProgress();
-                  await onPreviousScoreFromPageTurn?.();
-                } finally {
-                  changingScoreRef.current = false;
-                }
-
-                return;
-              }
-
-              goToPage(previousPage, {showChrome: false});
-              // showChromeTemporarily();
-            }}
-          /> */}
-
-          {/* right Pressable */}
-          {/*
-          <Pressable
-            style={{
-              position: 'absolute',
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: edgeZoneWidth,
-              zIndex: 999,
-              elevation: 999,
-              backgroundColor: 'rgba(255, 0, 0, 0.12)',
-            }}
-            onPress={async () => {
-              console.log("Right tap zone pressed", {
-                currentPage,
-                pageStep,
-                totalPages,
-                hasNextScore: !!onNextScore,
-              });
-
-              if (currentPage < 1 || currentPage > totalPages) return;
-
-              const nextPage = currentPage + pageStep;
-
-              if (nextPage > totalPages) {
-                if (!context?.setlistId || changingScoreRef.current) {
-                  return;
-                }
-
-                changingScoreRef.current = true;
-
-                try {
-                  await saveCurrentSetlistProgress();
-                  await onNextScoreFromPageTurn?.();
-                } finally {
-                  changingScoreRef.current = false;
-                }
-                return;
-              }
-
-              goToPage(nextPage, {showChrome: false});
-              // showChromeTemporarily();
-            }}
-          /> */}
-        </>
       )}
     </View>
   );

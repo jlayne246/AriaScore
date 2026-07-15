@@ -4,7 +4,11 @@ export const TAP_ZONE_RATIO = {
   performance: 0.25,
 } as const;
 
-export type TapAction = "previous" | "next" | "toggleChrome";
+export type TapAction =
+  | "previous"
+  | "next"
+  | "toggleChrome"
+  | "none";
 
 export const getTapZoneRatio = ({
   isLandscape,
@@ -26,6 +30,7 @@ export const resolveTapAction = (
   x: number,
   width: number,
   zoneRatio: number,
+  isPerformanceMode: boolean,
 ): TapAction => {
   const edgeWidth = width * zoneRatio;
 
@@ -37,5 +42,7 @@ export const resolveTapAction = (
     return "next";
   }
 
-  return "toggleChrome";
+  return isPerformanceMode
+    ? "none"
+    : "toggleChrome";
 };
