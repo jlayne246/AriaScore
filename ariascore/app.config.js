@@ -1,66 +1,74 @@
-/**
- * This file allows conditional expo-dev-client support based on an environment variable.
- * If USE_DEV_CLIENT is set to 'true', the expo-dev-client plugin will be included.
- * Uncomment the code below to enable this functionality.
- * To install the dev client, run:
- *   npx expo install expo-dev-client
- * Run the app, run the command with USE_DEV_CLIENT=true to enable it:
- *   USE_DEV_CLIENT=true npx expo start --dev-client
-*/
+import "dotenv/config";
 
-import 'dotenv/config';
+const version =
+  process.env.APP_VERSION_NAME ?? "1.0.4";
+
+const versionCode = Number.parseInt(
+  process.env.APP_VERSION_CODE ?? "7",
+  10
+);
 
 export default ({ config }) => ({
   ...config,
   name: "AriaScore",
   slug: "ariascore",
   scheme: "ariascore",
-  version: "1.0.4",
+  version: version,
   orientation: "default",
   icon: "./assets/adaptive-icon.png",
   userInterfaceStyle: "light",
   newArchEnabled: true,
+
   splash: {
     image: "./assets/splash-icon.png",
     resizeMode: "contain",
     backgroundColor: "#0099FF",
   },
+
   ios: {
+    ...config.ios,
     supportsTablet: true,
-    bundleIdentifier: "com.jlayne246.ariascore"
+    bundleIdentifier: "com.jlayne246.ariascore",
   },
+
   android: {
+    ...config.android,
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#0099FF",
     },
-    versionCode: 7,
+    versionCode: versionCode,
     edgeToEdgeEnabled: true,
-    package: "com.jlayne246.ariascore"
+    package: "com.jlayne246.ariascore",
   },
+
   updates: {
-    fallbackToCacheTimeout: 0
+    ...config.updates,
+    fallbackToCacheTimeout: 0,
   },
+
   web: {
+    ...config.web,
     favicon: "./assets/favicon.png",
   },
+
   extra: {
+    ...config.extra,
+    buildMode:
+      process.env.EXPO_PUBLIC_BUILD_MODE ??
+      "production",
     eas: {
-      projectId: "3d7912dd-b338-46d4-9545-b1933e85224a",
+      projectId:
+        "3d7912dd-b338-46d4-9545-b1933e85224a",
     },
   },
+
   owner: "jlayne246",
 
-  // Example of conditional plugin usage (commented out):
-  // plugins: process.env.USE_DEV_CLIENT === "true" ? ["expo-dev-client"] : [],
-  /* plugins: [
-      ...(config.plugins || []),
-      ...(process.env.USE_DEV_CLIENT === 'true' ? ['expo-dev-client'] : []),
-    ], */
   plugins: [
-      ...(config.plugins || []),
-      ...(process.env.USE_DEV_CLIENT === 'true' ? ['expo-dev-client'] : []),
-      "expo-font", "expo-share-intent"
-  ]
+    ...(config.plugins || []),
+    "expo-dev-client",
+    "expo-font",
+    "expo-share-intent",
+  ],
 });
-

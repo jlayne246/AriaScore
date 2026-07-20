@@ -4,6 +4,15 @@ apply plugin: "com.facebook.react"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
+def appVersionName =
+    System.getenv("APP_VERSION_NAME") ?: "1.0.4"
+
+def appVersionCode =
+    (System.getenv("APP_VERSION_CODE") ?: "7").toInteger()
+
+def previewNumber =
+    System.getenv("PREVIEW_BUILD_NUMBER") ?: "1"
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -92,8 +101,9 @@ android {
         applicationId 'com.jlayne246.ariascore'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 7
-        versionName "1.0.4"
+
+        versionCode appVersionCode
+        versionName appVersionName
     }
     signingConfigs {
         debug {
@@ -109,14 +119,46 @@ android {
             applicationIdSuffix ".dev"
             versionNameSuffix "-dev"
         }
-        release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
+
+        preview {
+            initWith release
+
             signingConfig signingConfigs.debug
-            shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
+            applicationIdSuffix ".preview"
+            versionNameSuffix "-preview.${previewNumber}"
+
+            matchingFallbacks = ["release"]
+
+            shrinkResources false
+            minifyEnabled false
+
+            proguardFiles getDefaultProguardFile("proguard-android.txt"),
+                    "proguard-rules.pro"
+
+            crunchPngs true
+        }
+
+        release {
+            // EAS supplies the production signing credentials when building remotely.
+            signingConfig signingConfigs.debug
+
+            shrinkResources(
+                findProperty(
+                    "android.enableShrinkResourcesInReleaseBuilds"
+                )?.toBoolean() ?: false
+            )
+
             minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-            crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
+
+            proguardFiles getDefaultProguardFile(
+                "proguard-android.txt"
+            ), "proguard-rules.pro"
+
+            crunchPngs(
+                findProperty(
+                    "android.enablePngCrunchInReleaseBuilds"
+                )?.toBoolean() ?: true
+            )
         }
     }
     packagingOptions {
