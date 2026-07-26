@@ -4,8 +4,10 @@ export class BackupError extends Error {
   constructor(message: string, cause?: unknown) {
     super(message);
 
-    this.name = 'BackupError';
+    this.name = "BackupError";
     this.cause = cause;
+
+    Object.setPrototypeOf(this, BackupError.prototype);
   }
 }
 

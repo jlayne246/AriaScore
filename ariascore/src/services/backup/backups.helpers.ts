@@ -11,12 +11,131 @@ export function mapScoreToPortable(
   return {
     id: score.id,
     title: score.title,
+    originalFilename: score.originalFilename,
+
+    documentType: score.documentType,
     composer: score.composer,
-    originalFileName: score.originalFileName,
+    arranger: score.arranger,
+    editor: score.editor,
+    publisher: score.publisher,
+    genre: score.genre,
+    keySignature: score.keySignature,
+    timeSignature: score.timeSignature,
+    pageCount: score.pageCount,
+
     storedFileName,
     fileIncluded,
+
     createdAt: score.createdAt,
     updatedAt: score.updatedAt,
     lastOpenedAt: score.lastOpenedAt,
+  };
+}
+
+// backupFileExporter.ts
+
+import { Platform } from "react-native";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
+
+const BACKUP_MIME_TYPE = "application/zip";
+
+export type BackupExportResult =
+  | {
+      status: "saved";
+      uri: string;
+    }
+  | {
+      status: "cancelled";
+    }
+  | {
+      status: "shared";
+    };
+
+function getFilenameFromUri(uri: string): string {
+  const filename = uri.split("/").pop();
+
+  if (!filename) {
+    throw new Error("Could not determine the backup filename.");
+  }
+
+  return decodeURIComponent(filename);
+}
+
+/**
+ * Saves an existing .ariascore archive outside the app.
+ *
+ * Android:
+ * Opens a directory picker and writes the file into the selected folder.
+ *
+ * iOS:
+ * Opens the system share sheet, where the user can select "Save to Files".
+ */
+export async function exportBackupFile(
+  archiveUri: string
+): Promise<BackupExportResult> {
+  if (Platform.OS === "android") {
+    return saveBackupWithStorageAccessFramework(archiveUri);
+  }
+
+  return shareBackupFile(archiveUri);
+}
+
+async function saveBackupWithStorageAccessFramework(
+  archiveUri: string
+): Promise<BackupExportResult> {
+  const permissionResult =
+    await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+
+  if (!permissionResult.granted) {
+    return {
+      status: "cancelled",
+    };
+  }
+
+  const filename = getFilenameFromUri(archiveUri);
+
+  /*
+   * SAF operates with content:// URIs. Since the source archive is binary,
+   * read and write it using Base64 rather than UTF-8.
+   */
+  const archiveBase64 = await FileSystem.readAsStringAsync(archiveUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+
+  const destinationUri =
+    await FileSystem.StorageAccessFramework.createFileAsync(
+      permissionResult.directoryUri,
+      filename,
+      BACKUP_MIME_TYPE
+    );
+
+  await FileSystem.writeAsStringAsync(destinationUri, archiveBase64, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+
+  return {
+    status: "saved",
+    uri: destinationUri,
+  };
+}
+
+export async function shareBackupFile(
+  archiveUri: string
+): Promise<BackupExportResult> {
+  const available = await Sharing.isAvailableAsync();
+
+  if (!available) {
+    throw new Error("File sharing is not available on this device.");
+  }
+
+  await Sharing.shareAsync(archiveUri, {
+    dialogTitle: "Share AriaScore backup",
+    mimeType: BACKUP_MIME_TYPE,
+    UTI: "public.zip-archive",
+  });
+
+  return {
+    status: "shared",
   };
 }

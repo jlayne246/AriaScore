@@ -3,9 +3,14 @@ import type { SQLiteDatabase } from "expo-sqlite";
 import type {
   BackupBookmark,
   BackupDatabaseSnapshot,
-  BackupPreferences,
+  BackupLabel,
+  BackupMusicLabel,
+  BackupMusicSetting,
+  BackupReaderSetting,
   BackupSetlist,
   BackupSetlistItem,
+  BackupSetlistProgress,
+  BackupSetlistSetting,
   BackupSourceScore,
 } from "./backup.types";
 
@@ -17,57 +22,124 @@ export class BackupRepository {
   constructor(private readonly db: SQLiteDatabase) {}
 
   public async createSnapshot(): Promise<BackupDatabaseSnapshot> {
-    let snapshot!: BackupDatabaseSnapshot;
+    const databaseList =
+        await this.db.getAllAsync<{
+            name: string;
+            file: string;
+        }>("PRAGMA database_list");
+
+    console.log(
+        "[Backup] Connected database:",
+        databaseList
+    );
+
+    const tables = await this.db.getAllAsync<{
+        name: string;
+    }>(`
+        SELECT name
+        FROM sqlite_master
+        WHERE type = 'table'
+        ORDER BY name
+      `);
+
+     console.log(
+        "[Backup] Available tables:",
+        tables.map((table) => table.name)
+     );
+
+     const count = await this.db.getFirstAsync<{
+        count: number;
+        }>("SELECT COUNT(*) AS count FROM music");
+
+        console.log("[Backup] Music count:", count?.count ?? 0);
+
+    let snapshot: BackupDatabaseSnapshot | null = null;
 
     await this.db.withTransactionAsync(async () => {
-        const databaseSchemaVersion =
+      const databaseSchemaVersion =
         await this.getDatabaseSchemaVersion();
 
-        const scores = await this.getScores();
-        const setlists = await this.getSetlists();
-        const setlistItems = await this.getSetlistItems();
-        const bookmarks = await this.getBookmarks();
-        const preferences = await this.getPreferences();
+      const scores = await this.getScores();
 
-        snapshot = {
+      const setlists = await this.getSetlists();
+      const setlistItems = await this.getSetlistItems();
+      const setlistProgress = await this.getSetlistProgress();
+
+      const bookmarks = await this.getBookmarks();
+
+      const labels = await this.getLabels();
+      const musicLabels = await this.getMusicLabels();
+
+      const readerSettings = await this.getReaderSettings();
+      const musicSettings = await this.getMusicSettings();
+      const setlistSettings = await this.getSetlistSettings();
+
+      snapshot = {
         databaseSchemaVersion,
+
         scores,
+
         setlists,
         setlistItems,
+        setlistProgress,
+
         bookmarks,
-        preferences,
-        };
+
+        labels,
+        musicLabels,
+
+        readerSettings,
+        musicSettings,
+        setlistSettings,
+      };
     });
 
-    return snapshot;
+    if (snapshot === null) {
+      throw new Error(
+        "The backup transaction completed without producing a database snapshot."
+      );
     }
 
+    return snapshot;
+  }
+
   private async getDatabaseSchemaVersion(): Promise<number> {
-    const row = await this.db.getFirstAsync<UserVersionRow>(
-      "PRAGMA user_version"
-    );
+    const row =
+      await this.db.getFirstAsync<UserVersionRow>(
+        "PRAGMA user_version"
+      );
 
     return row?.user_version ?? 0;
   }
 
   private async getScores(): Promise<BackupSourceScore[]> {
-    /*
-     * Change these table and column names to match AriaScore's real schema.
-     *
-     * The important field is sourceUri: it must point to the locally stored PDF.
-     */
     return this.db.getAllAsync<BackupSourceScore>(`
       SELECT
-        id,
-        title,
-        composer,
-        file_uri AS sourceUri,
-        original_file_name AS originalFileName,
-        created_at AS createdAt,
-        updated_at AS updatedAt,
-        last_opened_at AS lastOpenedAt
-      FROM scores
-      ORDER BY id ASC
+        m.id AS id,
+        m.title AS title,
+        m.uri AS sourceUri,
+        m.original_filename AS originalFilename,
+
+        mm.document_type AS documentType,
+        mm.composer AS composer,
+        mm.arranger AS arranger,
+        mm.editor AS editor,
+        mm.publisher AS publisher,
+        mm.genre AS genre,
+        mm.key_signature AS keySignature,
+        mm.time_signature AS timeSignature,
+        mm.page_count AS pageCount,
+
+        m.created_at AS createdAt,
+        m.updated_at AS updatedAt,
+        m.last_opened_at AS lastOpenedAt
+
+      FROM music m
+
+      LEFT JOIN music_metadata mm
+        ON mm.id = m.id
+
+      ORDER BY m.id ASC
     `);
   }
 
@@ -76,43 +148,147 @@ export class BackupRepository {
       SELECT
         id,
         name,
+        description,
         created_at AS createdAt,
-        updated_at AS updatedAt
+        updated_at AS updatedAt,
+        last_opened_at AS lastOpenedAt
+
       FROM setlists
+
       ORDER BY id ASC
     `);
   }
 
-  private async getSetlistItems(): Promise<BackupSetlistItem[]> {
+  private async getSetlistItems(): Promise<
+    BackupSetlistItem[]
+  > {
     return this.db.getAllAsync<BackupSetlistItem>(`
       SELECT
-        id,
+        music_id AS musicId,
         setlist_id AS setlistId,
-        score_id AS scoreId,
-        position
-      FROM setlist_items
-      ORDER BY setlist_id ASC, position ASC
+        position,
+        created_at AS createdAt,
+        updated_at AS updatedAt
+
+      FROM music_setlists
+
+      ORDER BY
+        setlist_id ASC,
+        position ASC,
+        music_id ASC
     `);
   }
 
-  private async getBookmarks(): Promise<BackupBookmark[]> {
+  private async getSetlistProgress(): Promise<
+    BackupSetlistProgress[]
+  > {
+    return this.db.getAllAsync<BackupSetlistProgress>(`
+      SELECT
+        setlist_id AS setlistId,
+        music_id AS musicId,
+        page_number AS pageNumber,
+        updated_at AS updatedAt
+
+      FROM setlist_progress
+
+      ORDER BY setlist_id ASC
+    `);
+  }
+
+  private async getBookmarks(): Promise<
+    BackupBookmark[]
+  > {
     return this.db.getAllAsync<BackupBookmark>(`
       SELECT
         id,
-        score_id AS scoreId,
+        music_id AS musicId,
         page_number AS pageNumber,
-        name,
+        label,
         created_at AS createdAt
-      FROM bookmarks
-      ORDER BY score_id ASC, page_number ASC
+
+      FROM music_bookmarks
+
+      ORDER BY
+        music_id ASC,
+        page_number ASC,
+        id ASC
     `);
   }
 
-  private async getPreferences(): Promise<BackupPreferences> {
-    /*
-     * Replace this with your actual preferences storage.
-     * Return {} for now if preferences are stored in AsyncStorage.
-     */
-    return {};
+  private async getLabels(): Promise<BackupLabel[]> {
+    return this.db.getAllAsync<BackupLabel>(`
+      SELECT
+        id,
+        name,
+        colour
+
+      FROM labels
+
+      ORDER BY id ASC
+    `);
+  }
+
+  private async getMusicLabels(): Promise<
+    BackupMusicLabel[]
+  > {
+    return this.db.getAllAsync<BackupMusicLabel>(`
+      SELECT
+        music_id AS musicId,
+        label_id AS labelId
+
+      FROM music_labels
+
+      ORDER BY
+        music_id ASC,
+        label_id ASC
+    `);
+  }
+
+  private async getReaderSettings(): Promise<
+    BackupReaderSetting[]
+  > {
+    return this.db.getAllAsync<BackupReaderSetting>(`
+      SELECT
+        key,
+        value
+
+      FROM reader_settings
+
+      ORDER BY key ASC
+    `);
+  }
+
+  private async getMusicSettings(): Promise<
+    BackupMusicSetting[]
+  > {
+    return this.db.getAllAsync<BackupMusicSetting>(`
+      SELECT
+        music_id AS musicId,
+        key,
+        value
+
+      FROM music_settings
+
+      ORDER BY
+        music_id ASC,
+        key ASC
+    `);
+  }
+
+  private async getSetlistSettings(): Promise<
+    BackupSetlistSetting[]
+  > {
+    return this.db.getAllAsync<BackupSetlistSetting>(`
+      SELECT
+        setlist_id AS setlistId,
+        key,
+        value
+
+      FROM setlist_settings
+
+      ORDER BY
+        setlist_id ASC,
+        key ASC
+    `);
   }
 }

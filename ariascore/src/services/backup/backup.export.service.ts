@@ -3,7 +3,7 @@ import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { zip } from "react-native-zip-archive";
 
-import { BackupError, BackupFileResolutionError } from "./backup.errors";
+import { BackupError } from "./backup.errors";
 import {
   ensureDirectory,
   ensureEmptyDirectory,
@@ -27,7 +27,6 @@ import {
   CreatedBackup,
   PortableBackupScore,
 } from "./backup.types";
-import { resolveBackupFileUri } from "./backup.fileResolver";
 import { mapScoreToPortable } from "./backups.helpers";
 
 interface CopyScoresResult {
@@ -37,15 +36,18 @@ interface CopyScoresResult {
 }
 
 export class BackupExportService {
-  constructor(private readonly repository: BackupRepository) {}
+  constructor(
+    private readonly repository: BackupRepository
+  ) {}
 
   public async createBackup(): Promise<CreatedBackup> {
     const createdAt = new Date().toISOString();
     const cacheDirectory = requireCacheDirectory();
 
-    const operationId = `${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 10)}`;
+    const operationId =
+      `${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 10)}`;
 
     const workDirectoryUri = joinUri(
       cacheDirectory,
@@ -57,20 +59,34 @@ export class BackupExportService {
       "scores"
     );
 
-    // const resolutionDirectoryUri = joinUri(
-    //     workDirectoryUri,
-    //     "_resolved"
-    // );
-
     const fileName = createBackupFileName(createdAt);
-    const archiveUri = joinUri(cacheDirectory, fileName);
+
+    /*
+     * Create an actual ZIP first. After ZIP creation, rename it to
+     * the custom .ariascore extension.
+     */
+    const temporaryZipUri = joinUri(
+      cacheDirectory,
+      `ariascore-backup-${operationId}.zip`
+    );
+
+    const archiveUri = joinUri(
+      cacheDirectory,
+      fileName
+    );
 
     try {
       await ensureEmptyDirectory(workDirectoryUri);
       await ensureDirectory(scoresDirectoryUri);
-    //   await ensureDirectory(resolutionDirectoryUri);
 
-      const snapshot = await this.repository.createSnapshot();
+      console.log("[Backup] Reading database snapshot");
+
+      const snapshot =
+        await this.repository.createSnapshot();
+
+      console.log(
+        `[Backup] Copying ${snapshot.scores.length} score PDFs`
+      );
 
       const copiedScores = await this.copyScores(
         snapshot.scores,
@@ -79,10 +95,19 @@ export class BackupExportService {
 
       const library: AriaScoreLibraryBackup = {
         scores: copiedScores.portableScores,
+
         setlists: snapshot.setlists,
         setlistItems: snapshot.setlistItems,
+        setlistProgress: snapshot.setlistProgress,
+
         bookmarks: snapshot.bookmarks,
-        preferences: snapshot.preferences,
+
+        labels: snapshot.labels,
+        musicLabels: snapshot.musicLabels,
+
+        readerSettings: snapshot.readerSettings,
+        musicSettings: snapshot.musicSettings,
+        setlistSettings: snapshot.setlistSettings,
       };
 
       this.validateRelations(library);
@@ -110,98 +135,179 @@ export class BackupExportService {
         },
 
         statistics: {
-            scoreCount: library.scores.length,
-            setlistCount: library.setlists.length,
-            setlistItemCount: library.setlistItems.length,
-            bookmarkCount: library.bookmarks.length,
-            includedPdfCount:
-                copiedScores.includedPdfCount,
-            omittedPdfCount:
-                copiedScores.fileIssues.length,
+          scoreCount: library.scores.length,
+
+          setlistCount:
+            library.setlists.length,
+
+          setlistItemCount:
+            library.setlistItems.length,
+
+          setlistProgressCount:
+            library.setlistProgress.length,
+
+          bookmarkCount:
+            library.bookmarks.length,
+
+          labelCount:
+            library.labels.length,
+
+          musicLabelCount:
+            library.musicLabels.length,
+
+          readerSettingCount:
+            library.readerSettings.length,
+
+          musicSettingCount:
+            library.musicSettings.length,
+
+          setlistSettingCount:
+            library.setlistSettings.length,
+
+          includedPdfCount:
+            copiedScores.includedPdfCount,
+
+          omittedPdfCount:
+            copiedScores.fileIssues.length,
         },
 
         fileIssues: copiedScores.fileIssues,
 
         complete:
-            copiedScores.fileIssues.length === 0,
+          copiedScores.fileIssues.length === 0,
       };
+
+      console.log("[Backup] Writing library.json");
 
       await writeJson(
         joinUri(workDirectoryUri, "library.json"),
         library
       );
 
+      console.log("[Backup] Writing manifest.json");
+
       await writeJson(
         joinUri(workDirectoryUri, "manifest.json"),
         manifest
       );
 
-      /*
-       * Remove a previous file with the same name if one somehow exists.
-       */
-      await FileSystem.deleteAsync(archiveUri, {
-        idempotent: true,
-      });
-
-      const sourcePath = toNativePath(workDirectoryUri);
-      const destinationPath = toNativePath(archiveUri);
-      
-    //   await FileSystem.deleteAsync(
-    //     resolutionDirectoryUri,
-    //     {
-    //         idempotent: true,
-    //     }
-    //   );
-
-      const generatedPath = await zip(
-        sourcePath,
-        destinationPath
+      await FileSystem.deleteAsync(
+        temporaryZipUri,
+        {
+          idempotent: true,
+        }
       );
 
-      const generatedUri = generatedPath.startsWith("file://")
-        ? generatedPath
-        : `file://${generatedPath}`;
+      await FileSystem.deleteAsync(
+        archiveUri,
+        {
+          idempotent: true,
+        }
+      );
 
-      const archiveInfo =
-        await FileSystem.getInfoAsync(generatedUri);
+      console.log("[Backup] Creating ZIP archive");
 
-      if (!archiveInfo.exists) {
+      const generatedPath = await zip(
+        toNativePath(workDirectoryUri),
+        toNativePath(temporaryZipUri)
+      );
+
+      const generatedZipUri =
+        generatedPath.startsWith("file://")
+          ? generatedPath
+          : `file://${generatedPath}`;
+
+      const zipInfo =
+        await FileSystem.getInfoAsync(
+          generatedZipUri
+        );
+
+      if (!zipInfo.exists) {
         throw new BackupError(
-          "The backup archive was not created."
+          "The backup ZIP archive was not created."
         );
       }
 
+      /*
+       * Rename the generated ZIP to the custom .ariascore extension.
+       */
+      await FileSystem.moveAsync({
+        from: generatedZipUri,
+        to: archiveUri,
+      });
+
+      const archiveInfo =
+        await FileSystem.getInfoAsync(
+          archiveUri
+        );
+
+      if (!archiveInfo.exists) {
+        throw new BackupError(
+          "The backup archive could not be finalised."
+        );
+      }
+
+      console.log(
+        `[Backup] Archive created: ${archiveUri}`
+      );
+
       return {
-        uri: generatedUri,
+        uri: archiveUri,
         fileName,
         manifest,
       };
     } catch (error) {
+      console.error(
+        "[Backup] Export failed:",
+        error
+      );
+
       if (error instanceof BackupError) {
         throw error;
       }
 
+      const message =
+        error instanceof Error
+          ? error.message
+          : String(error);
+
       throw new BackupError(
-        "AriaScore could not create the backup archive.",
+        `AriaScore could not create the backup archive. ${message}`,
         error
       );
     } finally {
-      /*
-       * Delete only the temporary unpacked directory.
-       * Keep the generated .ariascore file for sharing.
-       */
-      await FileSystem.deleteAsync(workDirectoryUri, {
-        idempotent: true,
-      }).catch((cleanupError) => {
+      await FileSystem.deleteAsync(
+        workDirectoryUri,
+        {
+          idempotent: true,
+        }
+      ).catch((cleanupError) => {
         console.warn(
           "Could not remove temporary backup directory:",
+          cleanupError
+        );
+      });
+
+      /*
+       * Usually this path has already been moved. This only cleans it
+       * up if ZIP creation succeeded but a later operation failed.
+       */
+      await FileSystem.deleteAsync(
+        temporaryZipUri,
+        {
+          idempotent: true,
+        }
+      ).catch((cleanupError) => {
+        console.warn(
+          "Could not remove temporary ZIP:",
           cleanupError
         );
       });
     }
   }
 
-  public async createAndShareBackup(): Promise<CreatedBackup> {
+  public async createAndShareBackup():
+    Promise<CreatedBackup> {
     const backup = await this.createBackup();
 
     const sharingAvailable =
@@ -209,13 +315,18 @@ export class BackupExportService {
 
     if (!sharingAvailable) {
       throw new BackupError(
-        "File sharing is unavailable on this device."
+        "The backup was created, but file sharing is unavailable on this device."
       );
     }
 
     try {
       await Sharing.shareAsync(backup.uri, {
-        dialogTitle: "Export AriaScore backup",
+        dialogTitle:
+          "Export AriaScore backup",
+
+        /*
+         * The contents are still ZIP data despite the custom extension.
+         */
         mimeType: "application/zip",
         UTI: "public.zip-archive",
       });
@@ -233,143 +344,230 @@ export class BackupExportService {
     scores: BackupSourceScore[],
     destinationDirectoryUri: string
   ): Promise<CopyScoresResult> {
-    const portableScores: PortableBackupScore[] = [];
-    const fileIssues: BackupFileIssue[] = [];
+    const portableScores:
+      PortableBackupScore[] = [];
+
+    const fileIssues:
+      BackupFileIssue[] = [];
 
     let includedPdfCount = 0;
 
     for (const score of scores) {
-        const storedFileName =
+      const storedFileName =
         createStoredPdfFileName(score.id);
 
-        try {
+      if (
+        typeof score.sourceUri !== "string" ||
+        score.sourceUri.trim().length === 0
+      ) {
+        fileIssues.push({
+          scoreId: score.id,
+          title: score.title,
+          sourceUri: "",
+          reason: "missing",
+          message:
+            "The score does not have a stored PDF URI.",
+        });
+
+        portableScores.push(
+          mapScoreToPortable(
+            score,
+            null,
+            false
+          )
+        );
+
+        continue;
+      }
+
+      try {
         const sourceInfo =
-            await FileSystem.getInfoAsync(
+          await FileSystem.getInfoAsync(
             score.sourceUri
-            );
+          );
 
         if (!sourceInfo.exists) {
-            fileIssues.push({
-            scoreId: String(score.id),
+          fileIssues.push({
+            scoreId: score.id,
             title: score.title,
             sourceUri: score.sourceUri,
             reason: "missing",
             message:
-                "The managed PDF could not be found.",
-            });
+              "The managed PDF could not be found.",
+          });
 
-            portableScores.push(
+          portableScores.push(
             mapScoreToPortable(
-                score,
-                null,
-                false
+              score,
+              null,
+              false
             )
-            );
+          );
 
-            continue;
+          continue;
         }
 
         const destinationUri = joinUri(
-            destinationDirectoryUri,
-            storedFileName
+          destinationDirectoryUri,
+          storedFileName
         );
 
         await FileSystem.copyAsync({
-            from: score.sourceUri,
-            to: destinationUri,
+          from: score.sourceUri,
+          to: destinationUri,
         });
 
+        const copiedInfo =
+          await FileSystem.getInfoAsync(
+            destinationUri
+          );
+
+        if (!copiedInfo.exists) {
+          throw new Error(
+            "The copied PDF could not be verified."
+          );
+        }
+
         portableScores.push(
-            mapScoreToPortable(
+          mapScoreToPortable(
             score,
             storedFileName,
             true
-            )
+          )
         );
 
         includedPdfCount += 1;
-        } catch (error) {
+      } catch (error) {
         fileIssues.push({
-            scoreId: String(score.id),
-            title: score.title,
-            sourceUri: score.sourceUri,
-            reason: "copy-failed",
-            message:
+          scoreId: score.id,
+          title: score.title,
+          sourceUri: score.sourceUri,
+          reason: "copy-failed",
+          message:
             error instanceof Error
-                ? error.message
-                : "The PDF could not be copied.",
+              ? error.message
+              : "The PDF could not be copied.",
         });
 
         portableScores.push(
-            mapScoreToPortable(
+          mapScoreToPortable(
             score,
             null,
             false
-            )
+          )
         );
-        }
+      }
     }
 
     return {
-        portableScores,
-        fileIssues,
-        includedPdfCount,
+      portableScores,
+      fileIssues,
+      includedPdfCount,
     };
-    }
-
-//   private toPortableScore(
-//     score: BackupSourceScore,
-//     storedFileName: string | null,
-//     fileIncluded: boolean
-//     ): PortableBackupScore {
-//     return {
-//         id: score.id,
-//         title: score.title,
-//         composer: score.composer,
-//         storedFileName,
-//         fileIncluded,
-//         originalFileName: score.originalFileName,
-//         createdAt: score.createdAt,
-//         updatedAt: score.updatedAt,
-//         lastOpenedAt: score.lastOpenedAt,
-//     };
-//   }
+  }
 
   private validateRelations(
     library: AriaScoreLibraryBackup
   ): void {
-    const scoreIds = new Set(
-      library.scores.map((score) =>
-        String(score.id)
+    const musicIds = new Set(
+      library.scores.map(
+        (score) => score.id
       )
     );
 
     const setlistIds = new Set(
-      library.setlists.map((setlist) =>
-        String(setlist.id)
+      library.setlists.map(
+        (setlist) => setlist.id
+      )
+    );
+
+    const labelIds = new Set(
+      library.labels.map(
+        (label) => label.id
       )
     );
 
     for (const item of library.setlistItems) {
-      if (!scoreIds.has(String(item.scoreId))) {
+      if (!musicIds.has(item.musicId)) {
         throw new BackupError(
-          `Setlist item ${item.id} refers to missing score ${item.scoreId}.`
+          `A setlist item refers to missing music record ${item.musicId}.`
         );
       }
 
-      if (!setlistIds.has(String(item.setlistId))) {
+      if (!setlistIds.has(item.setlistId)) {
         throw new BackupError(
-          `Setlist item ${item.id} refers to missing setlist ${item.setlistId}.`
+          `A setlist item refers to missing setlist ${item.setlistId}.`
+        );
+      }
+    }
+
+    for (
+      const progress of
+      library.setlistProgress
+    ) {
+      if (
+        !setlistIds.has(progress.setlistId)
+      ) {
+        throw new BackupError(
+          `Setlist progress refers to missing setlist ${progress.setlistId}.`
+        );
+      }
+
+      if (!musicIds.has(progress.musicId)) {
+        throw new BackupError(
+          `Setlist progress refers to missing music record ${progress.musicId}.`
         );
       }
     }
 
     for (const bookmark of library.bookmarks) {
-      if (!scoreIds.has(String(bookmark.scoreId))) {
+      if (!musicIds.has(bookmark.musicId)) {
         throw new BackupError(
-          `Bookmark ${bookmark.id} refers to missing score ${bookmark.scoreId}.`
+          `Bookmark ${bookmark.id} refers to missing music record ${bookmark.musicId}.`
+        );
+      }
+    }
+
+    for (
+      const relation of
+      library.musicLabels
+    ) {
+      if (!musicIds.has(relation.musicId)) {
+        throw new BackupError(
+          `A label assignment refers to missing music record ${relation.musicId}.`
+        );
+      }
+
+      if (!labelIds.has(relation.labelId)) {
+        throw new BackupError(
+          `A label assignment refers to missing label ${relation.labelId}.`
+        );
+      }
+    }
+
+    for (
+      const setting of
+      library.musicSettings
+    ) {
+      if (!musicIds.has(setting.musicId)) {
+        throw new BackupError(
+          `A music setting refers to missing music record ${setting.musicId}.`
+        );
+      }
+    }
+
+    for (
+      const setting of
+      library.setlistSettings
+    ) {
+      if (
+        !setlistIds.has(setting.setlistId)
+      ) {
+        throw new BackupError(
+          `A setlist setting refers to missing setlist ${setting.setlistId}.`
         );
       }
     }
   }
 }
+

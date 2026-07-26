@@ -24,6 +24,7 @@ import {
 import {
   createBackupService,
 } from "../src/services/backup/createBackupService";
+import { exportBackupFile, shareBackupFile } from "../src/services/backup/backups.helpers";
 
 type BackupSummary = {
   createdAt: string;
@@ -36,6 +37,8 @@ export default function BackupsScreen() {
   const navigation = useNavigation();
 
   const [isExporting, setIsExporting] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const isBackupBusy = isExporting || isSharing;
   const [lastBackup, setLastBackup] =
     useState<BackupSummary | null>(null);
 
@@ -96,61 +99,72 @@ export default function BackupsScreen() {
     });
   }, [navigation]);
 
-  const handleExportBackup = useCallback(async () => {
-    if (isExporting) {
-      return;
-    }
-
-    setIsExporting(true);
-
+  async function handleExportBackup(): Promise<void> {
     try {
+      setIsExporting(true);
+
       const backupService = await createBackupService();
 
-      const result =
-        await backupService.createAndShareBackup();
+      const archive = await backupService.createBackup();
 
-      if (result.manifest.fileIssues.length > 0) {
-        Alert.alert(
-          "Backup created with warnings",
-          `${result.manifest.statistics.includedPdfCount} PDFs were included and ${result.manifest.statistics.omittedPdfCount} were omitted.`
-        );
+      const result = await exportBackupFile(archive.uri);
+
+      switch (result.status) {
+        case "saved":
+          Alert.alert(
+            "Backup saved",
+            "Your AriaScore backup was saved successfully."
+          );
+          break;
+
+        case "cancelled":
+          // The user dismissed the folder picker.
+          // Do not claim that the backup was saved.
+          break;
+
+        case "shared":
+          /*
+          * On iOS, the share sheet does not report whether the user
+          * actually chose "Save to Files".
+          */
+          break;
       }
-
-      const summary: BackupSummary = {
-        createdAt: result.manifest.createdAt,
-        scoreCount:
-          result.manifest.statistics.scoreCount,
-        setlistCount:
-          result.manifest.statistics.setlistCount,
-        bookmarkCount:
-          result.manifest.statistics.bookmarkCount,
-      };
-
-      setLastBackup(summary);
+    } catch (error) {
+      console.error("[Backup] Export failed:", error);
 
       Alert.alert(
-        "Backup prepared",
-        [
-          "Your AriaScore backup was created successfully.",
-          "",
-          `${summary.scoreCount} scores`,
-          `${summary.setlistCount} setlists`,
-          `${summary.bookmarkCount} bookmarks`,
-        ].join("\n")
-      );
-    } catch (error) {
-      console.error("Backup export failed:", error);
-
-      const message =
-        error instanceof BackupError
+        "Backup failed",
+        error instanceof Error
           ? error.message
-          : "An unexpected error occurred while creating the backup.";
-
-      Alert.alert("Backup failed", message);
+          : "The backup could not be exported."
+      );
     } finally {
       setIsExporting(false);
     }
-  }, [isExporting]);
+  }
+
+  async function handleShareBackup(): Promise<void> {
+    try {
+      setIsSharing(true);
+
+      const backupService = await createBackupService();
+
+      const archive = await backupService.createBackup();
+
+      await shareBackupFile(archive.uri);
+    } catch (error) {
+      console.error("[Backup] Share failed:", error);
+
+      Alert.alert(
+        "Unable to share backup",
+        error instanceof Error
+          ? error.message
+          : "The backup could not be shared."
+      );
+    } finally {
+      setIsSharing(false);
+    }
+  }
 
   const formattedLastBackup = lastBackup
     ? new Date(lastBackup.createdAt).toLocaleString(
@@ -406,22 +420,22 @@ export default function BackupsScreen() {
         </View>
       </View>
 
-      <Pressable
+      <View style={{ flexDirection: "row", gap: 12, marginBottom: 20, justifyContent: "center" }}>
+        <Pressable
         onPress={handleExportBackup}
-        disabled={isExporting}
+        disabled={isBackupBusy}
         accessibilityRole="button"
-        accessibilityLabel="Export JSON backup"
+        accessibilityLabel="Save backup"
+        accessibilityState={{ disabled: isBackupBusy, busy: isExporting }}
         style={({ pressed }) => ({
           minHeight: 54,
-          backgroundColor: isExporting
-            ? "#9CA3AF"
-            : ACCENT_COLOR,
+          backgroundColor: isBackupBusy ? "#9CA3AF" : ACCENT_COLOR,
           borderRadius: 14,
           paddingVertical: 14,
           paddingHorizontal: 18,
           alignItems: "center",
           justifyContent: "center",
-          opacity: pressed && !isExporting ? 0.85 : 1,
+          opacity: pressed && !isBackupBusy ? 0.85 : 1,
         })}
       >
         {isExporting ? (
@@ -431,10 +445,71 @@ export default function BackupsScreen() {
               alignItems: "center",
             }}
           >
-            <ActivityIndicator
-              size="small"
+            <ActivityIndicator size="small" color="#ffffff" />
+
+            <Text
+              style={{
+                color: "#fff",
+                fontSize: 16,
+                fontWeight: "700",
+                marginLeft: 10,
+              }}
+            >
+              Saving Backup…
+            </Text>
+          </View>
+        ) : (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <Ionicons
+              name="save-outline"
+              size={21}
               color="#ffffff"
             />
+
+            <Text
+              style={{
+                color: "#fff",
+                fontSize: 16,
+                fontWeight: "700",
+                marginLeft: 9,
+              }}
+            >
+              Save Backup
+            </Text>
+          </View>
+        )}
+      </Pressable>
+
+      <Pressable
+        onPress={handleShareBackup}
+        disabled={isBackupBusy}
+        accessibilityRole="button"
+        accessibilityLabel="Share backup"
+        accessibilityState={{ disabled: isBackupBusy, busy: isSharing }}
+        style={({ pressed }) => ({
+          minHeight: 54,
+          backgroundColor: isBackupBusy ? "#9CA3AF" : ACCENT_COLOR,
+          borderRadius: 14,
+          paddingVertical: 14,
+          paddingHorizontal: 18,
+          alignItems: "center",
+          justifyContent: "center",
+          opacity: pressed && !isBackupBusy ? 0.85 : 1,
+        })}
+      >
+        {isSharing ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <ActivityIndicator size="small" color="#ffffff" />
 
             <Text
               style={{
@@ -468,11 +543,12 @@ export default function BackupsScreen() {
                 marginLeft: 9,
               }}
             >
-              Export JSON Backup
+              Share Backup
             </Text>
           </View>
         )}
       </Pressable>
+      </View>
 
       <Text
         style={{

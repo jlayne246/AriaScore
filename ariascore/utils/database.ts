@@ -21,6 +21,26 @@ import {
   MusicItemWithAllData,
 } from "../types";
 
+import { migrateDatabaseIfNeeded, DATABASE_NAME } from "./databaseMigration";
+
+async function removeEmptyAriaScoreDatabase(): Promise<void> {
+  const sqliteDirectory = `${FileSystem.documentDirectory}SQLite/`;
+  const databasePath = `${sqliteDirectory}ariascore.db`;
+
+  for (const suffix of ["", "-wal", "-shm", "-journal"]) {
+    const path = `${databasePath}${suffix}`;
+    const info = await FileSystem.getInfoAsync(path);
+
+    if (info.exists) {
+      await FileSystem.deleteAsync(path, {
+        idempotent: true,
+      });
+    }
+  }
+
+  console.log("[Database] Removed obsolete empty ariascore.db");
+}
+
 /**
  * Opens the SQLite database
  * @returns SQLite Database object
@@ -28,13 +48,25 @@ import {
 let _db: SQLite.SQLiteDatabase | null = null;
 let _initPromise: Promise<void> | null = null;
 
-export const openDatabase = async (): Promise<SQLite.SQLiteDatabase> => {
-    if (_db) return _db;
+let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
-    _db = await SQLite.openDatabaseAsync('airscore.db');
-    return _db;
-};
+export function openDatabase(): Promise<SQLite.SQLiteDatabase> {
+  if (!databasePromise) {
+    databasePromise = (async () => {
+      await migrateDatabaseIfNeeded();
 
+      return SQLite.openDatabaseAsync(DATABASE_NAME);
+    })().catch((error) => {
+      // Allow a later retry if startup fails.
+      databasePromise = null;
+      throw error;
+    });
+  }
+
+  return databasePromise;
+}
+
+export const getDatabase = openDatabase;
 
 /**
  * Initialises the SQLite database by creating the necessary tables.
@@ -1635,13 +1667,3 @@ export const isBookmarked = async (musicId: number, pageNumber: number): Promise
         throw error;
     }
 };
-
-let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
-
-export function getDatabase(): Promise<SQLite.SQLiteDatabase> {
-  if (!databasePromise) {
-    databasePromise = SQLite.openDatabaseAsync('ariascore.db');
-  }
-
-  return databasePromise;
-}

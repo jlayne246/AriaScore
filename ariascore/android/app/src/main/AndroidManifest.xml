@@ -24,8 +24,8 @@
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="exp+airscore"/>
-        <data android:scheme="airscore"/>
+        <data android:scheme="ariascore"/>
+        <data android:scheme="exp+ariascore"/>
       </intent-filter>
       <intent-filter>
         <action android:name="android.intent.action.VIEW"/>
@@ -33,6 +33,8 @@
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="content" android:mimeType="application/pdf"/>
         <data android:scheme="file" android:mimeType="application/pdf"/>
+        <data android:scheme="ariascore"/>
+        <data android:scheme="exp+ariascore"/>
       </intent-filter>
       <intent-filter>
         <action android:name="android.intent.action.SEND"/>
