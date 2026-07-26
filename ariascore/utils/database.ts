@@ -1635,3 +1635,13 @@ export const isBookmarked = async (musicId: number, pageNumber: number): Promise
         throw error;
     }
 };
+
+let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
+
+export function getDatabase(): Promise<SQLite.SQLiteDatabase> {
+  if (!databasePromise) {
+    databasePromise = SQLite.openDatabaseAsync('ariascore.db');
+  }
+
+  return databasePromise;
+}
