@@ -8,3 +8,18 @@ export class BackupError extends Error {
     this.cause = cause;
   }
 }
+
+export class BackupFileResolutionError extends Error {
+  constructor(
+    public readonly reason:
+      | "missing"
+      | "unreadable"
+      | "unsupported-uri"
+      | "copy-failed",
+    message: string,
+    public readonly cause?: unknown
+  ) {
+    super(message);
+    this.name = "BackupFileResolutionError";
+  }
+}

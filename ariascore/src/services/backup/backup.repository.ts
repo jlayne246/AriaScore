@@ -1,78 +1,67 @@
-import type { SQLiteDatabase } from 'expo-sqlite';
+import type { SQLiteDatabase } from "expo-sqlite";
 
 import type {
   BackupBookmark,
-  BackupScore,
+  BackupDatabaseSnapshot,
+  BackupPreferences,
   BackupSetlist,
   BackupSetlistItem,
-} from './backup.types';
+  BackupSourceScore,
+} from "./backup.types";
 
-interface SQLiteUserVersionRow {
+interface UserVersionRow {
   user_version: number;
-}
-
-export interface BackupDatabaseSnapshot {
-  databaseSchemaVersion: number;
-  scores: BackupScore[];
-  setlists: BackupSetlist[];
-  setlistItems: BackupSetlistItem[];
-  bookmarks: BackupBookmark[];
 }
 
 export class BackupRepository {
   constructor(private readonly db: SQLiteDatabase) {}
 
   public async createSnapshot(): Promise<BackupDatabaseSnapshot> {
-    /*
-     * Running the reads inside one transaction reduces the possibility of
-     * exporting related tables from different logical points in time.
-     */
-    let databaseSchemaVersion = 0;
-    let scores: BackupScore[] = [];
-    let setlists: BackupSetlist[] = [];
-    let setlistItems: BackupSetlistItem[] = [];
-    let bookmarks: BackupBookmark[] = [];
+    let snapshot!: BackupDatabaseSnapshot;
 
     await this.db.withTransactionAsync(async () => {
-      [
+        const databaseSchemaVersion =
+        await this.getDatabaseSchemaVersion();
+
+        const scores = await this.getScores();
+        const setlists = await this.getSetlists();
+        const setlistItems = await this.getSetlistItems();
+        const bookmarks = await this.getBookmarks();
+        const preferences = await this.getPreferences();
+
+        snapshot = {
         databaseSchemaVersion,
         scores,
         setlists,
         setlistItems,
         bookmarks,
-      ] = await Promise.all([
-        this.getDatabaseSchemaVersion(),
-        this.getScores(),
-        this.getSetlists(),
-        this.getSetlistItems(),
-        this.getBookmarks(),
-      ]);
+        preferences,
+        };
     });
 
-    return {
-      databaseSchemaVersion,
-      scores,
-      setlists,
-      setlistItems,
-      bookmarks,
-    };
-  }
+    return snapshot;
+    }
 
   private async getDatabaseSchemaVersion(): Promise<number> {
-    const row = await this.db.getFirstAsync<SQLiteUserVersionRow>(
-      'PRAGMA user_version'
+    const row = await this.db.getFirstAsync<UserVersionRow>(
+      "PRAGMA user_version"
     );
 
     return row?.user_version ?? 0;
   }
 
-  private async getScores(): Promise<BackupScore[]> {
-    return this.db.getAllAsync<BackupScore>(`
+  private async getScores(): Promise<BackupSourceScore[]> {
+    /*
+     * Change these table and column names to match AriaScore's real schema.
+     *
+     * The important field is sourceUri: it must point to the locally stored PDF.
+     */
+    return this.db.getAllAsync<BackupSourceScore>(`
       SELECT
         id,
         title,
         composer,
-        file_name AS fileName,
+        file_uri AS sourceUri,
         original_file_name AS originalFileName,
         created_at AS createdAt,
         updated_at AS updatedAt,
@@ -107,10 +96,6 @@ export class BackupRepository {
   }
 
   private async getBookmarks(): Promise<BackupBookmark[]> {
-    /*
-     * Remove this query or return [] if bookmarks are not yet stored in
-     * their own table.
-     */
     return this.db.getAllAsync<BackupBookmark>(`
       SELECT
         id,
@@ -121,5 +106,13 @@ export class BackupRepository {
       FROM bookmarks
       ORDER BY score_id ASC, page_number ASC
     `);
+  }
+
+  private async getPreferences(): Promise<BackupPreferences> {
+    /*
+     * Replace this with your actual preferences storage.
+     * Return {} for now if preferences are stored in AsyncStorage.
+     */
+    return {};
   }
 }

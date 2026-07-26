@@ -107,7 +107,14 @@ export default function BackupsScreen() {
       const backupService = await createBackupService();
 
       const result =
-        await backupService.createAndShareJsonExport();
+        await backupService.createAndShareBackup();
+
+      if (result.manifest.fileIssues.length > 0) {
+        Alert.alert(
+          "Backup created with warnings",
+          `${result.manifest.statistics.includedPdfCount} PDFs were included and ${result.manifest.statistics.omittedPdfCount} were omitted.`
+        );
+      }
 
       const summary: BackupSummary = {
         createdAt: result.manifest.createdAt,
@@ -218,8 +225,7 @@ export default function BackupsScreen() {
             marginTop: 12,
           }}
         >
-          Export a portable JSON copy of your AriaScore
-          library metadata. The backup can be saved to
+          Export a portable copy of your AriaScore library, including metadata, setlists, bookmarks and locally managed PDF files. The backup can be saved to
           Files, Google Drive, OneDrive, or another
           compatible application.
         </Text>
@@ -262,7 +268,7 @@ export default function BackupsScreen() {
               marginLeft: 10,
             }}
           >
-            JSON Backup
+            Export Full Backup
           </Text>
         </View>
 
@@ -351,9 +357,7 @@ export default function BackupsScreen() {
             marginTop: 12,
           }}
         >
-          This version exports library metadata only.
-          Imported PDF files remain stored locally on this
-          device and are not included in the JSON file.
+          This version exports your entire AriaScore library, including all scores, setlists, and bookmarks. Future versions may allow for selective backup of specific items.
         </Text>
 
         <View

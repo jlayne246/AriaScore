@@ -1,10 +1,11 @@
-import { getDatabase } from '../../../utils/database';
-import { BackupRepository } from './backup.repository';
-import { BackupService } from './backup.service';
+import { getDatabase } from "../../../utils/database";
 
-export async function createBackupService(): Promise<BackupService> {
-  const db = await getDatabase();
-  const repository = new BackupRepository(db);
+import { BackupExportService } from "./backup.export.service";
+import { BackupRepository } from "./backup.repository";
 
-  return new BackupService(repository);
+export async function createBackupService(): Promise<BackupExportService> {
+  const database = await getDatabase();
+  const repository = new BackupRepository(database);
+
+  return new BackupExportService(repository);
 }
