@@ -14,14 +14,29 @@ import AriaScorePdfRenderer from '../native/AriaScorePdfRenderer';
 import { getResolvedReaderSettings } from '../utils/settings/resolver';
 import { ReaderSettings } from '../utils/settings/types';
 
-type ReaderScreenProps = {
-    route: RouteProp<RootStackParamList, 'Reader'>;
-    navigation: any;
-};
+import type {
+  NativeStackScreenProps,
+} from "@react-navigation/native-stack";
 
-const ReaderScreen = ({ route }: ReaderScreenProps) => {
-    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { uri, musicId, context, startPage } = route.params as { uri: string; musicId?: number, context: ReaderContext, startPage?: number };
+type ReaderScreenProps =
+  NativeStackScreenProps<
+    RootStackParamList,
+    "Reader"
+  >;
+
+const ReaderScreen = ({
+  route,
+  navigation,
+}: ReaderScreenProps) => {
+  const {
+    uri,
+    musicId,
+    context,
+    startPage,
+    origin,
+  } = route.params;
+    // const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    // const { uri, musicId, context, startPage } = route.params as { uri: string; musicId?: number, context: ReaderContext, startPage?: number };
 
     const [title, setTitle] = useState("Untitled");
     const [composer, setComposer] = useState("");
@@ -96,9 +111,10 @@ const ReaderScreen = ({ route }: ReaderScreenProps) => {
             uri: fullItem.uri,
             musicId: nextMusicId,
             startPage,
+            origin,
             context: {
-            ...context,
-            currentIndex: nextIndex + 1,
+                ...context,
+                currentIndex: nextIndex + 1,
             },
         });
     };
@@ -149,21 +165,25 @@ const ReaderScreen = ({ route }: ReaderScreenProps) => {
                 onMetadataUpdated={async () => {
                     await loadMetadata();
                 }}
-                onPreviousScore={() =>
-                    openSetlistScore(context.currentIndex - 2, "first")
-                }
+                onPreviousScore={() => {
+                    if (!context) return;
+                    openSetlistScore(context.currentIndex - 2, "first");
+                }}
 
-                onNextScore={() =>
-                    openSetlistScore(context.currentIndex, "first")
-                }
+                onNextScore={() => {
+                    if (!context) return;
+                    openSetlistScore(context.currentIndex, "first");
+                }}
 
-                onPreviousScoreFromPageTurn={() =>
-                    openSetlistScore(context.currentIndex - 2, "last")
-                }
+                onPreviousScoreFromPageTurn={() => {
+                    if (!context) return;
+                    openSetlistScore(context.currentIndex - 2, "last");
+                }}
 
-                onNextScoreFromPageTurn={() =>
-                    openSetlistScore(context.currentIndex, "first")
-                }
+                onNextScoreFromPageTurn={() => {
+                    if (!context) return;
+                    openSetlistScore(context.currentIndex, "first");
+                }}
                 context={context}
                 initialPage={startPage}
                 settings={settings}

@@ -12,10 +12,26 @@ import type {
   BackupSetlistProgress,
   BackupSetlistSetting,
   BackupSourceScore,
+  AriaScoreLibraryBackup,
+  PortableBackupScore,
+  RestoreBackupResult,
+  RestoreBackupWarning,
+  RestoredScoreFile,
 } from "./backup.types";
 
 interface UserVersionRow {
   user_version: number;
+}
+
+export interface RestoreLibraryOptions {
+  library: AriaScoreLibraryBackup;
+
+  restoredFiles: {
+    files: RestoredScoreFile[];
+    warnings: RestoreBackupWarning[];
+  };
+
+  mode: "replace";
 }
 
 export class BackupRepository {
@@ -291,4 +307,566 @@ export class BackupRepository {
         key ASC
     `);
   }
+
+  public async restoreLibrary({
+    library,
+    restoredFiles,
+    mode,
+  }: RestoreLibraryOptions): Promise<RestoreBackupResult> {
+    const restoredUriMap = new Map<number, string>(
+        restoredFiles.files.map((file) => [
+            file.musicId,
+            file.localUri,
+        ])
+    );
+
+    const restoredMusicIds = new Set(
+        restoredFiles.files.map((file) => file.musicId)
+    );
+
+    const warnings: RestoreBackupWarning[] = [
+        ...restoredFiles.warnings,
+    ];
+
+    await this.db.withTransactionAsync(async () => {
+        if (mode === "replace") {
+            await this.clearRestorableData();
+        }
+
+        await this.restoreScores(
+            library.scores,
+            restoredUriMap,
+            warnings
+        );
+
+        await this.restoreSetlists(
+            library.setlists
+        );
+
+        await this.restoreSetlistItems(
+            library.setlistItems,
+            restoredMusicIds,
+            warnings
+        );
+
+        await this.restoreSetlistProgress(
+            library.setlistProgress,
+            restoredMusicIds,
+            warnings
+        );
+
+        await this.restoreBookmarks(
+            library.bookmarks,
+            restoredMusicIds,
+            warnings
+        );
+
+        await this.restoreLabels(
+            library.labels
+        );
+
+        await this.restoreMusicLabels(
+            library.musicLabels,
+            restoredMusicIds,
+            warnings
+        );
+
+        await this.restoreReaderSettings(
+            library.readerSettings
+        );
+
+        await this.restoreMusicSettings(
+            library.musicSettings,
+            restoredMusicIds,
+            warnings
+        );
+
+        await this.restoreSetlistSettings(
+            library.setlistSettings
+        );
+
+        await this.resetSequences();
+    });
+
+    return {
+        restoredScoreCount: restoredMusicIds.size,
+        omittedScoreCount:
+        library.scores.length - restoredMusicIds.size,
+
+        restoredSetlistCount:
+        library.setlists.length,
+
+        restoredBookmarkCount:
+        library.bookmarks.filter((bookmark) =>
+            restoredMusicIds.has(bookmark.musicId)
+        ).length,
+
+        restoredLabelCount:
+        library.labels.length,
+
+        warnings,
+    };
+    }
+
+  private async clearRestorableData(): Promise<void> {
+  await this.db.runAsync(
+    "DELETE FROM music_bookmarks"
+  );
+
+  await this.db.runAsync(
+    "DELETE FROM setlist_progress"
+  );
+
+  await this.db.runAsync(
+    "DELETE FROM setlist_settings"
+  );
+
+  await this.db.runAsync(
+    "DELETE FROM music_settings"
+  );
+
+  await this.db.runAsync(
+    "DELETE FROM music_labels"
+  );
+
+  await this.db.runAsync(
+    "DELETE FROM music_setlists"
+  );
+
+  await this.db.runAsync(
+    "DELETE FROM music_metadata"
+  );
+
+  await this.db.runAsync(
+    "DELETE FROM reader_settings"
+  );
+
+  await this.db.runAsync(
+    "DELETE FROM labels"
+  );
+
+  await this.db.runAsync(
+    "DELETE FROM setlists"
+  );
+
+  await this.db.runAsync(
+    "DELETE FROM music"
+  );
+}
+
+  private async restoreScores(
+  scores: PortableBackupScore[],
+  restoredPdfUris: Map<number, string>,
+  warnings: RestoreBackupWarning[]
+): Promise<void> {
+  for (const score of scores) {
+    const localUri =
+      restoredPdfUris.get(score.id);
+
+    if (!localUri) {
+      warnings.push({
+        reason: "related-record-skipped",
+        musicId: score.id,
+        message:
+          `The database record for "${score.title}" was skipped because its PDF was not restored.`,
+      });
+
+      continue;
+    }
+
+    await this.db.runAsync(
+      `
+        INSERT INTO music (
+          id,
+          title,
+          uri,
+          original_filename,
+          created_at,
+          updated_at,
+          last_opened_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        score.id,
+        score.title,
+        localUri,
+        score.originalFilename ??
+          score.storedFileName ??
+          `${score.id}.pdf`,
+        score.createdAt,
+        score.updatedAt,
+        score.lastOpenedAt,
+      ]
+    );
+
+    await this.db.runAsync(
+      `
+        INSERT INTO music_metadata (
+          id,
+          title,
+          document_type,
+          composer,
+          arranger,
+          editor,
+          publisher,
+          genre,
+          key_signature,
+          time_signature,
+          page_count,
+          created_at,
+          updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        score.id,
+        score.title,
+        score.documentType ?? "Single Work",
+        score.composer,
+        score.arranger,
+        score.editor,
+        score.publisher,
+        score.genre,
+        score.keySignature,
+        score.timeSignature,
+        score.pageCount,
+        score.createdAt,
+        score.updatedAt,
+      ]
+    );
+  }
+}
+
+private async restoreSetlists(
+  setlists: BackupSetlist[]
+): Promise<void> {
+  for (const setlist of setlists) {
+    await this.db.runAsync(
+      `
+        INSERT INTO setlists (
+          id,
+          name,
+          description,
+          created_at,
+          updated_at,
+          last_opened_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+      `,
+      [
+        setlist.id,
+        setlist.name,
+        setlist.description,
+        setlist.createdAt,
+        setlist.updatedAt,
+        setlist.lastOpenedAt,
+      ]
+    );
+  }
+}
+
+private async restoreSetlistItems(
+  items: BackupSetlistItem[],
+  restoredMusicIds: Set<number>,
+  warnings: RestoreBackupWarning[]
+): Promise<void> {
+  for (const item of items) {
+    if (!restoredMusicIds.has(item.musicId)) {
+      warnings.push({
+        reason: "related-record-skipped",
+        musicId: item.musicId,
+        message:
+          `A setlist item was skipped because music ${item.musicId} was not restored.`,
+      });
+
+      continue;
+    }
+
+    await this.db.runAsync(
+      `
+        INSERT INTO music_setlists (
+          music_id,
+          setlist_id,
+          position,
+          created_at,
+          updated_at
+        )
+        VALUES (?, ?, ?, ?, ?)
+      `,
+      [
+        item.musicId,
+        item.setlistId,
+        item.position,
+        item.createdAt,
+        item.updatedAt,
+      ]
+    );
+  }
+}
+
+private async restoreSetlistProgress(
+  progressRows: BackupSetlistProgress[],
+  restoredMusicIds: Set<number>,
+  warnings: RestoreBackupWarning[]
+): Promise<void> {
+  for (const progress of progressRows) {
+    if (!restoredMusicIds.has(progress.musicId)) {
+      warnings.push({
+        reason: "related-record-skipped",
+        musicId: progress.musicId,
+        message:
+          `Setlist progress was skipped because music ${progress.musicId} was not restored.`,
+      });
+
+      continue;
+    }
+
+    await this.db.runAsync(
+      `
+        INSERT INTO setlist_progress (
+          setlist_id,
+          music_id,
+          page_number,
+          updated_at
+        )
+        VALUES (?, ?, ?, ?)
+      `,
+      [
+        progress.setlistId,
+        progress.musicId,
+        progress.pageNumber,
+        progress.updatedAt,
+      ]
+    );
+  }
+}
+
+private async restoreBookmarks(
+  bookmarks: BackupBookmark[],
+  restoredMusicIds: Set<number>,
+  warnings: RestoreBackupWarning[]
+): Promise<void> {
+  for (const bookmark of bookmarks) {
+    if (!restoredMusicIds.has(bookmark.musicId)) {
+      warnings.push({
+        reason: "related-record-skipped",
+        musicId: bookmark.musicId,
+        message:
+          `Bookmark ${bookmark.id} was skipped because its music record was not restored.`,
+      });
+
+      continue;
+    }
+
+    await this.db.runAsync(
+      `
+        INSERT INTO music_bookmarks (
+          id,
+          music_id,
+          page_number,
+          label,
+          created_at
+        )
+        VALUES (?, ?, ?, ?, ?)
+      `,
+      [
+        bookmark.id,
+        bookmark.musicId,
+        bookmark.pageNumber,
+        bookmark.label,
+        bookmark.createdAt,
+      ]
+    );
+  }
+}
+
+private async restoreLabels(
+  labels: BackupLabel[]
+): Promise<void> {
+  for (const label of labels) {
+    await this.db.runAsync(
+      `
+        INSERT INTO labels (
+          id,
+          name,
+          colour
+        )
+        VALUES (?, ?, ?)
+      `,
+      [
+        label.id,
+        label.name,
+        label.colour,
+      ]
+    );
+  }
+}
+
+private async restoreMusicLabels(
+  relations: BackupMusicLabel[],
+  restoredMusicIds: Set<number>,
+  warnings: RestoreBackupWarning[]
+): Promise<void> {
+  for (const relation of relations) {
+    if (!restoredMusicIds.has(relation.musicId)) {
+      warnings.push({
+        reason: "related-record-skipped",
+        musicId: relation.musicId,
+        message:
+          `A label assignment was skipped because music ${relation.musicId} was not restored.`,
+      });
+
+      continue;
+    }
+
+    await this.db.runAsync(
+      `
+        INSERT INTO music_labels (
+          music_id,
+          label_id
+        )
+        VALUES (?, ?)
+      `,
+      [
+        relation.musicId,
+        relation.labelId,
+      ]
+    );
+  }
+}
+
+private async restoreReaderSettings(
+  settings: BackupReaderSetting[]
+): Promise<void> {
+  for (const setting of settings) {
+    await this.db.runAsync(
+      `
+        INSERT INTO reader_settings (
+          key,
+          value
+        )
+        VALUES (?, ?)
+      `,
+      [
+        setting.key,
+        setting.value,
+      ]
+    );
+  }
+}
+
+private async restoreMusicSettings(
+  settings: BackupMusicSetting[],
+  restoredMusicIds: Set<number>,
+  warnings: RestoreBackupWarning[]
+): Promise<void> {
+  for (const setting of settings) {
+    if (!restoredMusicIds.has(setting.musicId)) {
+      warnings.push({
+        reason: "related-record-skipped",
+        musicId: setting.musicId,
+        message:
+          `A music setting was skipped because music ${setting.musicId} was not restored.`,
+      });
+
+      continue;
+    }
+
+    await this.db.runAsync(
+      `
+        INSERT INTO music_settings (
+          music_id,
+          key,
+          value
+        )
+        VALUES (?, ?, ?)
+      `,
+      [
+        setting.musicId,
+        setting.key,
+        setting.value,
+      ]
+    );
+  }
+}
+
+private async restoreSetlistSettings(
+  settings: BackupSetlistSetting[]
+): Promise<void> {
+  for (const setting of settings) {
+    await this.db.runAsync(
+      `
+        INSERT INTO setlist_settings (
+          setlist_id,
+          key,
+          value
+        )
+        VALUES (?, ?, ?)
+      `,
+      [
+        setting.setlistId,
+        setting.key,
+        setting.value,
+      ]
+    );
+  }
+}
+
+private async resetSequences(): Promise<void> {
+  await this.db.runAsync(
+    `
+      INSERT OR REPLACE INTO sqlite_sequence (
+        name,
+        seq
+      )
+      VALUES (
+        'music',
+        COALESCE((SELECT MAX(id) FROM music), 0)
+      )
+    `
+  );
+
+  await this.db.runAsync(
+    `
+      INSERT OR REPLACE INTO sqlite_sequence (
+        name,
+        seq
+      )
+      VALUES (
+        'setlists',
+        COALESCE((SELECT MAX(id) FROM setlists), 0)
+      )
+    `
+  );
+
+  await this.db.runAsync(
+    `
+      INSERT OR REPLACE INTO sqlite_sequence (
+        name,
+        seq
+      )
+      VALUES (
+        'labels',
+        COALESCE((SELECT MAX(id) FROM labels), 0)
+      )
+    `
+  );
+
+  await this.db.runAsync(
+    `
+      INSERT OR REPLACE INTO sqlite_sequence (
+        name,
+        seq
+      )
+      VALUES (
+        'music_bookmarks',
+        COALESCE(
+          (SELECT MAX(id) FROM music_bookmarks),
+          0
+        )
+      )
+    `
+  );
+}
 }

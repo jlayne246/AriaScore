@@ -15,16 +15,20 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-
-import { ACCENT_COLOR } from "../types";
+import { useNavigation, type NavigationProp } from "@react-navigation/native";
+import { RootStackParamList, ACCENT_COLOR } from "../types";
 import {
   BackupError,
+  BackupRepository,
 } from "../src/services/backup";
 import {
   createBackupService,
 } from "../src/services/backup/createBackupService";
 import { exportBackupFile, shareBackupFile } from "../src/services/backup/backups.helpers";
+import { getDatabase } from "../utils/database";
+import { BackupImportService } from "../src/services/backup/backupImportService";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { CommonActions } from "@react-navigation/native";
 
 type BackupSummary = {
   createdAt: string;
@@ -34,11 +38,16 @@ type BackupSummary = {
 };
 
 export default function BackupsScreen() {
-  const navigation = useNavigation();
+  type BackupsNavigationProp =
+    NativeStackNavigationProp<RootStackParamList, "Backups">;
+
+  const navigation =
+    useNavigation<BackupsNavigationProp>();
 
   const [isExporting, setIsExporting] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-  const isBackupBusy = isExporting || isSharing;
+  const [isImporting, setIsImporting] = useState(false);
+  const isBackupBusy = isExporting || isSharing || isImporting;
   const [lastBackup, setLastBackup] =
     useState<BackupSummary | null>(null);
 
@@ -71,7 +80,11 @@ export default function BackupsScreen() {
               }}
             >
               <TouchableOpacity
-                onPress={() => navigation.goBack()}
+                onPress={() => {
+                    if (!isBackupBusy) {
+                        navigation.goBack();
+                    }
+                }}
                 style={{ marginRight: 12 }}
                 accessibilityRole="button"
                 accessibilityLabel="Go back"
@@ -106,6 +119,13 @@ export default function BackupsScreen() {
       const backupService = await createBackupService();
 
       const archive = await backupService.createBackup();
+
+      setLastBackup({
+          createdAt: archive.manifest.createdAt,
+          scoreCount: archive.manifest.statistics.scoreCount,
+          setlistCount: archive.manifest.statistics.setlistCount,
+          bookmarkCount: archive.manifest.statistics.bookmarkCount,
+      });
 
       const result = await exportBackupFile(archive.uri);
 
@@ -151,6 +171,13 @@ export default function BackupsScreen() {
 
       const archive = await backupService.createBackup();
 
+      setLastBackup({
+          createdAt: archive.manifest.createdAt,
+          scoreCount: archive.manifest.statistics.scoreCount,
+          setlistCount: archive.manifest.statistics.setlistCount,
+          bookmarkCount: archive.manifest.statistics.bookmarkCount,
+      });
+
       await shareBackupFile(archive.uri);
     } catch (error) {
       console.error("[Backup] Share failed:", error);
@@ -165,6 +192,142 @@ export default function BackupsScreen() {
       setIsSharing(false);
     }
   }
+
+  const handleImportBackup = (): void => {
+  if (isBackupBusy) {
+      return;
+    }
+
+    Alert.alert(
+      "Restore backup?",
+      [
+        "Restoring a backup will replace the current AriaScore library.",
+        "",
+        "Scores, metadata, setlists, bookmarks, labels, and settings currently stored in the app will be removed.",
+      ].join("\n"),
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Choose Backup",
+          style: "destructive",
+          onPress: () => {
+            void performImportBackup();
+          },
+        },
+      ]
+    );
+  };
+
+  const performImportBackup = async (): Promise<void> => {
+    try {
+      setIsImporting(true);
+
+      const db = await getDatabase();
+      const repository = new BackupRepository(db);
+      const importService =
+        new BackupImportService(repository);
+
+      const result =
+        await importService.pickAndRestoreBackup({
+          mode: "replace",
+        });
+
+      /*
+      * The user closed the document picker.
+      */
+      if (!result) {
+        return;
+      }
+
+      const summary = [
+        `${result.restoredScoreCount} score${
+          result.restoredScoreCount === 1 ? "" : "s"
+        } restored`,
+        `${result.restoredSetlistCount} setlist${
+          result.restoredSetlistCount === 1 ? "" : "s"
+        } restored`,
+        `${result.restoredBookmarkCount} bookmark${
+          result.restoredBookmarkCount === 1 ? "" : "s"
+        } restored`,
+        `${result.restoredLabelCount} label${
+          result.restoredLabelCount === 1 ? "" : "s"
+        } restored`,
+      ];
+
+      if (result.omittedScoreCount > 0) {
+        summary.push(
+          "",
+          `${result.omittedScoreCount} score${
+            result.omittedScoreCount === 1 ? " was" : "s were"
+          } omitted because the corresponding PDF could not be restored.`
+        );
+      }
+
+      if (result.warnings.length > 0) {
+        summary.push(
+          "",
+          `${result.warnings.length} warning${
+            result.warnings.length === 1 ? "" : "s"
+          } occurred during restoration.`
+        );
+
+        console.warn(
+          "[Backup] Restore warnings:",
+          result.warnings
+        );
+      }
+
+      Alert.alert(
+        result.warnings.length > 0 ||
+          result.omittedScoreCount > 0
+          ? "Backup restored with warnings"
+          : "Backup restored",
+        summary.join("\n")
+      );
+
+      /*
+      * Refresh any screen state or cached library data here.
+      *
+      * Examples:
+      * await reloadLibrary();
+      * navigation.navigate("Library");
+      */
+
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            {
+              name: "Library",
+              params: {},
+            },
+          ],
+        })
+      );
+    } catch (error) {
+      console.error(
+        "[Backup] Import failed:",
+        error
+      );
+
+      const message =
+        error instanceof BackupError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "The backup could not be restored.";
+
+      Alert.alert(
+        "Restore failed",
+        message
+      );
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const formattedLastBackup = lastBackup
     ? new Date(lastBackup.createdAt).toLocaleString(
@@ -420,7 +583,7 @@ export default function BackupsScreen() {
         </View>
       </View>
 
-      <View style={{ flexDirection: "row", gap: 12, marginBottom: 20, justifyContent: "center" }}>
+      {/* <View style={{ flexDirection: "row", gap: 12, marginBottom: 20, justifyContent: "center" }}> */}
         <Pressable
         onPress={handleExportBackup}
         disabled={isBackupBusy}
@@ -436,6 +599,7 @@ export default function BackupsScreen() {
           alignItems: "center",
           justifyContent: "center",
           opacity: pressed && !isBackupBusy ? 0.85 : 1,
+          marginBottom: 12,
         })}
       >
         {isExporting ? (
@@ -500,6 +664,7 @@ export default function BackupsScreen() {
           alignItems: "center",
           justifyContent: "center",
           opacity: pressed && !isBackupBusy ? 0.85 : 1,
+          marginBottom: 12,
         })}
       >
         {isSharing ? (
@@ -548,20 +713,95 @@ export default function BackupsScreen() {
           </View>
         )}
       </Pressable>
-      </View>
+      {/* </View> */}
+
+      <Pressable
+        onPress={handleImportBackup}
+        disabled={isBackupBusy}
+        accessibilityRole="button"
+        accessibilityLabel="Restore backup"
+        accessibilityHint="Replaces the current library with a selected AriaScore backup"
+        accessibilityState={{
+          disabled: isBackupBusy,
+          busy: isImporting,
+        }}
+        style={({ pressed }) => ({
+          minHeight: 54,
+          backgroundColor: isBackupBusy
+            ? "#9CA3AF"
+            : "#D97706",
+          borderRadius: 14,
+          paddingVertical: 14,
+          paddingHorizontal: 18,
+          alignItems: "center",
+          justifyContent: "center",
+          opacity:
+            pressed && !isBackupBusy
+              ? 0.85
+              : 1,
+        })}
+      >
+        {isImporting ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <ActivityIndicator
+              size="small"
+              color="#ffffff"
+            />
+
+            <Text
+              style={{
+                color: "#ffffff",
+                fontSize: 16,
+                fontWeight: "700",
+                marginLeft: 10,
+              }}
+            >
+              Restoring Backup…
+            </Text>
+          </View>
+        ) : (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <Ionicons
+              name="download-outline"
+              size={21}
+              color="#ffffff"
+            />
+
+            <Text
+              style={{
+                color: "#ffffff",
+                fontSize: 16,
+                fontWeight: "700",
+                marginLeft: 9,
+              }}
+            >
+              Restore Backup
+            </Text>
+          </View>
+        )}
+      </Pressable>
 
       <Text
         style={{
+          marginTop: 10,
+          paddingHorizontal: 12,
+          color: "#6B7280",
           fontSize: 13,
           lineHeight: 19,
           textAlign: "center",
-          color: "#6B7280",
-          marginTop: 14,
-          paddingHorizontal: 12,
         }}
       >
-        Restoration and cloud backup will be added
-        separately.
+        Restoring a backup replaces the current library and its settings.
       </Text>
     </ScrollView>
   );

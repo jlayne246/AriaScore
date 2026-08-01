@@ -252,3 +252,49 @@ export interface CreatedBackup {
   fileName: string;
   manifest: AriaScoreBackupManifest;
 }
+
+// IMPORT TYPES
+
+export interface RestoreBackupOptions {
+  /**
+   * Replace the current AriaScore library with the imported backup.
+   *
+   * Merge mode can be added later.
+   */
+  mode: "replace";
+}
+
+export interface RestoredScoreFile {
+  /**
+   * Original music ID preserved from the backup.
+   */
+  musicId: number;
+
+  /**
+   * New URI inside the destination installation's managed score directory.
+   */
+  localUri: string;
+}
+
+export interface RestoreBackupResult {
+  restoredScoreCount: number;
+  omittedScoreCount: number;
+
+  restoredSetlistCount: number;
+  restoredBookmarkCount: number;
+  restoredLabelCount: number;
+
+  warnings: RestoreBackupWarning[];
+}
+
+export type RestoreBackupWarningReason =
+  | "pdf-not-included"
+  | "pdf-missing-from-archive"
+  | "pdf-copy-failed"
+  | "related-record-skipped";
+
+export interface RestoreBackupWarning {
+  reason: RestoreBackupWarningReason;
+  message: string;
+  musicId?: number;
+}

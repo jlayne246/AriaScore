@@ -874,16 +874,24 @@ export const setMusicSetlists = async (
  * @param tableNames - Array of table names to drop
  * @returns Promise that resolves when all tables are dropped
  */
+
+const ALL_APP_TABLES = [
+  "music_labels",
+  "music_bookmarks",
+  "music_settings",
+  "music_setlists",
+  "setlist_progress",
+  "setlist_settings",
+  "reader_settings",
+  "music_metadata",
+  "labels",
+  "setlists",
+  "music",
+] as const;
+
 export const dropTables = async (
-  tableNames: string[] = [
-    "music_labels",
-    "music_setlists",
-    "music_metadata",
-    "labels",
-    "setlists",
-    "music"
-  ]
-) => {
+  tableNames: readonly string[] = ALL_APP_TABLES
+): Promise<boolean> => {
   const db = await openDatabase();
 
   try {
@@ -891,12 +899,13 @@ export const dropTables = async (
     await db.execAsync("BEGIN TRANSACTION;");
 
     for (const tableName of tableNames) {
-      await db.execAsync(`DROP TABLE IF EXISTS ${tableName};`);
-      console.log(`Table ${tableName} dropped successfully`);
+      await db.execAsync(
+        `DROP TABLE IF EXISTS "${tableName}";`
+      );
     }
 
     await db.execAsync(`
-        DROP INDEX IF EXISTS idx_music_metadata_title_composer;
+      DROP INDEX IF EXISTS idx_music_metadata_title_composer;
     `);
 
     await db.execAsync("COMMIT;");
@@ -904,9 +913,11 @@ export const dropTables = async (
 
     return true;
   } catch (error) {
-    await db.execAsync("ROLLBACK;");
-    await db.execAsync("PRAGMA foreign_keys = ON;");
-    console.error("Error dropping tables:", error);
+    await db.execAsync("ROLLBACK;").catch(() => undefined);
+    await db
+      .execAsync("PRAGMA foreign_keys = ON;")
+      .catch(() => undefined);
+
     throw error;
   }
 };
