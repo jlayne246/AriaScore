@@ -3,6 +3,10 @@ import type {
   PortableBackupScore,
 } from "./backup.types";
 
+import {
+  copyFileToContentUri,
+} from "../../../native/AriaScoreFileExporter";
+
 export function mapScoreToPortable(
   score: BackupSourceScore,
   storedFileName: string | null,
@@ -84,8 +88,21 @@ export async function exportBackupFile(
 async function saveBackupWithStorageAccessFramework(
   archiveUri: string
 ): Promise<BackupExportResult> {
+  const archiveInfo =
+    await FileSystem.getInfoAsync(
+      archiveUri
+    );
+
+  if (!archiveInfo.exists) {
+    throw new Error(
+      "The generated backup file could not be found."
+    );
+  }
+
   const permissionResult =
-    await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+    await FileSystem
+      .StorageAccessFramework
+      .requestDirectoryPermissionsAsync();
 
   if (!permissionResult.granted) {
     return {
@@ -96,45 +113,39 @@ async function saveBackupWithStorageAccessFramework(
   const filename =
     getFilenameFromUri(archiveUri);
 
-  const archiveInfo =
-    await FileSystem.getInfoAsync(
-      archiveUri
-    );
-
-  const MAX_DIRECT_EXPORT_BYTES =
-    100 * 1024 * 1024;
-
-  if (
-    archiveInfo.exists &&
-    typeof archiveInfo.size === "number" &&
-    archiveInfo.size >
-      MAX_DIRECT_EXPORT_BYTES
-  ) {
-    throw new Error(
-      "This backup is too large for direct folder export. " +
-        "Use Share Backup and save it through the system file picker instead."
-    );
-  }
-
-  const archiveBase64 =
-    await FileSystem.readAsStringAsync(
-      archiveUri,
-      {
-        encoding:
-          FileSystem.EncodingType.Base64,
-      }
-    );
-
   const destinationUri =
-    await FileSystem.StorageAccessFramework.createFileAsync(
-      permissionResult.directoryUri,
-      filename,
-      BACKUP_MIME_TYPE
-    );
+    await FileSystem
+      .StorageAccessFramework
+      .createFileAsync(
+        permissionResult.directoryUri,
+        filename,
+        BACKUP_MIME_TYPE
+      );
 
-  await FileSystem.writeAsStringAsync(destinationUri, archiveBase64, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
+  try {
+    await copyFileToContentUri(
+      archiveUri,
+      destinationUri
+    );
+  } catch (error) {
+    /*
+     * Avoid leaving an empty or partially written
+     * document if streaming fails.
+     */
+    await FileSystem.deleteAsync(
+      destinationUri,
+      {
+        idempotent: true,
+      }
+    ).catch((cleanupError) => {
+      console.warn(
+        "[Backup] Could not remove incomplete exported backup:",
+        cleanupError
+      );
+    });
+
+    throw error;
+  }
 
   return {
     status: "saved",
