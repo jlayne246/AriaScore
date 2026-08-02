@@ -1,4 +1,7 @@
 {
+  "cli": {
+    "appVersionSource": "remote"
+  },
   "build": {
     "production": {
       "developmentClient": false,
@@ -8,8 +11,29 @@
       },
       "ios": {
         "simulator": false
+      },
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "production",
+        "APP_VERSION": "1.0.4",
+        "USE_DEV_CLIENT": "false"
       }
     },
+
+    "production-apk": {
+      "developmentClient": false,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "production",
+        "APP_VERSION": "1.0.4",
+        "USE_DEV_CLIENT": "false"
+      }
+    },
+
     "preview": {
       "developmentClient": false,
       "distribution": "internal",
@@ -18,11 +42,23 @@
       },
       "ios": {
         "simulator": false
+      },
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "preview",
+        "APP_VERSION": "1.1.0",
+        "USE_DEV_CLIENT": "false"
       }
     },
+
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "APP_VARIANT": "development",
+        "APP_VERSION": "1.1.0",
+        "USE_DEV_CLIENT": "true"
+      }
     }
   }
 }
