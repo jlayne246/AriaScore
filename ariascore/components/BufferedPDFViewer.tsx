@@ -72,6 +72,10 @@ import {
 } from "../utils/reader/readerPagination";
 import { saveMusicReaderSetting } from '../utils/settings/repository';
 
+type ScoreNavigationCallback =
+    () => Promise<void> | void;
+
+
 interface BufferedPDFViewerProps {
   uri: string;
   musicId: number;
@@ -82,10 +86,10 @@ interface BufferedPDFViewerProps {
 
   onMetadataUpdated?: (formData: MetadataFormData) => void;
 
-  onPreviousScore?: () => void;
-  onNextScore?: () => void;
-  onPreviousScoreFromPageTurn?: () => void;
-  onNextScoreFromPageTurn?: () => void;
+  onPreviousScore?: ScoreNavigationCallback;
+  onNextScore?: ScoreNavigationCallback;
+  onPreviousScoreFromPageTurn?: ScoreNavigationCallback;
+  onNextScoreFromPageTurn?: ScoreNavigationCallback;
 
   onPageChange?: () => void;
 
@@ -1227,6 +1231,10 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         }, 5000);
       };
 
+      const initialIndex = getPagerIndexForPage(safePage, {
+        mode: effectiveDisplayMode,
+      });
+
       setCurrentPage(safePage);
       setInitialPagerIndex(initialIndex);
       setReaderReady(true);
@@ -1245,7 +1253,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     return () => {
       cancelled = true;
     };
-  }, [uri, initialPage, effectiveSettings.resumeLastPage]);
+  }, [uri, initialPage, effectiveSettings.resumeLastPage, effectiveDisplayMode, getPagerIndexForPage]);
 
   useEffect(() => {
     renderBufferAround(currentPage);
@@ -1324,7 +1332,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
       try {
         await saveCurrentSetlistProgress();
-        await onPreviousScoreFromPageTurn?.();
+        await (onPreviousScoreFromPageTurn ?? onPreviousScore)?.();
       } finally {
         changingScoreRef.current = false;
       }
@@ -1339,6 +1347,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     currentPage,
     totalPages,
     context?.setlistId,
+    onPreviousScore,
     getPreviousPage,
     saveCurrentSetlistProgress,
     onPreviousScoreFromPageTurn,
@@ -1357,19 +1366,19 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     }
 
     if (nextPage > totalPages) {
-      if (!context?.setlistId) return;
+    if (!context?.setlistId) return;
 
-      changingScoreRef.current = true;
+    changingScoreRef.current = true;
 
-      try {
-        await saveCurrentSetlistProgress();
-        await onNextScoreFromPageTurn?.();
-      } finally {
-        changingScoreRef.current = false;
-      }
-
-      return;
+    try {
+      await saveCurrentSetlistProgress();
+      await (onNextScoreFromPageTurn ?? onNextScore)?.();
+    } finally {
+      changingScoreRef.current = false;
     }
+
+    return;
+  }
 
     goToPage(nextPage, {
       showChrome: false,
@@ -1378,6 +1387,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     currentPage,
     totalPages,
     context?.setlistId,
+    onNextScore,
     getNextPage,
     saveCurrentSetlistProgress,
     onNextScoreFromPageTurn,
@@ -2202,9 +2212,10 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                     paddingVertical: 10,
                   }}
                   onPress={() => {
-                    navigation.navigate('SetlistDetail', {
-                      setlistId: context.setlistId,
-                    });
+                    // navigation.navigate('SetlistDetail', {
+                    //   setlistId: context.setlistId,
+                    // });
+                    navigation.goBack();
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
