@@ -1,0 +1,58 @@
+# Dependencies
+node_modules/
+
+# Android build outputs
+android/.gradle/
+android/.cxx/
+android/build/
+android/app/build/
+android/app/.cxx/
+
+# Native module build outputs inside dependencies
+node_modules/**/android/build/
+node_modules/**/android/.cxx/
+node_modules/**/android/.gradle/
+
+# iOS generated output
+ios/build/
+ios/Pods/
+ios/DerivedData/
+
+# Expo and Metro
+.expo/
+.expo-shared/
+.metro-health-check*
+
+# General build output
+dist/
+build/
+coverage/
+*.apk
+*.aab
+*.apks
+
+# Local backup/export artifacts
+*.ariascore
+*.zip
+backups/
+exports/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# EAS inspection output — critical
+/ariascore/.eas-build-inspect/

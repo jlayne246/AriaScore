@@ -15,6 +15,7 @@ import com.facebook.soloader.SoLoader
 
 import com.jlayne246.ariascore.AriaScorePdfRendererPackage
 import com.jlayne246.ariascore.AriaScorePdfImportPackage
+import com.jlayne246.ariascore.AriaScoreFileExporterPackage
 
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
@@ -35,6 +36,7 @@ class MainApplication : Application(), ReactApplication {
             PackageList(this).packages.apply {
                 add(AriaScorePdfRendererPackage())
                 add(AriaScorePdfImportPackage())
+                add(AriaScoreFileExporterPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"

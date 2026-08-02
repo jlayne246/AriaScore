@@ -8,14 +8,9 @@ export type RootStackParamList = {
   Reader: {
     uri: string;
     musicId: number;
-    context?: {
-      setlistId: number;
-      setlistName: string;
-      currentIndex: number;
-      totalItems: number;
-      musicIds: number[];
-    };
+    context?: ReaderContext;
     startPage?: number;
+    origin: "library" | "setlist";
   };
   Dashboard: undefined;
   Setlists: undefined;
