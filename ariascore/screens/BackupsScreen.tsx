@@ -296,15 +296,26 @@ export default function BackupsScreen() {
       * navigation.navigate("Library");
       */
 
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [
-            {
-              name: "Dashboard",
+      Alert.alert(
+        "Backup restored!",
+        summary.join("\n"),
+        [
+          {
+            text: "Continue",
+            onPress: () => {
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [
+                    {
+                      name: "Dashboard",
+                    },
+                  ],
+                })
+              );
             },
-          ],
-        })
+          },
+        ]
       );
     } catch (error) {
       console.error(
