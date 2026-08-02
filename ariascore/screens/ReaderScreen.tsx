@@ -226,22 +226,34 @@ const ReaderScreen = ({
                 }}
                 onPreviousScore={() => {
                     if (!context) return;
-                    openSetlistScore(context.currentIndex - 2, "first");
+                    return openSetlistScore(
+                        context.currentIndex - 2,
+                        "first"
+                    );
                 }}
 
                 onNextScore={() => {
                     if (!context) return;
-                    openSetlistScore(context.currentIndex, "first");
+                    return openSetlistScore(
+                        context.currentIndex,
+                        "first"
+                    );
                 }}
 
                 onPreviousScoreFromPageTurn={() => {
                     if (!context) return;
-                    openSetlistScore(context.currentIndex - 2, "last");
+                    return openSetlistScore(
+                        context.currentIndex - 2,
+                        "last"
+                    );
                 }}
 
                 onNextScoreFromPageTurn={() => {
                     if (!context) return;
-                    openSetlistScore(context.currentIndex, "first");
+                    return openSetlistScore(
+                        context.currentIndex,
+                        "first"
+                    );
                 }}
                 context={context}
                 initialPage={startPage}
