@@ -301,8 +301,7 @@ export default function BackupsScreen() {
           index: 0,
           routes: [
             {
-              name: "Library",
-              params: {},
+              name: "Dashboard",
             },
           ],
         })
