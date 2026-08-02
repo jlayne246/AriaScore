@@ -300,3 +300,11 @@ export interface RestoreBackupWarning {
   message: string;
   musicId?: number;
 }
+
+export interface BackupSummary {
+  createdAt: string;
+  scoreCount: number;
+  setlistCount: number;
+  bookmarkCount: number;
+  fileName: string;
+}

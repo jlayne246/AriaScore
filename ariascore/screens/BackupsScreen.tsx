@@ -2,6 +2,7 @@
 
 import React, {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useState,
 } from "react";
@@ -20,6 +21,7 @@ import { RootStackParamList, ACCENT_COLOR } from "../types";
 import {
   BackupError,
   BackupRepository,
+  BackupSummary,
 } from "../src/services/backup";
 import {
   createBackupService,
@@ -29,13 +31,14 @@ import { getDatabase } from "../utils/database";
 import { BackupImportService } from "../src/services/backup/backupImportService";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { CommonActions } from "@react-navigation/native";
+import { getLastBackupSummary, saveLastBackupSummary } from "../src/services/backup/backup.history";
 
-type BackupSummary = {
-  createdAt: string;
-  scoreCount: number;
-  setlistCount: number;
-  bookmarkCount: number;
-};
+// type BackupSummary = {
+//   createdAt: string;
+//   scoreCount: number;
+//   setlistCount: number;
+//   bookmarkCount: number;
+// };
 
 export default function BackupsScreen() {
   type BackupsNavigationProp =
@@ -50,6 +53,40 @@ export default function BackupsScreen() {
   const isBackupBusy = isExporting || isSharing || isImporting;
   const [lastBackup, setLastBackup] =
     useState<BackupSummary | null>(null);
+
+  const [isLoadingLastBackup, setIsLoadingLastBackup] =
+    useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadLastBackup =
+      async (): Promise<void> => {
+        try {
+          const summary =
+            await getLastBackupSummary();
+
+          if (!cancelled) {
+            setLastBackup(summary);
+          }
+        } catch (error) {
+          console.warn(
+            "[Backup] Could not load last backup summary:",
+            error
+          );
+        } finally {
+          if (!cancelled) {
+            setIsLoadingLastBackup(false);
+          }
+        }
+      };
+
+    void loadLastBackup();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -125,17 +162,46 @@ export default function BackupsScreen() {
           scoreCount: archive.manifest.statistics.scoreCount,
           setlistCount: archive.manifest.statistics.setlistCount,
           bookmarkCount: archive.manifest.statistics.bookmarkCount,
+          fileName: archive.fileName,
       });
 
       const result = await exportBackupFile(archive.uri);
 
       switch (result.status) {
-        case "saved":
+        case "saved": {
+          const summary: BackupSummary = {
+            createdAt:
+              archive.manifest.createdAt,
+
+            scoreCount:
+              archive.manifest.statistics
+                .scoreCount,
+
+            setlistCount:
+              archive.manifest.statistics
+                .setlistCount,
+
+            bookmarkCount:
+              archive.manifest.statistics
+                .bookmarkCount,
+
+            fileName:
+              archive.fileName,
+          };
+
+          await saveLastBackupSummary(
+            summary
+          );
+
+          setLastBackup(summary);
+
           Alert.alert(
             "Backup saved",
             "Your AriaScore backup was saved successfully."
           );
+
           break;
+        }
 
         case "cancelled":
           // The user dismissed the folder picker.
@@ -176,6 +242,7 @@ export default function BackupsScreen() {
           scoreCount: archive.manifest.statistics.scoreCount,
           setlistCount: archive.manifest.statistics.setlistCount,
           bookmarkCount: archive.manifest.statistics.bookmarkCount,
+          fileName: archive.fileName,
       });
 
       await shareBackupFile(archive.uri);
