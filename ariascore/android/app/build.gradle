@@ -87,45 +87,145 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.jlayne246.ariascore'
+    namespace "com.jlayne246.ariascore"
+
     defaultConfig {
-        applicationId 'com.jlayne246.ariascore'
+        applicationId "com.jlayne246.ariascore"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 7
-        versionName "1.0.4"
+        versionCode 1
+        versionName "1.0.0"
     }
-    signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
+
+    flavorDimensions "environment"
+
+    productFlavors {
+        production {
+            dimension "environment"
+
+            applicationId "com.jlayne246.ariascore"
+
+            resValue(
+                "string",
+                "app_name",
+                "AriaScore"
+            )
+        }
+
+        preview {
+            dimension "environment"
+
+            applicationId "com.jlayne246.ariascore.preview"
+            versionNameSuffix "-preview"
+
+            resValue(
+                "string",
+                "app_name",
+                "AriaScore Preview"
+            )
+        }
+
+        development {
+            dimension "environment"
+
+            applicationId "com.jlayne246.ariascore.dev"
+            versionNameSuffix "-dev"
+
+            resValue(
+                "string",
+                "app_name",
+                "AriaScore Dev"
+            )
         }
     }
+
+    signingConfigs {
+        debug {
+            storeFile file("debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
+        }
+    }
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
-            applicationIdSuffix ".dev"
-            versionNameSuffix "-dev"
         }
+
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
+            /*
+             * EAS replaces/configures the release signing credentials
+             * during cloud builds.
+             *
+             * Keeping debug signing here is useful only for local
+             * release testing.
+             */
             signingConfig signingConfigs.debug
-            shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
+
+            shrinkResources(
+                findProperty(
+                    "android.enableShrinkResourcesInReleaseBuilds"
+                )?.toBoolean() ?: false
+            )
+
             minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-            crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
+
+            proguardFiles(
+                getDefaultProguardFile(
+                    "proguard-android.txt"
+                ),
+                "proguard-rules.pro"
+            )
+
+            crunchPngs(
+                findProperty(
+                    "android.enablePngCrunchInReleaseBuilds"
+                )?.toBoolean() ?: true
+            )
         }
     }
+
+    variantFilter { variant ->
+        def flavorNames =
+            variant.flavors*.name
+
+        def buildTypeName =
+            variant.buildType.name
+
+        def isValid =
+            (
+                flavorNames.contains("development") &&
+                buildTypeName == "debug"
+            ) ||
+            (
+                flavorNames.contains("preview") &&
+                buildTypeName == "release"
+            ) ||
+            (
+                flavorNames.contains("production") &&
+                buildTypeName == "release"
+            )
+
+        if (!isValid) {
+            setIgnore(true)
+        }
+    }
+
     packagingOptions {
         jniLibs {
-            useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: false)
+            useLegacyPackaging(
+                findProperty(
+                    "expo.useLegacyPackaging"
+                )?.toBoolean() ?: false
+            )
         }
     }
+
     androidResources {
-        ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+        ignoreAssetsPattern(
+            "!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~"
+        )
     }
 }
 

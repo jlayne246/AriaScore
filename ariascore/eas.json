@@ -3,14 +3,38 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "gradleCommand": ":app:assembleDevelopmentDebug"
+      },
+      "env": {
+        "APP_VARIANT": "development",
+        "APP_VERSION": "1.1.0",
+        "USE_DEV_CLIENT": "true"
+      }
+    },
+
+    "preview": {
+      "developmentClient": false,
+      "distribution": "internal",
+      "android": {
+        "gradleCommand": ":app:assemblePreviewRelease"
+      },
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "preview",
+        "APP_VERSION": "1.1.0",
+        "USE_DEV_CLIENT": "false"
+      }
+    },
+
     "production": {
       "developmentClient": false,
       "distribution": "store",
       "android": {
-        "buildType": "app-bundle"
-      },
-      "ios": {
-        "simulator": false
+        "gradleCommand": ":app:bundleProductionRelease"
       },
       "autoIncrement": true,
       "env": {
@@ -24,40 +48,13 @@
       "developmentClient": false,
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "gradleCommand": ":app:assembleProductionRelease"
       },
       "autoIncrement": true,
       "env": {
         "APP_VARIANT": "production",
         "APP_VERSION": "1.0.4",
         "USE_DEV_CLIENT": "false"
-      }
-    },
-
-    "preview": {
-      "developmentClient": false,
-      "distribution": "internal",
-      "android": {
-        "buildType": "apk"
-      },
-      "ios": {
-        "simulator": false
-      },
-      "autoIncrement": true,
-      "env": {
-        "APP_VARIANT": "preview",
-        "APP_VERSION": "1.1.0",
-        "USE_DEV_CLIENT": "false"
-      }
-    },
-
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "env": {
-        "APP_VARIANT": "development",
-        "APP_VERSION": "1.1.0",
-        "USE_DEV_CLIENT": "true"
       }
     }
   }
