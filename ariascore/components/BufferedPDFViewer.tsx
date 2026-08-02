@@ -1956,9 +1956,10 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                     paddingVertical: 10,
                   }}
                   onPress={() => {
-                    navigation.navigate('SetlistDetail', {
-                      setlistId: context.setlistId,
-                    });
+                    // navigation.navigate('SetlistDetail', {
+                    //   setlistId: context.setlistId,
+                    // });
+                    navigation.goBack();
                   }}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
