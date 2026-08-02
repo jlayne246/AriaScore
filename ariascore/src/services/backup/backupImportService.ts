@@ -109,6 +109,15 @@ export class BackupImportService {
 
       this.validateManifest(manifest);
 
+      if (
+        options.mode === "replace" &&
+        !manifest.complete
+      ) {
+        throw new BackupError(
+            "This backup is incomplete and cannot replace the current library."
+        );
+      }
+
       const libraryUri = joinUri(
         extractionDirectoryUri,
         manifest.contents.libraryFile
@@ -123,16 +132,54 @@ export class BackupImportService {
 
       const restoredFiles =
         await this.restoreScoreFiles(
-          library.scores,
-          extractionDirectoryUri,
-          manifest
+            library.scores,
+            extractionDirectoryUri,
+            manifest
         );
 
-      return await this.repository.restoreLibrary({
-        library,
-        restoredFiles,
-        mode: options.mode,
-      });
+      if (
+        options.mode === "replace" &&
+        restoredFiles.warnings.length > 0
+      ) {
+        await this.deleteRestoredFiles(
+                restoredFiles.files
+        );
+
+        throw new BackupError(
+            "One or more score files could not be restored. " +
+            "Your existing library was not changed."
+        );
+      }
+
+      try {
+            const restoreResult =
+                await this.repository.restoreLibrary({
+                    library,
+                    restoredFiles,
+                    mode: options.mode,
+                });
+
+            await this.deleteReplacedManagedFiles(
+                restoreResult.replacedFileUris,
+                new Set(
+                    restoredFiles.files.map(
+                    (file) => file.localUri
+                    )
+                )
+            );
+
+            return restoreResult;
+        } catch (error) {
+        /*
+        * The PDFs were copied before the SQLite transaction.
+        * Remove them if the database restore fails.
+        */
+        await this.deleteRestoredFiles(
+            restoredFiles.files
+        );
+
+        throw error;
+      }
     } catch (error) {
       if (error instanceof BackupError) {
         throw error;
@@ -375,6 +422,73 @@ export class BackupImportService {
       files,
       warnings,
     };
+  }
+
+  private async deleteRestoredFiles(
+    files: RestoredScoreFile[]
+  ): Promise<void> {
+    await Promise.all(
+        files.map(async (file) => {
+        try {
+            await FileSystem.deleteAsync(
+            file.localUri,
+            {
+                idempotent: true,
+            }
+            );
+        } catch (error) {
+            console.warn(
+            `[Backup] Could not remove restored PDF ${file.localUri}:`,
+            error
+            );
+        }
+        })
+    );
+  }
+
+  private async deleteReplacedManagedFiles(
+    oldUris: string[],
+    retainedUris: Set<string>
+  ): Promise<void> {
+    if (!FileSystem.documentDirectory) {
+        return;
+    }
+
+    const managedScoresDirectory =
+        joinUri(
+        FileSystem.documentDirectory,
+        "scores"
+        );
+
+    const managedPrefix =
+        managedScoresDirectory.endsWith("/")
+        ? managedScoresDirectory
+        : `${managedScoresDirectory}/`;
+
+    for (const uri of oldUris) {
+        if (!uri.startsWith(managedPrefix)) {
+        console.warn(
+            `[Backup] Skipping non-managed replaced URI: ${uri}`
+        );
+
+        continue;
+        }
+
+        if (retainedUris.has(uri)) {
+        continue;
+        }
+
+        try {
+        await FileSystem.deleteAsync(uri, {
+            idempotent: true,
+        });
+        } catch (error) {
+        console.warn(
+            `[Backup] Could not remove replaced PDF ${uri}:`,
+            error
+        );
+        }
+    }
   }
 
   private validateRelations(

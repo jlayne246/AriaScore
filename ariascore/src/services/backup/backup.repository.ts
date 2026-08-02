@@ -23,6 +23,10 @@ interface UserVersionRow {
   user_version: number;
 }
 
+interface MusicUriRow {
+  uri: string;
+}
+
 export interface RestoreLibraryOptions {
   library: AriaScoreLibraryBackup;
 
@@ -328,6 +332,11 @@ export class BackupRepository {
         ...restoredFiles.warnings,
     ];
 
+    const replacedFileUris =
+        mode === "replace"
+            ? await this.getCurrentMusicUris()
+            : [];
+
     await this.db.withTransactionAsync(async () => {
         if (mode === "replace") {
             await this.clearRestorableData();
@@ -405,6 +414,7 @@ export class BackupRepository {
         library.labels.length,
 
         warnings,
+        replacedFileUris,
     };
     }
 
@@ -868,5 +878,17 @@ private async resetSequences(): Promise<void> {
       )
     `
   );
+}
+
+private async getCurrentMusicUris(): Promise<string[]> {
+  const rows =
+    await this.db.getAllAsync<MusicUriRow>(`
+      SELECT uri
+      FROM music
+      WHERE uri IS NOT NULL
+        AND trim(uri) <> ''
+    `);
+
+  return rows.map((row) => row.uri);
 }
 }

@@ -93,15 +93,37 @@ async function saveBackupWithStorageAccessFramework(
     };
   }
 
-  const filename = getFilenameFromUri(archiveUri);
+  const filename =
+    getFilenameFromUri(archiveUri);
 
-  /*
-   * SAF operates with content:// URIs. Since the source archive is binary,
-   * read and write it using Base64 rather than UTF-8.
-   */
-  const archiveBase64 = await FileSystem.readAsStringAsync(archiveUri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
+  const archiveInfo =
+    await FileSystem.getInfoAsync(
+      archiveUri
+    );
+
+  const MAX_DIRECT_EXPORT_BYTES =
+    100 * 1024 * 1024;
+
+  if (
+    archiveInfo.exists &&
+    typeof archiveInfo.size === "number" &&
+    archiveInfo.size >
+      MAX_DIRECT_EXPORT_BYTES
+  ) {
+    throw new Error(
+      "This backup is too large for direct folder export. " +
+        "Use Share Backup and save it through the system file picker instead."
+    );
+  }
+
+  const archiveBase64 =
+    await FileSystem.readAsStringAsync(
+      archiveUri,
+      {
+        encoding:
+          FileSystem.EncodingType.Base64,
+      }
+    );
 
   const destinationUri =
     await FileSystem.StorageAccessFramework.createFileAsync(

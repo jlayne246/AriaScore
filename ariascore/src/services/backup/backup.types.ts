@@ -285,6 +285,8 @@ export interface RestoreBackupResult {
   restoredLabelCount: number;
 
   warnings: RestoreBackupWarning[];
+
+  replacedFileUris: string[];
 }
 
 export type RestoreBackupWarningReason =
