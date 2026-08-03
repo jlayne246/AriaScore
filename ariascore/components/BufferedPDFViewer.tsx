@@ -61,7 +61,15 @@ import * as ScreenOrientation from "expo-screen-orientation";
 import {
   getTapZoneRatio,
   resolveTapAction,
-} from "../utils/readerGestures";
+} from "../utils/reader/readerGestures";
+import {
+  clampPage,
+  getSpreadCount,
+  physicalPageToSpreadIndex,
+  spreadIndexToVisiblePages,
+  type ReaderDisplayMode,
+  type ReaderPaginationOptions,
+} from "../utils/reader/readerPagination";
 import { saveMusicReaderSetting } from '../utils/settings/repository';
 
 type ScoreNavigationCallback =
@@ -101,10 +109,6 @@ const THUMB_ROW_HEIGHT = 180;
 
 const TOP_CHROME_HEIGHT = 112;
 
-type DisplayMode =
-  | "single"
-  | "double";
-
 type PageImage = {
   uri: string;
   width: number;
@@ -112,7 +116,7 @@ type PageImage = {
   aspectRatio: number;
 };
 
-const getBuffer = (mode: DisplayMode) => {
+const getBuffer = (mode: ReaderDisplayMode) => {
   if (mode === "double") {
     return {
       behind: 4,
@@ -321,14 +325,16 @@ function OverflowMenuDivider() {
 
 const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings, toastVisible, toastMessage, onMetadataUpdated, onNextScore, onPreviousScore, onNextScoreFromPageTurn, onPreviousScoreFromPageTurn }: BufferedPDFViewerProps) => {
   const pagerRef = useRef<PagerView>(null);
-  const renderingPages = useRef<Set<number>>(new Set());
+  // const renderingPages = useRef<Set<number>>(new Set());
 
   const pageImagesRef = useRef<Record<number, PageImage>>({});
   const [pageImages, setPageImages] = useState<Record<number, PageImage>>({});
-  const renderingThumbnails = useRef<Set<number>>(new Set());
+  // const renderingThumbnails = useRef<Set<number>>(new Set());
   const thumbnailBatchCancelled = useRef(false);
   const thumbnailListRef = useRef<FlatList<number>>(null);
   const changingScoreRef = useRef(false);
+  
+  const readyUriRef = useRef<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -340,7 +346,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const [jumpOverlayVisible, setJumpOverlayVisible] = useState(false);
   const [jumpPage, setJumpPage] = useState('');
   const [displayMode, setDisplayMode] =
-    useState<DisplayMode>(settings.viewMode as DisplayMode);
+    useState<ReaderDisplayMode>(settings.viewMode as ReaderDisplayMode);
 
   const [coverOffset, setCoverOffset] =
     useState(settings.coverOffset);
@@ -365,6 +371,18 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   const pageTurnInProgressRef = useRef(false);
 
+  const renderingPages = useRef<Set<number>>(
+    new Set(),
+  );
+
+  const renderGenerationRef = useRef(0);
+
+  const renderingThumbnails = useRef<Set<number>>(
+    new Set(),
+  );
+
+  const thumbnailGenerationRef = useRef(0);
+
   type OrientationLockMode = "auto" | "portrait" | "landscape";
 
   const [orientationLock, setOrientationLock] =
@@ -372,6 +390,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   const [performanceModeOverride, setPerformanceModeOverride] =
   useState<boolean | null>(null);
+
+  const pendingAnchorPageRef =
+  useRef<number | null>(null);
 
   const effectivePerformanceMode =
     performanceModeOverride ?? settings.performanceMode;
@@ -386,6 +407,45 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   // const effectiveFacialGestures =
   //   effectivePerformanceMode ? settings.facialGestures : false;
+
+
+  useEffect(() => {
+    renderGenerationRef.current += 1;
+    thumbnailGenerationRef.current += 1;
+
+    pageImagesRef.current = {};
+    setPageImages({});
+    renderingPages.current.clear();
+
+    thumbnailImagesRef.current = {};
+    setThumbnailImages({});
+    renderingThumbnails.current.clear();
+
+    pendingAnchorPageRef.current = null;
+
+    if (chromeHideTimer.current) {
+      clearTimeout(chromeHideTimer.current);
+      chromeHideTimer.current = null;
+    }
+  }, [uri]);
+
+  const progressRef = useRef({
+    setlistId: context?.setlistId,
+    musicId,
+    currentPage,
+  });
+
+  useEffect(() => {
+    progressRef.current = {
+      setlistId: context?.setlistId,
+      musicId,
+      currentPage,
+    };
+  }, [
+    context?.setlistId,
+    musicId,
+    currentPage,
+  ]);
 
   const effectiveSettings = useMemo(() => {
     if (!effectivePerformanceMode) {
@@ -432,8 +492,74 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         .join(" ")
     : score.editor;
 
-  const effectiveDisplayMode: DisplayMode =
-    isLandscape ? displayMode : 'single';
+  const effectiveDisplayMode: ReaderDisplayMode =
+    isLandscape ? displayMode : "single";
+
+  const paginationConfigRef = useRef({
+    effectiveDisplayMode,
+    coverOffset,
+  });
+
+  useEffect(() => {
+    paginationConfigRef.current = {
+      effectiveDisplayMode,
+      coverOffset,
+    };
+  }, [
+    effectiveDisplayMode,
+    coverOffset,
+  ]);
+
+  const paginationOptions = useMemo<ReaderPaginationOptions>(
+    () => ({
+      displayMode: effectiveDisplayMode,
+      coverOffset,
+      totalPages,
+    }),
+    [
+      effectiveDisplayMode,
+      coverOffset,
+      totalPages,
+    ]
+  );
+
+  const currentSpread = useMemo(() => {
+    if (totalPages <= 0) {
+      return null;
+    }
+
+    const spreadIndex =
+      physicalPageToSpreadIndex(
+        currentPage,
+        paginationOptions,
+      );
+
+    return spreadIndexToVisiblePages(
+      spreadIndex,
+      paginationOptions,
+    );
+  }, [
+    currentPage,
+    paginationOptions,
+    totalPages,
+  ]);
+
+  const currentPageLabel = useMemo(() => {
+    const pages = currentSpread?.pages ?? [];
+
+    if (pages.length === 0) {
+      return `Page 0 of ${totalPages}`;
+    }
+
+    if (pages.length === 1) {
+      return `Page ${pages[0]} of ${totalPages}`;
+    }
+
+    return `Pages ${pages[0]}–${pages[pages.length - 1]} of ${totalPages}`;
+  }, [currentSpread, totalPages]);
+
+  const pageStep =
+    effectiveDisplayMode === "double" ? 2 : 1;
 
   const performanceModeClosingRef = useRef(false);
 
@@ -447,11 +573,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const navigation = useNavigation<NavigationProp>();
 
   const pagerPageCount =
-  effectiveDisplayMode === 'double'
-    ? coverOffset
-      ? 1 + Math.ceil((totalPages - 1) / 2)
-      : Math.ceil(totalPages / 2)
-    : totalPages;
+    getSpreadCount(paginationOptions);
 
   const thumbnailPages = Array.from(
     { length: totalPages },
@@ -531,65 +653,53 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     );
   }, [context?.setlistId, musicId, currentPage]);
 
-  const getPagerIndexForPage = useCallback(
-    (
-      page: number,
-      options?: {
-        mode?: DisplayMode;
-        coverOffset?: boolean;
-      },
-    ) => {
-      const mode = options?.mode ?? effectiveDisplayMode;
-      const hasCoverOffset = options?.coverOffset ?? coverOffset;
-
-      if (mode === "single") {
-        return page - 1;
-      }
-
-      if (hasCoverOffset) {
-        return page <= 1
-          ? 0
-          : Math.ceil((page - 1) / 2);
-      }
-
-      return Math.floor((page - 1) / 2);
-    },
-    [effectiveDisplayMode, coverOffset],
-  );
-
   const getPreviousPage = useCallback(
-    (page: number) => {
-      if (effectiveDisplayMode === "single") {
-        return page - 1;
+    (page: number): number | null => {
+      const currentIndex =
+        physicalPageToSpreadIndex(
+          page,
+          paginationOptions,
+        );
+
+      if (currentIndex <= 0) {
+        return null;
       }
 
-      if (coverOffset) {
-        // The first regular spread is pages 2–3.
-        // Its previous spread is the cover, page 1.
-        if (page === 2) {
-          return 1;
-        }
-      }
+      const previousSpread =
+        spreadIndexToVisiblePages(
+          currentIndex - 1,
+          paginationOptions,
+        );
 
-      return page - 2;
+      return previousSpread.anchorPage;
     },
-    [effectiveDisplayMode, coverOffset]
+    [paginationOptions]
   );
 
   const getNextPage = useCallback(
-    (page: number) => {
-      if (effectiveDisplayMode === "single") {
-        return page + 1;
+    (page: number): number | null => {
+      const currentIndex =
+        physicalPageToSpreadIndex(
+          page,
+          paginationOptions,
+        );
+
+      const spreadCount =
+        getSpreadCount(paginationOptions);
+
+      if (currentIndex >= spreadCount - 1) {
+        return null;
       }
 
-      if (coverOffset && page === 1) {
-        // Move from the cover to the first regular spread, pages 2–3.
-        return 2;
-      }
+      const nextSpread =
+        spreadIndexToVisiblePages(
+          currentIndex + 1,
+          paginationOptions,
+        );
 
-      return page + 2;
+      return nextSpread.anchorPage;
     },
-    [effectiveDisplayMode, coverOffset]
+    [paginationOptions]
   );
 
   const runPageTurn = useCallback(
@@ -615,30 +725,28 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       if (pageImagesRef.current[page]) return;
       if (renderingPages.current.has(page)) return;
 
+      const generation =
+        renderGenerationRef.current;
+
       renderingPages.current.add(page);
 
       try {
-        const start = performance.now();
+        const result =
+          await AriaScorePdfRenderer.renderPage({
+            pdfPath: uri,
+            page,
+            width: renderSize.width,
+            height: renderSize.height,
+          });
 
-        const result = await AriaScorePdfRenderer.renderPage({
-          pdfPath: uri,
-          page,
-          width: renderSize.width,
-          height: renderSize.height,
-        });
-
-        console.log({
-          screenWidth: width,
-          screenHeight: height,
-          pixelRatio: PixelRatio.get(),
-          renderSize,
-          resultWidth: result.width,
-          resultHeight: result.height,
-        });
-
-        console.log(
-          `Rendered page ${page} in ${Math.round(performance.now() - start)}ms`
-        );
+        // The document or render dimensions changed
+        // while the native render was running.
+        if (
+          generation !==
+          renderGenerationRef.current
+        ) {
+          return;
+        }
 
         pageImagesRef.current = {
           ...pageImagesRef.current,
@@ -647,17 +755,37 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             width: result.width,
             height: result.height,
             aspectRatio: result.aspectRatio,
-          }
+          },
         };
 
         setPageImages(pageImagesRef.current);
       } catch (error) {
-        console.error(`Failed to render page ${page}`, error);
+        if (
+          generation ===
+          renderGenerationRef.current
+        ) {
+          console.error(
+            `Failed to render page ${page}`,
+            error,
+          );
+        }
       } finally {
-        renderingPages.current.delete(page);
+        // Do not let an old render delete the marker
+        // belonging to a newer generation.
+        if (
+          generation ===
+          renderGenerationRef.current
+        ) {
+          renderingPages.current.delete(page);
+        }
       }
     },
-    [uri, totalPages, renderSize]
+    [
+      uri,
+      totalPages,
+      renderSize.width,
+      renderSize.height,
+    ],
   );
 
   const renderThumbnail = useCallback(
@@ -666,30 +794,60 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       if (thumbnailImagesRef.current[page]) return;
       if (renderingThumbnails.current.has(page)) return;
 
+      const generation =
+        thumbnailGenerationRef.current;
+
       renderingThumbnails.current.add(page);
 
       try {
-        const result = await AriaScorePdfRenderer.renderPage({
-          pdfPath: uri,
-          page,
-          width: 180,
-          height: 252,
-        });
+        const result =
+          await AriaScorePdfRenderer.renderPage({
+            pdfPath: uri,
+            page,
+            width: 180,
+            height: 252,
+          });
+
+        if (
+          generation !==
+          thumbnailGenerationRef.current
+        ) {
+          return;
+        }
 
         thumbnailImagesRef.current = {
           ...thumbnailImagesRef.current,
           [page]: result.uri,
         };
 
-        setThumbnailImages(thumbnailImagesRef.current);
+        setThumbnailImages(
+          thumbnailImagesRef.current,
+        );
       } catch (error) {
-        console.error(`Failed to render thumbnail ${page}`, error);
+        if (
+          generation ===
+          thumbnailGenerationRef.current
+        ) {
+          console.error(
+            `Failed to render thumbnail ${page}`,
+            error,
+          );
+        }
       } finally {
-        renderingThumbnails.current.delete(page);
+        if (
+          generation ===
+          thumbnailGenerationRef.current
+        ) {
+          renderingThumbnails.current.delete(page);
+        }
       }
     },
-    [uri, totalPages]
+    [
+      uri,
+      totalPages,
+    ],
   );
+
 
 //   useEffect(() => {
 //   if (!jumpOverlayVisible) return;
@@ -780,61 +938,116 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   //   longPress
   // );
 
+  const isCurrentDocumentReady =
+    readerReady &&
+    readyUriRef.current === uri;
+
+  const previousPaginationRef = useRef({
+    displayMode: effectiveDisplayMode,
+    coverOffset,
+  });
+
+  useEffect(() => {
+    const previous =
+      previousPaginationRef.current;
+
+    const paginationChanged =
+      previous.displayMode !== effectiveDisplayMode ||
+      previous.coverOffset !== coverOffset;
+
+    previousPaginationRef.current = {
+      displayMode: effectiveDisplayMode,
+      coverOffset,
+    };
+
+    if (
+      !readerReady ||
+      !paginationChanged ||
+      totalPages <= 0
+    ) {
+      return;
+    }
+
+    const anchorPage =
+      pendingAnchorPageRef.current ?? currentPage;
+
+    const nextIndex =
+      physicalPageToSpreadIndex(
+        anchorPage,
+        paginationOptions,
+      );
+
+    pendingAnchorPageRef.current = anchorPage;
+
+    const frame = requestAnimationFrame(() => {
+      pagerRef.current?.setPageWithoutAnimation(
+        nextIndex,
+      );
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [
+    readerReady,
+    effectiveDisplayMode,
+    coverOffset,
+    currentPage,
+    totalPages,
+    paginationOptions,
+  ]);
+
   const applyDisplayMode = useCallback(
-    async (nextMode: DisplayMode) => {
+    async (nextMode: ReaderDisplayMode) => {
+      if (nextMode === displayMode) {
+        return;
+      }
+
       const previousMode = displayMode;
+      const anchorPage = currentPage;
 
-      const nextIndex =
-        nextMode === "double"
-          ? coverOffset
-            ? currentPage <= 1
-              ? 0
-              : Math.ceil((currentPage - 1) / 2)
-            : Math.floor((currentPage - 1) / 2)
-          : currentPage - 1;
-
+      pendingAnchorPageRef.current = anchorPage;
       setDisplayMode(nextMode);
-      setInitialPagerIndex(nextIndex);
 
       try {
         await saveMusicReaderSetting(
           musicId,
           "viewMode",
-          nextMode
+          nextMode,
         );
       } catch (error) {
-        console.error("Failed to save display mode:", error);
+        console.error(
+          "Failed to save display mode:",
+          error,
+        );
 
-        // Roll back the optimistic reader change.
+        // Preserve the physical page while reverting.
+        pendingAnchorPageRef.current = anchorPage;
         setDisplayMode(previousMode);
         return;
       }
 
-      requestAnimationFrame(() => {
-        pagerRef.current?.setPageWithoutAnimation(nextIndex);
-      });
-
-      renderBufferAround(currentPage);
+      // renderBufferAround(anchorPage);
     },
     [
-      musicId,
-      displayMode,
       currentPage,
-      coverOffset,
-      renderBufferAround,
-    ]
+      displayMode,
+      musicId,
+      // renderBufferAround,
+    ],
   );
 
   const applyCoverOffset = useCallback(
     async (enabled: boolean) => {
+      if (enabled === coverOffset) {
+        return;
+      }
+
       const previousValue = coverOffset;
+      const anchorPage = currentPage;
 
-      const nextIndex = getPagerIndexForPage(currentPage, {
-        coverOffset: enabled,
-      });
-
+      pendingAnchorPageRef.current = anchorPage;
       setCoverOffset(enabled);
-      setInitialPagerIndex(nextIndex);
 
       try {
         await saveMusicReaderSetting(
@@ -843,30 +1056,23 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           enabled,
         );
       } catch (error) {
-        console.error("Failed to save cover offset:", error);
+        console.error(
+          "Failed to save cover offset:",
+          error,
+        );
 
+        pendingAnchorPageRef.current = anchorPage;
         setCoverOffset(previousValue);
-
-        const previousIndex = getPagerIndexForPage(currentPage, {
-          coverOffset: previousValue,
-        });
-
-        setInitialPagerIndex(previousIndex);
         return;
       }
 
-      requestAnimationFrame(() => {
-        pagerRef.current?.setPageWithoutAnimation(nextIndex);
-      });
-
-      renderBufferAround(currentPage);
+      // renderBufferAround(anchorPage);
     },
     [
-      musicId,
-      currentPage,
       coverOffset,
-      getPagerIndexForPage,
-      renderBufferAround,
+      currentPage,
+      musicId,
+      // renderBufferAround,
     ],
   );
 
@@ -889,24 +1095,44 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     []
   );
 
-  useEffect(() => {
-    const subscription = AppState.addEventListener(
-      "change",
-      (nextState: AppStateStatus) => {
-        if (nextState === "background") {
-          saveCurrentSetlistProgress();
-        }
+  const saveLatestSetlistProgress =
+    useCallback(async () => {
+      const {
+        setlistId,
+        musicId: latestMusicId,
+        currentPage: latestPage,
+      } = progressRef.current;
+
+      if (!setlistId || !latestMusicId) {
+        return;
       }
-    );
+
+      await saveSetlistProgress(
+        setlistId,
+        latestMusicId,
+        latestPage,
+      );
+    }, []);
+
+  useEffect(() => {
+    const subscription =
+      AppState.addEventListener(
+        "change",
+        (nextState: AppStateStatus) => {
+          if (nextState === "background") {
+            void saveLatestSetlistProgress();
+          }
+        },
+      );
 
     return () => subscription.remove();
-  }, [saveCurrentSetlistProgress]);
+  }, [saveLatestSetlistProgress]);
 
   useEffect(() => {
     return () => {
-      saveCurrentSetlistProgress();
+      void saveLatestSetlistProgress();
     };
-  }, [saveCurrentSetlistProgress]);
+  }, [saveLatestSetlistProgress]);
 
   useEffect(() => {
     if (!effectiveSettings.keepScreenAwake) return;
@@ -919,12 +1145,19 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   }, [effectiveSettings.keepScreenAwake]);
 
   useEffect(() => {
+    renderGenerationRef.current += 1;
+
     pageImagesRef.current = {};
     setPageImages({});
     renderingPages.current.clear();
 
-    renderBufferAround(currentPage);
-  }, [renderSize.width, renderSize.height]);
+    // if (readerReady) {
+    //   renderBufferAround(currentPage);
+    // }
+  }, [
+    renderSize.width,
+    renderSize.height,
+  ]);
 
   useEffect(() => {
     const checkBookmark = async () => {
@@ -951,7 +1184,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   }, [loadBookmarks]);
 
   // useEffect(() => {
-  //   const loadDisplayMode = async () => {
+  //   const loadReaderDisplayMode = async () => {
   //     const saved = await AsyncStorage.getItem(
   //       "reader:displayMode"
   //     );
@@ -964,16 +1197,21 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   //     }
   //   };
 
-  //   loadDisplayMode();
+  //   loadReaderDisplayMode();
   // }, []);
 
   useEffect(() => {
-    setDisplayMode(effectiveSettings.viewMode);
-  }, [effectiveSettings.viewMode]);
+    setDisplayMode(
+      effectiveSettings.viewMode as ReaderDisplayMode,
+    );
 
-  useEffect(() => {
-    setCoverOffset(effectiveSettings.coverOffset);
-  }, [effectiveSettings.coverOffset]);
+    setCoverOffset(
+      effectiveSettings.coverOffset,
+    );
+  }, [
+    effectiveSettings.viewMode,
+    effectiveSettings.coverOffset,
+  ]);
 
   // useEffect(() => {
   //   AsyncStorage.setItem(
@@ -1006,48 +1244,120 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     }, 5000);
   }, [overflowMenuOpen, effectiveSettings.autoHideControls]);
 
+  const initialReaderConfigRef = useRef({
+    resumeLastPage: effectiveSettings.resumeLastPage,
+    viewMode: effectiveSettings.viewMode,
+    coverOffset: effectiveSettings.coverOffset,
+    autoHideControls: effectiveSettings.autoHideControls,
+    isLandscape,
+  });
+
+  useEffect(() => {
+    initialReaderConfigRef.current = {
+      resumeLastPage:
+        effectiveSettings.resumeLastPage,
+      viewMode:
+        effectiveSettings.viewMode,
+      coverOffset:
+        effectiveSettings.coverOffset,
+      autoHideControls:
+        effectiveSettings.autoHideControls,
+      isLandscape,
+    };
+  }, [
+    effectiveSettings.resumeLastPage,
+    effectiveSettings.viewMode,
+    effectiveSettings.coverOffset,
+    effectiveSettings.autoHideControls,
+    isLandscape,
+  ]);
+
   useEffect(() => {
     let cancelled = false;
+    let frame: number | null = null;
 
     const initialiseDocument = async () => {
+      const initialConfig =
+        initialReaderConfigRef.current;
+
       setReaderReady(false);
 
-      pageImagesRef.current = {};
-      setPageImages({});
-      renderingPages.current.clear();
+      const detectedTotal =
+        await AriaScorePdfRenderer.getPageCount(uri);
 
-      const detectedTotal = await AriaScorePdfRenderer.getPageCount(uri);
-
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
 
       setTotalPages(detectedTotal);
 
-      let safePage = 1;
+      if (detectedTotal <= 0) {
+        readyUriRef.current = uri;
 
-      if (initialPage) {
-        safePage = Math.min(initialPage, detectedTotal);
-      } else if (effectiveSettings.resumeLastPage) {
-        const saved = await AsyncStorage.getItem(`pdf:lastPage:${uri}`);
-
-        // const curr_saved = saved && displayMode == "double" ? Number(saved) / 2 : Number(saved);
-
-        const savedPage = saved ? Number(saved) : 1;
-
-        safePage =
-          Number.isFinite(savedPage) && savedPage > 0
-            ? Math.min(savedPage, detectedTotal)
-            : 1;
+        setCurrentPage(0);
+        setInitialPagerIndex(0);
+        setReaderReady(true);
+        return;
       }
 
-      const showInitialChrome = () => {
-        setChromeVisible(true);
+      let requestedPage = 1;
 
-        // if (!settings.autoHideControls) return;
+      if (initialPage != null) {
+        requestedPage = initialPage;
+      } else if (initialConfig.resumeLastPage) {
+        const savedValue = await AsyncStorage.getItem(
+          `pdf:lastPage:${uri}`,
+        );
 
-        if (!effectiveSettings.autoHideControls) {
+        if (cancelled) {
           return;
         }
 
+        const parsedPage = Number(savedValue);
+
+        requestedPage =
+          savedValue !== null &&
+          Number.isFinite(parsedPage)
+            ? parsedPage
+            : 1;
+      }
+
+      const safePage = clampPage(
+        requestedPage,
+        detectedTotal,
+      );
+
+      const configuredInitialMode =
+        initialConfig.viewMode as ReaderDisplayMode;
+
+      const initialOptions: ReaderPaginationOptions = {
+        displayMode: initialConfig.isLandscape
+          ? configuredInitialMode
+          : "single",
+        coverOffset:
+          initialConfig.coverOffset,
+        totalPages: detectedTotal,
+      };
+
+      const initialIndex =
+        physicalPageToSpreadIndex(
+          safePage,
+          initialOptions,
+        );
+
+      if (cancelled) {
+        return;
+      }
+
+      readyUriRef.current = uri;
+
+      setCurrentPage(safePage);
+      setInitialPagerIndex(initialIndex);
+      setReaderReady(true);
+
+      setChromeVisible(true);
+
+      if (initialConfig.autoHideControls) {
         if (chromeHideTimer.current) {
           clearTimeout(chromeHideTimer.current);
         }
@@ -1056,62 +1366,102 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           setChromeVisible(false);
           chromeHideTimer.current = null;
         }, 5000);
-      };
+      }
 
-      const initialIndex = getPagerIndexForPage(safePage, {
-        mode: effectiveDisplayMode,
-      });
+      frame = requestAnimationFrame(() => {
+        if (cancelled) {
+          return;
+        }
 
-      setCurrentPage(safePage);
-      setInitialPagerIndex(initialIndex);
-      setReaderReady(true);
-      showInitialChrome();
-
-      requestAnimationFrame(() => {
-        pagerRef.current?.setPageWithoutAnimation(initialIndex);
+        pagerRef.current?.setPageWithoutAnimation(
+          initialIndex,
+        );
       });
     };
 
-    initialiseDocument();
+    void initialiseDocument();
 
     return () => {
       cancelled = true;
+
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
+      }
     };
-  }, [uri, initialPage, effectiveSettings.resumeLastPage, effectiveDisplayMode, getPagerIndexForPage]);
+  }, [
+    uri,
+    initialPage,
+  ]);
 
   useEffect(() => {
-    renderBufferAround(currentPage);
-  }, [currentPage, renderBufferAround, effectiveSettings.resumeLastPage]);
+    if (
+      !readerReady ||
+      readyUriRef.current !== uri ||
+      paginationOptions.totalPages <= 0
+    ) {
+      return;
+    }
 
-  
+    renderBufferAround(currentPage);
+  }, [
+    uri,
+    readerReady,
+    currentPage,
+    paginationOptions,
+    renderBufferAround,
+  ]);
 
   const goToPage = useCallback(
-    (page: number, options?: { showChrome?: boolean }) => {
-      const nextPage = Math.max(1, Math.min(page, totalPages));
+    (
+      page: number,
+      options?: {
+        showChrome?: boolean;
+      },
+    ) => {
+      const safePage = clampPage(
+        page,
+        totalPages,
+      );
 
-      setCurrentPage(nextPage);
+      const nextIndex =
+        physicalPageToSpreadIndex(
+          safePage,
+          paginationOptions,
+        );
 
-      pagerRef.current?.setPage(getPagerIndexForPage(nextPage));
+      pendingAnchorPageRef.current = safePage;
+      setCurrentPage(safePage);
+
+      if (effectiveSettings.pageAnimation) {
+        pagerRef.current?.setPage(nextIndex);
+      } else {
+        pagerRef.current?.setPageWithoutAnimation(nextIndex);
+      }
 
       if (effectiveSettings.resumeLastPage) {
-        AsyncStorage.setItem(`pdf:lastPage:${uri}`, nextPage.toString());
+        AsyncStorage.setItem(
+          `pdf:lastPage:${uri}`,
+          safePage.toString(),
+        );
       }
 
       if (options?.showChrome !== false) {
         showChromeTemporarily();
       }
 
-      renderPage(nextPage);
-      renderBufferAround(nextPage);
+      renderPage(safePage);
+      // renderBufferAround(safePage);
     },
     [
       totalPages,
+      paginationOptions,
+      effectiveSettings.resumeLastPage,
+      effectiveSettings.pageAnimation,
       uri,
       renderPage,
-      renderBufferAround,
-      getPagerIndexForPage,
+      // renderBufferAround,
       showChromeTemporarily,
-    ]
+    ],
   );
 
   const goToPreviousPage = useCallback(async () => {
@@ -1120,14 +1470,17 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
     const previousPage = getPreviousPage(currentPage);
 
-    if (previousPage < 1) {
+    if (previousPage === null) {
       if (!context?.setlistId) return;
 
       changingScoreRef.current = true;
 
       try {
         await saveCurrentSetlistProgress();
-        await (onPreviousScoreFromPageTurn ?? onPreviousScore)?.();
+        await (
+          onPreviousScoreFromPageTurn ??
+          onPreviousScore
+        )?.();
       } finally {
         changingScoreRef.current = false;
       }
@@ -1155,20 +1508,23 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
     const nextPage = getNextPage(currentPage);
 
-    if (nextPage > totalPages) {
-    if (!context?.setlistId) return;
+    if (nextPage === null) {
+      if (!context?.setlistId) return;
 
-    changingScoreRef.current = true;
+      changingScoreRef.current = true;
 
-    try {
-      await saveCurrentSetlistProgress();
-      await (onNextScoreFromPageTurn ?? onNextScore)?.();
-    } finally {
-      changingScoreRef.current = false;
+      try {
+        await saveCurrentSetlistProgress();
+        await (
+          onNextScoreFromPageTurn ??
+          onNextScore
+        )?.();
+      } finally {
+        changingScoreRef.current = false;
+      }
+
+      return;
     }
-
-    return;
-  }
 
     goToPage(nextPage, {
       showChrome: false,
@@ -1184,7 +1540,13 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     goToPage,
   ]);
 
+  const turnNextPage = useCallback(() => {
+    void runPageTurn(goToNextPage);
+  }, [runPageTurn, goToNextPage]);
 
+  const turnPreviousPage = useCallback(() => {
+    void runPageTurn(goToPreviousPage);
+  }, [runPageTurn, goToPreviousPage]);
   
 
   // const toggleBookmark = useCallback(async () => {
@@ -1265,11 +1627,11 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
       switch (action) {
         case "previous":
-          void runPageTurn(goToPreviousPage);
+          turnPreviousPage();
           break;
 
         case "next":
-          void runPageTurn(goToNextPage);
+          turnNextPage();
           break;
 
         case "toggleChrome":
@@ -1285,8 +1647,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       isLandscape,
       effectivePerformanceMode,
       effectiveSettings.tapZones,
-      goToPreviousPage,
-      goToNextPage,
+      turnPreviousPage,
+      turnNextPage,
       toggleChrome,
     ],
   );
@@ -1333,9 +1695,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       : event.velocityX;
 
     if (direction < 0) {
-      runOnJS(goToNextPage)();
+      runOnJS(turnNextPage)();
     } else {
-      runOnJS(goToPreviousPage)();
+      runOnJS(turnPreviousPage)();
     }
   });
 
@@ -1470,7 +1832,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
               )}
 
               <Text style={{ fontSize: 13, color: '#888' }}>
-                Page {currentPage} of {totalPages}
+                {currentPageLabel}
               </Text>
             </TouchableOpacity>
 
@@ -1627,32 +1989,54 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       )}
 
       {/* <GestureDetector gesture={gesture}> */}
-        {readerReady ? (
+        {isCurrentDocumentReady ? (
           <PagerView
-            key={`${effectiveDisplayMode}-${coverOffset ? "cover" : "no-cover"}`}
+            // key={`${effectiveDisplayMode}-${coverOffset ? "cover" : "no-cover"}`}
             ref={pagerRef}
             style={{ flex: 1 }}
             initialPage={initialPagerIndex}
             offscreenPageLimit={5}
             scrollEnabled={false}
             onPageSelected={(event) => {
-              const position = event.nativeEvent.position;
+              const spread = spreadIndexToVisiblePages(
+                event.nativeEvent.position,
+                paginationOptions,
+              );
 
-              const selectedPage =
-                effectiveDisplayMode === 'double'
-                  ? coverOffset
-                    ? position === 0
-                      ? 1
-                      : position * 2
-                    : position * 2 + 1
-                  : position + 1;
-
-              setCurrentPage(selectedPage);
-              if (effectiveSettings.resumeLastPage) {
-                AsyncStorage.setItem(`pdf:lastPage:${uri}`, selectedPage.toString());
+              if (spread.anchorPage === null) {
+                return;
               }
 
-              renderBufferAround(selectedPage);
+              const pendingAnchor =
+                pendingAnchorPageRef.current;
+
+              const selectedPhysicalPage =
+                pendingAnchor !== null &&
+                spread.pages.includes(pendingAnchor)
+                  ? pendingAnchor
+                  : spread.anchorPage;
+
+              pendingAnchorPageRef.current = null;
+
+              // console.log("Reader persist", {
+              //   pagerPosition: event.nativeEvent.position,
+              //   physicalPage: selectedPhysicalPage,
+              //   visiblePages: spread.pages,
+              //   pendingAnchor,
+              //   displayMode: effectiveDisplayMode,
+              // });
+
+              setCurrentPage(selectedPhysicalPage);
+
+              if (effectiveSettings.resumeLastPage) {
+                AsyncStorage.setItem(
+                  `pdf:lastPage:${uri}`,
+                  selectedPhysicalPage.toString(),
+                );
+              }
+
+              spread.pages.forEach(renderPage);
+              // renderBufferAround(selectedPhysicalPage);
             }}
           >
             {Array.from(
@@ -1661,11 +2045,24 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                   pagerPageCount,
               },
               (_, index) => {
-                if (effectiveDisplayMode === 'single') {
-                  const pageNumber = index + 1;
+                const spread =
+                  spreadIndexToVisiblePages(
+                    index,
+                    paginationOptions
+                  );
+
+                if (spread.pages.length === 0) {
+                  return null;
+                }
+
+                if (effectiveDisplayMode === "single") {
+                  const pageNumber = spread.pages[0];
 
                   return (
-                    <View key={`single-${pageNumber}`} style={{ flex: 1 }}>
+                    <View
+                      key={`single-${pageNumber}`}
+                      style={{ flex: 1 }}
+                    >
                       <RenderedPage
                         image={pageImages[pageNumber]}
                         pageNumber={pageNumber}
@@ -1674,44 +2071,45 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                   );
                 }
 
-                if (coverOffset && index === 0) {
+                const [leftPage, rightPage] = spread.pages;
+
+                const isCoverSpread =
+                  coverOffset &&
+                  index === 0 &&
+                  spread.pages.length === 1;
+
+                if (isCoverSpread) {
                   return (
                     <View
                       key="cover-spread"
                       style={{
                         flex: 1,
-                        flexDirection: 'row',
-                        backgroundColor: 'white',
+                        flexDirection: "row",
+                        backgroundColor: "white",
                       }}
                     >
                       <View
                         style={{
                           flex: 1,
-                          backgroundColor: 'white',
+                          backgroundColor: "white",
                         }}
                       />
 
                       <RenderedPage
-                        image={pageImages[1]}
-                        pageNumber={1}
+                        image={pageImages[leftPage]}
+                        pageNumber={leftPage}
                       />
                     </View>
                   );
                 }
-
-                const leftPage = coverOffset
-                  ? index * 2
-                  : index * 2 + 1;
-
-                const rightPage = leftPage + 1;
 
                 return (
                   <View
                     key={`spread-${index}`}
                     style={{
                       flex: 1,
-                      flexDirection: 'row',
-                      backgroundColor: 'white',
+                      flexDirection: "row",
+                      backgroundColor: "white",
                     }}
                   >
                     <RenderedPage
@@ -1719,13 +2117,18 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                       pageNumber={leftPage}
                     />
 
-                    {rightPage <= totalPages ? (
+                    {rightPage !== undefined ? (
                       <RenderedPage
                         image={pageImages[rightPage]}
                         pageNumber={rightPage}
                       />
                     ) : (
-                      <View style={{ flex: 1, backgroundColor: 'white' }} />
+                      <View
+                        style={{
+                          flex: 1,
+                          backgroundColor: "white",
+                        }}
+                      />
                     )}
                   </View>
                 );
@@ -1767,7 +2170,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
               style={{ alignItems: 'center' }}
               onPress={async () => {
                 await saveCurrentSetlistProgress();
-                onPreviousScore?.();
+                await onPreviousScore?.();
               }}
             >
               <Ionicons name="arrow-back" size={28} color={ACCENT_COLOR} />
@@ -1778,9 +2181,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           ) : (
             <TouchableOpacity
               style={{ alignItems: 'center' }}
-              onPress={() => {
-                void goToPreviousPage();
-              }}
+              onPress={turnPreviousPage}
             >
               <Ionicons name="arrow-back" size={28} color={ACCENT_COLOR} />
               <Text style={{ fontSize: 14, color: ACCENT_COLOR }}>
@@ -1829,7 +2230,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
               // onPress={() => goToPage(currentPage + pageStep)}
               onPress={async () => {
                 await saveCurrentSetlistProgress();
-                onNextScore?.();
+                await onNextScore?.();
               }}
             >
               <Ionicons name="arrow-forward" size={28} color={ACCENT_COLOR} />
@@ -1838,9 +2239,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           ) : (
             <TouchableOpacity
               style={{ alignItems: 'center' }}
-              onPress={() => {
-                void goToNextPage();
-              }}
+              onPress={turnNextPage}
             >
               <Ionicons name="arrow-forward" size={28} color={ACCENT_COLOR} />
               <Text style={{ fontSize: 14, color: ACCENT_COLOR }}>
@@ -2707,3 +3106,4 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 };
 
 export default BufferedPDFViewer;
+
