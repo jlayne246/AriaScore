@@ -163,7 +163,7 @@ const MetadataForm: React.FC<MetadataFormProps> = ({
   const isCustomValue = (value: string, options: string[]) =>
   value.trim() !== "" && !options.includes(value.trim());
 
-  console.log(mode);
+  // console.log(mode);
 
   // Load initial data and available labels
   useEffect(() => {

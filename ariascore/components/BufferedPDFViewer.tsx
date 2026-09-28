@@ -130,51 +130,53 @@ const getBuffer = (mode: ReaderDisplayMode) => {
   };
 };
 
-function RenderedPage({
-  image,
-  pageNumber,
-}: {
-  image?: PageImage;
-  pageNumber: number;
-}) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: "white",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {image ? (
-        <View
-          style={{
-            width: "100%",
-            height: "100%",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <ExpoImage
-            source={{ uri: image.uri }}
-            contentFit="contain"
+const RenderedPage = React.memo(
+  function RenderedPage({
+    image,
+    pageNumber,
+  }: {
+    image?: PageImage;
+    pageNumber: number;
+  }) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "white",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {image ? (
+          <View
             style={{
               width: "100%",
               height: "100%",
+              alignItems: "center",
+              justifyContent: "center",
             }}
-          />
-        </View>
-      ) : (
-        <View style={{ alignItems: "center", justifyContent: "center", gap: 8 }}>
-          <ActivityIndicator />
-          <Text style={{ color: ACCENT_COLOR }}>
-            Rendering page {pageNumber}…
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-}
+          >
+            <ExpoImage
+              source={{ uri: image.uri }}
+              contentFit="contain"
+              style={{
+                width: "100%",
+                height: "100%",
+              }}
+            />
+          </View>
+        ) : (
+          <View style={{ alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <ActivityIndicator />
+            <Text style={{ color: ACCENT_COLOR }}>
+              Rendering page {pageNumber}…
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+);
 
   function InfoRow({
   label,
@@ -323,11 +325,112 @@ function OverflowMenuDivider() {
   );
 }
 
+type ThumbnailItemProps = {
+  pageNumber: number;
+  uri?: string;
+  isCurrentPage: boolean;
+  isBookmarked: boolean;
+  onPress: (page: number) => void;
+};
+
+const ThumbnailItem = React.memo(
+  function ThumbnailItem({
+    pageNumber,
+    uri,
+    isCurrentPage,
+    isBookmarked,
+    onPress,
+  }: ThumbnailItemProps) {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={() => onPress(pageNumber)}
+        style={{
+          width: THUMB_ITEM_WIDTH,
+          alignItems: "center",
+          marginBottom: 18,
+        }}
+      >
+        <View
+          style={{
+            width: 100,
+            height: 140,
+            borderWidth: isCurrentPage ? 3 : 1,
+            borderColor: isCurrentPage
+              ? ACCENT_COLOR
+              : "#ddd",
+            backgroundColor: "#f5f5f5",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {uri ? (
+            <Image
+              source={{ uri }}
+              style={{
+                width: "100%",
+                height: "100%",
+                resizeMode: "contain",
+              }}
+            />
+          ) : (
+            <>
+              <ActivityIndicator />
+
+              <Text
+                style={{
+                  color: "#999",
+                  marginTop: 4,
+                  fontSize: 11,
+                }}
+              >
+                Loading
+              </Text>
+            </>
+          )}
+
+          {isBookmarked && (
+            <View
+              style={{
+                position: "absolute",
+                top: 4,
+                right: 4,
+                backgroundColor: "white",
+                borderRadius: 10,
+                padding: 2,
+              }}
+            >
+              <Ionicons
+                name="bookmark"
+                size={16}
+                color={ACCENT_COLOR}
+              />
+            </View>
+          )}
+        </View>
+
+        <Text
+          style={{
+            marginTop: 4,
+            fontSize: 12,
+          }}
+        >
+          {pageNumber}
+        </Text>
+      </TouchableOpacity>
+    );
+  },
+);
+
 const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings, toastVisible, toastMessage, onMetadataUpdated, onNextScore, onPreviousScore, onNextScoreFromPageTurn, onPreviousScoreFromPageTurn }: BufferedPDFViewerProps) => {
   const pagerRef = useRef<PagerView>(null);
   // const renderingPages = useRef<Set<number>>(new Set());
 
   const pageImagesRef = useRef<Record<number, PageImage>>({});
+  const publishedPageImagesRef =
+    useRef<Record<number, PageImage>>(
+      pageImagesRef.current
+    );
   const [pageImages, setPageImages] = useState<Record<number, PageImage>>({});
   // const renderingThumbnails = useRef<Set<number>>(new Set());
   const thumbnailBatchCancelled = useRef(false);
@@ -335,6 +438,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const changingScoreRef = useRef(false);
   
   const readyUriRef = useRef<string | null>(null);
+
+  const thumbnailViewportRequestRef = useRef(0);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -355,7 +460,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const chromeHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [readerReady, setReaderReady] = useState(false);
   const [initialPagerIndex, setInitialPagerIndex] = useState(0);
-  const [bookmarked, setBookmarked] = useState(false);
+  // const [bookmarked, setBookmarked] = useState(false);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [bookmarksOverlayVisible, setBookmarksOverlayVisible] = useState(false);
   const [bookmarkLabel, setBookmarkLabel] =
@@ -371,9 +476,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   const pageTurnInProgressRef = useRef(false);
 
-  const renderingPages = useRef<Set<number>>(
-    new Set(),
-  );
+  const renderingPages = useRef<
+    Map<number, Promise<void>>
+  >(new Map());
 
   const renderGenerationRef = useRef(0);
 
@@ -382,6 +487,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   );
 
   const thumbnailGenerationRef = useRef(0);
+
+  const bufferRequestRef = useRef(0);
 
   type OrientationLockMode = "auto" | "portrait" | "landscape";
 
@@ -410,15 +517,52 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
 
   useEffect(() => {
+    // console.log("[PAGE CACHE RESET] uri", {
+    //   uri,
+    //   generation: renderGenerationRef.current + 1,
+    // });
+
     renderGenerationRef.current += 1;
     thumbnailGenerationRef.current += 1;
 
-    pageImagesRef.current = {};
-    setPageImages({});
+    // pageImagesRef.current = {};
+    // setPageImages({});
+
+    const hadPublishedPages =
+      Object.keys(
+        publishedPageImagesRef.current
+      ).length > 0;
+
+    const emptyPageImages:
+      Record<number, PageImage> = {};
+
+    pageImagesRef.current =
+      emptyPageImages;
+
+    publishedPageImagesRef.current =
+      emptyPageImages;
+
+    if (hadPublishedPages) {
+      setPageImages(emptyPageImages);
+    }
+
     renderingPages.current.clear();
 
-    thumbnailImagesRef.current = {};
-    setThumbnailImages({});
+    const hadThumbnailImages =
+      Object.keys(thumbnailImagesRef.current).length > 0;
+
+    const emptyThumbnailImages:
+      Record<number, string> = {};
+
+    thumbnailImagesRef.current =
+      emptyThumbnailImages;
+
+    if (hadThumbnailImages) {
+      setThumbnailImages(
+        emptyThumbnailImages
+      );
+    }
+
     renderingThumbnails.current.clear();
 
     pendingAnchorPageRef.current = null;
@@ -434,6 +578,12 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     musicId,
     currentPage,
   });
+
+  useEffect(() => {
+    if (!jumpOverlayVisible) {
+      thumbnailViewportRequestRef.current += 1;
+    }
+  }, [jumpOverlayVisible]);
 
   useEffect(() => {
     progressRef.current = {
@@ -558,6 +708,175 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     return `Pages ${pages[0]}–${pages[pages.length - 1]} of ${totalPages}`;
   }, [currentSpread, totalPages]);
 
+//   const renderDebugRef = useRef<{
+//     currentPage: number;
+//     totalPages: number;
+//     readerReady: boolean;
+//     chromeVisible: boolean;
+//     // bookmarked: boolean;
+//     bookmarksCount: number;
+//     initialPagerIndex: number;
+//   } | null>(null);
+
+//   const currentRenderDebug = {
+//     currentPage,
+//     totalPages,
+//     readerReady,
+//     chromeVisible,
+//     // bookmarked,
+//     bookmarksCount: bookmarks.length,
+//     initialPagerIndex,
+//   };
+
+//   const previousRenderDebug =
+//     renderDebugRef.current;
+
+//   if (previousRenderDebug) {
+//     const changes = Object.entries(
+//       currentRenderDebug
+//     ).filter(([key, value]) => {
+//       return (
+//         previousRenderDebug[
+//           key as keyof typeof currentRenderDebug
+//         ] !== value
+//       );
+//     });
+
+//     if (changes.length > 0) {
+//       console.log(
+//         "[BufferedPDFViewer] STATE CHANGES",
+//         Object.fromEntries(
+//           changes.map(([key, value]) => [
+//             key,
+//             {
+//               from:
+//                 previousRenderDebug[
+//                   key as keyof typeof currentRenderDebug
+//                 ],
+//               to: value,
+//             },
+//           ])
+//         )
+//       );
+//     } else {
+//       console.log(
+//         "[BufferedPDFViewer] RENDER with no tracked state change"
+//       );
+//     }
+//   }
+
+//   const previousIdentityRef = useRef<{
+//   pageImages: typeof pageImages;
+//   bookmarks: typeof bookmarks;
+//   settings: typeof settings;
+//   score: typeof score;
+// } | null>(null);
+
+// const previousIdentity =
+//   previousIdentityRef.current;
+
+// if (previousIdentity) {
+//   const identityChanges: string[] = [];
+
+//   if (previousIdentity.pageImages !== pageImages) {
+//     identityChanges.push("pageImages");
+//   }
+
+//   if (previousIdentity.bookmarks !== bookmarks) {
+//     identityChanges.push("bookmarks");
+//   }
+
+//   if (previousIdentity.settings !== settings) {
+//     identityChanges.push("settings prop");
+//   }
+
+//   if (previousIdentity.score !== score) {
+//     identityChanges.push("score prop");
+//   }
+
+//   if (identityChanges.length > 0) {
+//     console.log(
+//       "[BufferedPDFViewer] IDENTITY CHANGES",
+//       identityChanges
+//     );
+//   }
+// }
+
+// previousIdentityRef.current = {
+//   pageImages,
+//   bookmarks,
+//   settings,
+//   score,
+// };
+
+// const previousPropsRef = useRef<{
+//   onNextScore?: ScoreNavigationCallback;
+//   onPreviousScore?: ScoreNavigationCallback;
+//   onNextScoreFromPageTurn?: ScoreNavigationCallback;
+//   onPreviousScoreFromPageTurn?: ScoreNavigationCallback;
+//   onMetadataUpdated?: BufferedPDFViewerProps["onMetadataUpdated"];
+// } | null>(null);
+
+// const previousProps = previousPropsRef.current;
+
+// if (previousProps) {
+//   const changed: string[] = [];
+
+//   if (previousProps.onNextScore !== onNextScore) {
+//     changed.push("onNextScore");
+//   }
+
+//   if (previousProps.onPreviousScore !== onPreviousScore) {
+//     changed.push("onPreviousScore");
+//   }
+
+//   if (
+//     previousProps.onNextScoreFromPageTurn !==
+//     onNextScoreFromPageTurn
+//   ) {
+//     changed.push("onNextScoreFromPageTurn");
+//   }
+
+//   if (
+//     previousProps.onPreviousScoreFromPageTurn !==
+//     onPreviousScoreFromPageTurn
+//   ) {
+//     changed.push("onPreviousScoreFromPageTurn");
+//   }
+
+//   if (
+//     previousProps.onMetadataUpdated !==
+//     onMetadataUpdated
+//   ) {
+//     changed.push("onMetadataUpdated");
+//   }
+
+//   if (changed.length > 0) {
+//     console.log(
+//       "[BufferedPDFViewer] PROP IDENTITY CHANGES",
+//       changed
+//     );
+//   }
+// }
+
+// previousPropsRef.current = {
+//   onNextScore,
+//   onPreviousScore,
+//   onNextScoreFromPageTurn,
+//   onPreviousScoreFromPageTurn,
+//   onMetadataUpdated,
+// };
+
+//   renderDebugRef.current =
+//     currentRenderDebug;
+
+//   const renderCountRef = useRef(0);
+//   renderCountRef.current += 1;
+
+//   console.log(
+//     `[BufferedPDFViewer] RENDER #${renderCountRef.current} currentPage=${currentPage}`
+//   );
+
   const pageStep =
     effectiveDisplayMode === "double" ? 2 : 1;
 
@@ -638,9 +957,17 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const initialThumbnailIndex =
   Math.floor((currentPage - 1) / THUMB_COLUMNS) * THUMB_COLUMNS;
 
-  console.log("BufferedPDFViewer onNextScore exists:", !!onNextScore);
-  console.log("BufferedPDFViewer context:", context);
+  // console.log("BufferedPDFViewer onNextScore exists:", !!onNextScore);
+  // console.log("BufferedPDFViewer context:", context);
   // const buffer = getBuffer(effectiveDisplayMode);
+
+  // useEffect(() => {
+  //   console.log("[BufferedPDFViewer] MOUNT");
+
+  //   return () => {
+  //     console.log("[BufferedPDFViewer] UNMOUNT");
+  //   };
+  // }, []);
 
 
   const saveCurrentSetlistProgress = useCallback(async () => {
@@ -719,78 +1046,157 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     [],
   );
 
+  const publishCountRef = useRef(0);
+
+  const publishPageImages = useCallback(
+    (reason: string) => {
+      if (
+        publishedPageImagesRef.current ===
+        pageImagesRef.current
+      ) {
+        return;
+      }
+
+      publishCountRef.current += 1;
+
+      // console.log(
+      //   `[pageImages] PUBLISH #${publishCountRef.current}` +
+      //   ` count=${Object.keys(pageImagesRef.current).length}` +
+      //   ` reason=${reason}`
+      // );
+
+      publishedPageImagesRef.current =
+        pageImagesRef.current;
+
+      setPageImages(pageImagesRef.current);
+    },
+    [],
+  );
+
   const renderPage = useCallback(
-    async (page: number) => {
-      if (page < 1 || page > totalPages) return;
-      if (pageImagesRef.current[page]) return;
-      if (renderingPages.current.has(page)) return;
+  (
+    page: number,
+    publish = true,
+  ): Promise<void> => {
+      if (page < 1 || page > totalPages) {
+        return Promise.resolve();
+      }
+
+      if (pageImagesRef.current[page]) {
+        const isAlreadyPublished =
+          !!publishedPageImagesRef.current[page];
+
+        if (
+          publish &&
+          !isAlreadyPublished
+        ) {
+          publishPageImages(
+            `cached-visible page=${page}`
+          );
+        }
+
+        return Promise.resolve();
+      }
+
+      const existing =
+        renderingPages.current.get(page);
+
+      if (existing) {
+        if (!publish) {
+          return existing;
+        }
+
+        return existing.then(() => {
+          if (
+            pageImagesRef.current[page] &&
+            !publishedPageImagesRef.current[page]
+          ) {
+            publishPageImages(
+              `inflight-promoted page=${page}`
+            );
+          }
+        });
+      }
 
       const generation =
         renderGenerationRef.current;
 
-      renderingPages.current.add(page);
+      const promise = (async () => {
+        try {
+          const result =
+            await AriaScorePdfRenderer.renderPage({
+              pdfPath: uri,
+              page,
+              width: renderSize.width,
+              height: renderSize.height,
+            });
 
-      try {
-        const result =
-          await AriaScorePdfRenderer.renderPage({
-            pdfPath: uri,
-            page,
-            width: renderSize.width,
-            height: renderSize.height,
-          });
+          if (
+            generation !==
+            renderGenerationRef.current
+          ) {
+            return;
+          }
 
-        // The document or render dimensions changed
-        // while the native render was running.
-        if (
-          generation !==
-          renderGenerationRef.current
-        ) {
-          return;
+          pageImagesRef.current = {
+            ...pageImagesRef.current,
+            [page]: {
+              uri: result.uri,
+              width: result.width,
+              height: result.height,
+              aspectRatio: result.aspectRatio,
+            },
+          };
+
+          // console.log(
+          //   `[pageImages] CACHE page=${page} publish=${publish}`
+          // );
+
+          if (publish) {
+            publishPageImages(
+              `render-complete page=${page}`
+            );
+          }
+        } catch (error) {
+          if (
+            generation ===
+            renderGenerationRef.current
+          ) {
+            console.error(
+              `Failed to render page ${page}`,
+              error,
+            );
+          }
+        } finally {
+          if (
+            generation ===
+            renderGenerationRef.current
+          ) {
+            renderingPages.current.delete(page);
+          }
         }
+      })();
 
-        pageImagesRef.current = {
-          ...pageImagesRef.current,
-          [page]: {
-            uri: result.uri,
-            width: result.width,
-            height: result.height,
-            aspectRatio: result.aspectRatio,
-          },
-        };
+      renderingPages.current.set(
+        page,
+        promise,
+      );
 
-        setPageImages(pageImagesRef.current);
-      } catch (error) {
-        if (
-          generation ===
-          renderGenerationRef.current
-        ) {
-          console.error(
-            `Failed to render page ${page}`,
-            error,
-          );
-        }
-      } finally {
-        // Do not let an old render delete the marker
-        // belonging to a newer generation.
-        if (
-          generation ===
-          renderGenerationRef.current
-        ) {
-          renderingPages.current.delete(page);
-        }
-      }
+      return promise;
     },
     [
       uri,
       totalPages,
       renderSize.width,
       renderSize.height,
+      publishPageImages
     ],
   );
 
   const renderThumbnail = useCallback(
     async (page: number) => {
       if (page < 1 || page > totalPages) return;
+      if (pageImagesRef.current[page]) return;
       if (thumbnailImagesRef.current[page]) return;
       if (renderingThumbnails.current.has(page)) return;
 
@@ -896,34 +1302,79 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 // console.log("Context, ", context)
 
   const renderBufferAround = useCallback(
-    (page: number) => {
+    async (page: number) => {
+      const requestId =
+        ++bufferRequestRef.current;
+
+      // Wait until the actual visible page is ready.
+      await renderPage(page, true);
+
+      if (
+        requestId !==
+        bufferRequestRef.current
+      ) {
+        return;
+      }
+
       const buffer = getBuffer(effectiveDisplayMode);
 
-      const pages: number[] = [page];
+      const pages: number[] = [];
+
+      // Nearest pages first.
+      const maxDistance = Math.max(
+        buffer.ahead,
+        buffer.behind
+      );
 
       for (
-        let p = page + 1;
-        p <= Math.min(totalPages, page + buffer.ahead);
-        p++
+        let distance = 1;
+        distance <= maxDistance;
+        distance++
       ) {
-        pages.push(p);
+        const ahead = page + distance;
+        const behind = page - distance;
+
+        if (
+          distance <= buffer.ahead &&
+          ahead <= totalPages
+        ) {
+          pages.push(ahead);
+        }
+
+        if (
+          distance <= buffer.behind &&
+          behind >= 1
+        ) {
+          pages.push(behind);
+        }
       }
 
-      for (
-        let p = page - 1;
-        p >= Math.max(1, page - buffer.behind);
-        p--
-      ) {
-        pages.push(p);
+      for (const bufferedPage of pages) {
+        // A newer page/navigation request superseded us.
+        if (
+          requestId !== bufferRequestRef.current
+        ) {
+          return;
+        }
+
+        await renderPage(
+          bufferedPage,
+          false,
+        );
       }
 
-      pages.forEach(renderPage);
+      // if (
+      //   requestId ===
+      //   bufferRequestRef.current
+      // ) {
+      //   publishPageImages();
+      // }
     },
     [
       effectiveDisplayMode,
       renderPage,
       totalPages,
-    ]
+    ],
   );
 
   // const singleTap = Gesture.Tap()
@@ -1147,28 +1598,40 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   useEffect(() => {
     renderGenerationRef.current += 1;
 
-    pageImagesRef.current = {};
-    setPageImages({});
-    renderingPages.current.clear();
+    const hadPublishedPages =
+      Object.keys(
+        publishedPageImagesRef.current
+      ).length > 0;
 
-    // if (readerReady) {
-    //   renderBufferAround(currentPage);
-    // }
+    const emptyPageImages:
+      Record<number, PageImage> = {};
+
+    pageImagesRef.current =
+      emptyPageImages;
+
+    publishedPageImagesRef.current =
+      emptyPageImages;
+
+    if (hadPublishedPages) {
+      setPageImages(emptyPageImages);
+    }
+
+    renderingPages.current.clear();
   }, [
     renderSize.width,
     renderSize.height,
   ]);
 
-  useEffect(() => {
-    const checkBookmark = async () => {
-      if (!musicId) return;
+  // useEffect(() => {
+  //   const checkBookmark = async () => {
+  //     if (!musicId) return;
 
-      const exists = await isBookmarked(musicId, currentPage);
-      setBookmarked(exists);
-    };
+  //     const exists = await isBookmarked(musicId, currentPage);
+  //     setBookmarked(exists);
+  //   };
 
-    checkBookmark();
-  }, [musicId, currentPage]);
+  //   checkBookmark();
+  // }, [musicId, currentPage]);
 
   const loadBookmarks = useCallback(async () => {
     if (!musicId) return;
@@ -1176,7 +1639,24 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     const results =
       await getBookmarksForScore(musicId);
 
-    setBookmarks(results);
+    setBookmarks((previous) => {
+      const unchanged =
+        previous.length === results.length &&
+        previous.every((bookmark, index) => {
+          const next = results[index];
+
+          return (
+            bookmark.id === next.id &&
+            bookmark.page_number ===
+              next.page_number &&
+            bookmark.label === next.label
+          );
+        });
+
+      return unchanged
+        ? previous
+        : results;
+    });
   }, [musicId]);
 
   useEffect(() => {
@@ -1422,6 +1902,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         page,
         totalPages,
       );
+
+      bufferRequestRef.current += 1;
 
       const nextIndex =
         physicalPageToSpreadIndex(
@@ -1738,26 +2220,172 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   //     runOnJS(console.log)('Pinch begin: future zoom');
   //   });
 
-  const renderVisibleThumbnailWindow = useCallback(
-    (page: number) => {
-      const start = Math.max(1, page - 2);
-      const end = Math.min(totalPages, page + 6);
+  // const renderVisibleThumbnailWindow = useCallback(
+  //   (page: number) => {
+  //     const start = Math.max(1, page - 2);
+  //     const end = Math.min(totalPages, page + 6);
 
-      for (let p = start; p <= end; p++) {
-        renderThumbnail(p);
+  //     for (let p = start; p <= end; p++) {
+  //       renderThumbnail(p);
+  //     }
+  //   },
+  //   [totalPages, renderThumbnail]
+  // );
+
+  // const handleThumbnailViewableItemsChanged = useCallback(
+  //   ({ viewableItems }: { viewableItems: Array<{ item: number }> }) => {
+  //     viewableItems.forEach(({ item }) => {
+  //       renderVisibleThumbnailWindow(item);
+  //     });
+  //   },
+  //   [renderVisibleThumbnailWindow]
+  // );
+
+  const renderThumbnailViewport = useCallback(
+    async (
+      visiblePages: number[],
+      requestId: number,
+    ) => {
+      if (visiblePages.length === 0) return;
+
+      const uniqueVisiblePages = [
+        ...new Set(visiblePages),
+      ].sort((a, b) => a - b);
+
+      const firstVisible = uniqueVisiblePages[0];
+      const lastVisible =
+        uniqueVisiblePages[uniqueVisiblePages.length - 1];
+
+      // Only a small prefetch margin around what the user
+      // can actually see.
+      const start = Math.max(1, firstVisible - 2);
+      const end = Math.min(totalPages, lastVisible + 2);
+
+      const visibleSet = new Set(uniqueVisiblePages);
+
+      const nearbyPages: number[] = [];
+
+      for (let page = start; page <= end; page++) {
+        if (!visibleSet.has(page)) {
+          nearbyPages.push(page);
+        }
+      }
+
+      // Visible thumbnails always come first.
+      const pagesToRender = [
+        ...uniqueVisiblePages,
+        ...nearbyPages,
+      ];
+
+      for (const page of pagesToRender) {
+        // User scrolled somewhere else or closed the overlay.
+        if (
+          requestId !==
+          thumbnailViewportRequestRef.current
+        ) {
+          return;
+        }
+
+        // IMPORTANT:
+        // Await one thumbnail at a time.
+        //
+        // Do not flood the native-module queue.
+        await renderThumbnail(page);
       }
     },
-    [totalPages, renderThumbnail]
+    [
+      totalPages,
+      renderThumbnail,
+    ],
   );
 
-  const handleThumbnailViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: Array<{ item: number }> }) => {
-      viewableItems.forEach(({ item }) => {
-        renderVisibleThumbnailWindow(item);
-      });
-    },
-    [renderVisibleThumbnailWindow]
+  const handleThumbnailViewableItemsChanged =
+    useCallback(
+      ({
+        viewableItems,
+      }: {
+        viewableItems: Array<{ item: number }>;
+      }) => {
+        const visiblePages = viewableItems
+          .map(({ item }) => item)
+          .filter(
+            (page): page is number =>
+              typeof page === "number",
+          );
+
+        if (visiblePages.length === 0) {
+          return;
+        }
+
+        const requestId =
+          ++thumbnailViewportRequestRef.current;
+
+        void renderThumbnailViewport(
+          visiblePages,
+          requestId,
+        );
+      },
+      [renderThumbnailViewport],
   );
+
+  const thumbnailViewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 10,
+  }).current;
+
+  const bookmarkedPages = useMemo(
+    () =>
+      new Set(
+        bookmarks.map(
+          bookmark => bookmark.page_number
+        )
+      ),
+    [bookmarks],
+  );
+
+  const bookmarked =
+    bookmarkedPages.has(currentPage);
+
+  const handleThumbnailPress = useCallback(
+    (pageNumber: number) => {
+      goToPage(pageNumber);
+      setJumpOverlayVisible(false);
+      showChromeTemporarily();
+    },
+    [
+      goToPage,
+      showChromeTemporarily,
+    ],
+  );
+
+  const renderThumbnailItem = useCallback(
+    ({ item: pageNumber }: { item: number }) => {
+      const uri =
+        thumbnailImages[pageNumber] ??
+        pageImages[pageNumber]?.uri;
+
+      return (
+        <ThumbnailItem
+          pageNumber={pageNumber}
+          uri={uri}
+          isCurrentPage={
+            pageNumber === currentPage
+          }
+          isBookmarked={
+            bookmarkedPages.has(pageNumber)
+          }
+          onPress={handleThumbnailPress}
+        />
+      );
+    },
+    [
+      thumbnailImages,
+      pageImages,
+      currentPage,
+      bookmarkedPages,
+      handleThumbnailPress,
+    ],
+  );
+
 
   // console.log("thumbnailPages:", thumbnailPages.length, "totalPages:", totalPages);
 
@@ -2026,7 +2654,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
               //   displayMode: effectiveDisplayMode,
               // });
 
-              setCurrentPage(selectedPhysicalPage);
+              if (selectedPhysicalPage !== currentPage) {
+                setCurrentPage(selectedPhysicalPage);
+              }
 
               if (effectiveSettings.resumeLastPage) {
                 AsyncStorage.setItem(
@@ -2035,7 +2665,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                 );
               }
 
-              spread.pages.forEach(renderPage);
+              spread.pages.forEach((page) => {
+                void renderPage(page, true);
+              });
               // renderBufferAround(selectedPhysicalPage);
             }}
           >
@@ -2581,8 +3213,18 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
               data={thumbnailPages}
               keyExtractor={(page) => page.toString()}
               numColumns={THUMB_COLUMNS}
+
+              ref={thumbnailListRef}
+
+              initialNumToRender={12}
+              maxToRenderPerBatch={12}
+              windowSize={5}
+              removeClippedSubviews
+
               onLayout={() => {
-                const rowIndex = Math.floor((currentPage - 1) / THUMB_COLUMNS);
+                const rowIndex = Math.floor(
+                  (currentPage - 1) / THUMB_COLUMNS
+                );
 
                 requestAnimationFrame(() => {
                   thumbnailListRef.current?.scrollToOffset({
@@ -2591,93 +3233,26 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                   });
                 });
               }}
-              ref={thumbnailListRef}
-              onViewableItemsChanged={handleThumbnailViewableItemsChanged}
-              viewabilityConfig={{
-                itemVisiblePercentThreshold: 10,
-              }}
+
+              onViewableItemsChanged={
+                handleThumbnailViewableItemsChanged
+              }
+
+              viewabilityConfig={
+                thumbnailViewabilityConfig
+              }
+
               contentContainerStyle={{
                 alignItems: 'center',
                 paddingBottom: 20,
               }}
+
               columnWrapperStyle={{
                 justifyContent: 'center',
                 gap: 18,
               }}
-              renderItem={({ item: pageNumber }) => {
-                const pageUri =
-                  thumbnailImages[pageNumber] ?? pageImages[pageNumber]?.uri;
 
-                const bookmarkForPage = bookmarks.find(
-                  (bookmark) => bookmark.page_number === pageNumber
-                );
-
-                return (
-                  <TouchableOpacity
-                    activeOpacity={0.75}
-                    onPress={() => {
-                      goToPage(pageNumber);
-                      setJumpOverlayVisible(false);
-                      showChromeTemporarily();
-                    }}
-                    style={{
-                      width: THUMB_ITEM_WIDTH,
-                      alignItems: 'center',
-                      marginBottom: 18,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 100,
-                        height: 140,
-                        borderWidth: currentPage === pageNumber ? 3 : 1,
-                        borderColor:
-                          currentPage === pageNumber ? ACCENT_COLOR : '#ddd',
-                        backgroundColor: '#f5f5f5',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      {pageUri ? (
-                        <Image
-                          source={{ uri: pageUri }}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            resizeMode: 'contain',
-                          }}
-                        />
-                      ) : (
-                        <>
-                          <ActivityIndicator />
-                          <Text style={{ color: '#999', marginTop: 4, fontSize: 11 }}>
-                            Loading
-                          </Text>
-                        </>
-                      )}
-
-                      {bookmarkForPage && (
-                        <View
-                          style={{
-                            position: 'absolute',
-                            top: 4,
-                            right: 4,
-                            backgroundColor: 'white',
-                            borderRadius: 10,
-                            padding: 2,
-                          }}
-                        >
-                          <Ionicons name="bookmark" size={16} color={ACCENT_COLOR} />
-                        </View>
-                      )}
-                    </View>
-
-                    <Text style={{ marginTop: 4, fontSize: 12 }}>
-                      {pageNumber}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
+              renderItem={renderThumbnailItem}
             />
           </View>
           
