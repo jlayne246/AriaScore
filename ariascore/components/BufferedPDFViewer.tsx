@@ -1196,7 +1196,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const renderThumbnail = useCallback(
     async (page: number) => {
       if (page < 1 || page > totalPages) return;
-      if (pageImagesRef.current[page]) return;
+      if (publishedPageImagesRef.current[page]) return;
       if (thumbnailImagesRef.current[page]) return;
       if (renderingThumbnails.current.has(page)) return;
 
