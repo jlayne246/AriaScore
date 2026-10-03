@@ -46,7 +46,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import {
   Bookmark,
-  MetadataFormData,
   // qualityConfig,
   qualityScaleMap,
   ReaderContext,
@@ -54,7 +53,6 @@ import {
   ScoreMetadata,
 } from '../types';
 import ManageSetlistsModal from './ManageSetlistsModal';
-import MetadataForm from './MetadataForm';
 import { saveSetlistProgress } from "../utils/database";
 import { ReaderSettings } from '../utils/settings/types';
 import * as ScreenOrientation from "expo-screen-orientation";
@@ -83,8 +81,6 @@ interface BufferedPDFViewerProps {
   score: ScoreMetadata;
 
   context?: ReaderContext;
-
-  onMetadataUpdated?: (formData: MetadataFormData) => void;
 
   onPreviousScore?: ScoreNavigationCallback;
   onNextScore?: ScoreNavigationCallback;
@@ -422,7 +418,7 @@ const ThumbnailItem = React.memo(
   },
 );
 
-const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings, toastVisible, toastMessage, onMetadataUpdated, onNextScore, onPreviousScore, onNextScoreFromPageTurn, onPreviousScoreFromPageTurn }: BufferedPDFViewerProps) => {
+const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings, toastVisible, toastMessage, onNextScore, onPreviousScore, onNextScoreFromPageTurn, onPreviousScoreFromPageTurn }: BufferedPDFViewerProps) => {
   const pagerRef = useRef<PagerView>(null);
   // const renderingPages = useRef<Set<number>>(new Set());
 
@@ -469,7 +465,6 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const [labelOverlayVisible, setLabelOverlayVisible] =
     useState(false);
   const [scoreInfoVisible, setScoreInfoVisible] = useState(false);
-  const [metadataFormVisible, setMetadataFormVisible] = useState(false);
   const [manageSetlistsVisible, setManageSetlistsVisible] = useState(false);
 
   const [displayOptionsVisible, setDisplayOptionsVisible] = useState(false);
@@ -905,7 +900,6 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     !bookmarksOverlayVisible &&
     !labelOverlayVisible &&
     !scoreInfoVisible &&
-    !metadataFormVisible &&
     !manageSetlistsVisible &&
     !displayOptionsVisible;
 
@@ -3050,7 +3044,12 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                 label="Edit Metadata"
                 onPress={() => {
                   setScoreInfoVisible(false);
-                  setMetadataFormVisible(true);
+
+                  navigation.navigate("Metadata", {
+                    mode: "edit",
+                    musicId,
+                    pdfUri: uri,
+                  });
                 }}
               />
               <ActionRow
@@ -3067,27 +3066,6 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           </View>
         </View>
       )}
-
-      <MetadataForm
-        visible={metadataFormVisible}
-        musicId={musicId}
-        pdfUri={uri}
-        mode="edit"
-        onCancel={() => {
-          setMetadataFormVisible(false);
-          showChromeTemporarily();
-        }}
-        onSave={(formData) => {
-          setMetadataFormVisible(false);
-
-          if (formData) {
-            // update local reader state or call parent refresh
-            onMetadataUpdated?.(formData);
-          }
-
-          showChromeTemporarily();
-        }}
-      />
 
       {jumpOverlayVisible && (
         <View
@@ -3656,7 +3634,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           showChromeTemporarily();
         }}
         onSaved={() => {
-          onMetadataUpdated?.({} as any);
+          setManageSetlistsVisible(false);
+          showChromeTemporarily();
         }}
       />
 

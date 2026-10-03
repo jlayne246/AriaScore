@@ -1,11 +1,43 @@
-import { Modal, View, TextInput, TouchableOpacity, Text, FlatList } from 'react-native';
-import { useMemo, useState, useEffect } from 'react';
-import { Ionicons } from '@expo/vector-icons';
-import { MusicItemWithAllData, SetlistSummary } from '../types';
-import {createSetlist, getSetlistSummaries, getSetlistsForMusicByIds, setMusicSetlistsByIds} from '../utils/database'
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../types";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  Alert,
+  FlatList,
+  Modal,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+import { Ionicons } from "@expo/vector-icons";
+
+import {
+  useNavigation,
+} from "@react-navigation/native";
+
+import {
+  NativeStackNavigationProp,
+} from "@react-navigation/native-stack";
+
+import {
+  RootStackParamList,
+  SetlistEntry,
+  SetlistSummary,
+} from "../types";
+
+import {
+  addSetlistEntry,
+  createSetlist,
+  getSetlistEntriesForMusicInSetlist,
+  getSetlistSummaries,
+  removeSetlistEntry,
+} from "../utils/database";
 
 interface ManageSetlistsModalProps {
   visible: boolean;
@@ -14,259 +46,1126 @@ interface ManageSetlistsModalProps {
   onSaved: () => void;
 }
 
-const ManageSetlistsModal: React.FC<ManageSetlistsModalProps> = (
-    {visible, musicId, onClose, onSaved}) => {
-        
-    const [setlists, setSetlists] = useState<SetlistSummary[]>([]);
-    const [selectedIds, setSelectedIds] = useState<number[]>([]);
-    const [searchText, setSearchText] = useState("");
-    const [addNewSetlist, setAddNewSetlist] = useState(false);
-    const [newSetlistName, setNewSetlistName] = useState("");
+type NavigationProp =
+  NativeStackNavigationProp<
+    RootStackParamList
+  >;
 
-    type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type EntriesBySetlist =
+  Record<number, SetlistEntry[]>;
 
-    const navigation = useNavigation<NavigationProp>();
+type ExcerptDraft = {
+  setlistId: number;
+  startPage: string;
+  endPage: string;
+};
 
-    useEffect(() => {
-        if (!visible) return;
+const ACCENT_COLOR = "#2563EB";
 
-        const load = async () => {
-            const all = await getSetlistSummaries();
-            const selected = await getSetlistsForMusicByIds(musicId);
+const getEntryLabel = (
+  entry: SetlistEntry
+) => {
+  if (
+    entry.start_page == null &&
+    entry.end_page == null
+  ) {
+    return "Full score";
+  }
 
-            setSetlists(all);
-            setSelectedIds(selected);
-        };
+  if (
+    entry.start_page != null &&
+    entry.end_page != null
+  ) {
+    return `Pages ${entry.start_page}–${entry.end_page}`;
+  }
 
-        load();
-    }, [visible, musicId]);
+  if (entry.start_page != null) {
+    return `From page ${entry.start_page}`;
+  }
 
-    const toggleSetlist = (id: number) => {
-        setSelectedIds(prev =>
-            prev.includes(id)
-            ? prev.filter(existingId => existingId !== id)
-            : [...prev, id]
-        );
-    };
+  return `Through page ${entry.end_page}`;
+};
 
-    const navigateToSetlist = (id: number) => {
-        onClose(); // Close the modal before navigating
-        // Navigate to the setlist detail screen
-        // Assuming you have a navigation prop or useNavigation hook available
-        navigation.navigate("SetlistDetail", { setlistId: id });
-    }
+const ManageSetlistsModal:
+  React.FC<ManageSetlistsModalProps> = ({
+    visible,
+    musicId,
+    onClose,
+    onSaved,
+  }) => {
+    const navigation =
+      useNavigation<NavigationProp>();
 
-    const filteredSetlists = setlists.filter(setlist =>
-        setlist.name.toLowerCase().includes(searchText.trim().toLowerCase())
+    const [setlists, setSetlists] =
+      useState<SetlistSummary[]>([]);
+
+    const [
+      entriesBySetlist,
+      setEntriesBySetlist,
+    ] = useState<EntriesBySetlist>({});
+
+    const [searchText, setSearchText] =
+      useState("");
+
+    const [
+      addNewSetlist,
+      setAddNewSetlist,
+    ] = useState(false);
+
+    const [
+      newSetlistName,
+      setNewSetlistName,
+    ] = useState("");
+
+    const [
+      excerptEditor,
+      setExcerptEditor,
+    ] = useState<ExcerptDraft | null>(
+      null
     );
 
+    const [loading, setLoading] =
+      useState(false);
 
-    const handleCreateSetlist = async () => {
-        console.log("Creating setlist with name:", newSetlistName);
-        const name = newSetlistName.trim();
-        if (!name) return;
+    const [busy, setBusy] =
+      useState(false);
 
-        const newId = await createSetlist(name);
+    const loadData = useCallback(
+      async () => {
+        setLoading(true);
 
-        const all = await getSetlistSummaries();
+        try {
+          const all =
+            await getSetlistSummaries();
 
-        setSetlists(all);
-        setSelectedIds(prev => [...prev, newId]);
-        setNewSetlistName("");
+          const entryPairs =
+            await Promise.all(
+              all.map(
+                async (setlist) => {
+                  const entries =
+                    await getSetlistEntriesForMusicInSetlist(
+                      musicId,
+                      setlist.id
+                    );
+
+                  return [
+                    setlist.id,
+                    entries,
+                  ] as const;
+                }
+              )
+            );
+
+          setSetlists(all);
+
+          setEntriesBySetlist(
+            Object.fromEntries(
+              entryPairs
+            )
+          );
+        } catch (error) {
+          console.error(
+            "Failed to load setlists:",
+            error
+          );
+
+          Alert.alert(
+            "Error",
+            "Failed to load setlists."
+          );
+        } finally {
+          setLoading(false);
+        }
+      },
+      [musicId]
+    );
+
+    useEffect(() => {
+      if (!visible) {
+        return;
+      }
+
+      void loadData();
+    }, [
+      visible,
+      loadData,
+    ]);
+
+    useEffect(() => {
+      if (visible) {
+        return;
+      }
+
+      setSearchText("");
+      setAddNewSetlist(false);
+      setNewSetlistName("");
+      setExcerptEditor(null);
+    }, [visible]);
+
+    const filteredSetlists =
+      useMemo(() => {
+        const query =
+          searchText
+            .trim()
+            .toLowerCase();
+
+        if (!query) {
+          return setlists;
+        }
+
+        return setlists.filter(
+          (setlist) =>
+            setlist.name
+              .toLowerCase()
+              .includes(query)
+        );
+      }, [
+        setlists,
+        searchText,
+      ]);
+
+    const notifyChanged =
+      useCallback(() => {
+        onSaved();
+      }, [onSaved]);
+
+    const navigateToSetlist = (
+      setlistId: number
+    ) => {
+      onClose();
+
+      navigation.navigate(
+        "SetlistDetail",
+        {
+          setlistId,
+        }
+      );
     };
 
-    const handleSave = async () => {
-        await setMusicSetlistsByIds(musicId, selectedIds);
+    const handleCreateSetlist =
+      async () => {
+        const name =
+          newSetlistName.trim();
 
-        onSaved();
-        onClose();
+        if (!name || busy) {
+          return;
+        }
+
+        setBusy(true);
+
+        try {
+          await createSetlist(name);
+
+          setNewSetlistName("");
+          setAddNewSetlist(false);
+
+          await loadData();
+        } catch (error) {
+          console.error(
+            "Failed to create setlist:",
+            error
+          );
+
+          Alert.alert(
+            "Error",
+            "Failed to create setlist."
+          );
+        } finally {
+          setBusy(false);
+        }
+      };
+
+    const handleAddFullScore =
+      async (
+        setlistId: number
+      ) => {
+        if (busy) {
+          return;
+        }
+
+        setBusy(true);
+
+        try {
+          await addSetlistEntry(
+            musicId,
+            setlistId,
+            null,
+            null
+          );
+
+          await loadData();
+
+          notifyChanged();
+        } catch (error) {
+          console.error(
+            "Failed to add score to setlist:",
+            error
+          );
+
+          Alert.alert(
+            "Error",
+            "Failed to add score to setlist."
+          );
+        } finally {
+          setBusy(false);
+        }
+      };
+
+    const handleAddExcerpt =
+      async () => {
+        if (
+          !excerptEditor ||
+          busy
+        ) {
+          return;
+        }
+
+        const startPage = Number(
+          excerptEditor.startPage
+        );
+
+        const endPage = Number(
+          excerptEditor.endPage
+        );
+
+        if (
+          !Number.isInteger(startPage) ||
+          !Number.isInteger(endPage) ||
+          startPage < 1 ||
+          endPage < 1
+        ) {
+          Alert.alert(
+            "Invalid pages",
+            "Start and end pages must be positive whole numbers."
+          );
+
+          return;
+        }
+
+        if (endPage < startPage) {
+          Alert.alert(
+            "Invalid page range",
+            "The end page cannot be before the start page."
+          );
+
+          return;
+        }
+
+        setBusy(true);
+
+        try {
+          await addSetlistEntry(
+            musicId,
+            excerptEditor.setlistId,
+            startPage,
+            endPage
+          );
+
+          setExcerptEditor(null);
+
+          await loadData();
+
+          notifyChanged();
+        } catch (error) {
+          console.error(
+            "Failed to add excerpt:",
+            error
+          );
+
+          Alert.alert(
+            "Error",
+            "Failed to add excerpt."
+          );
+        } finally {
+          setBusy(false);
+        }
+      };
+
+    const handleRemoveEntry = (
+      entry: SetlistEntry
+    ) => {
+      Alert.alert(
+        "Remove occurrence?",
+        `Remove "${getEntryLabel(
+          entry
+        )}" from this setlist?`,
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Remove",
+            style: "destructive",
+
+            onPress: async () => {
+              if (busy) {
+                return;
+              }
+
+              setBusy(true);
+
+              try {
+                await removeSetlistEntry(
+                  entry.id
+                );
+
+                await loadData();
+
+                notifyChanged();
+              } catch (error) {
+                console.error(
+                  "Failed to remove setlist entry:",
+                  error
+                );
+
+                Alert.alert(
+                  "Error",
+                  "Failed to remove this occurrence."
+                );
+              } finally {
+                setBusy(false);
+              }
+            },
+          },
+        ]
+      );
+    };
+
+    const handleEditEntry = (
+      entry: SetlistEntry
+    ) => {
+      Alert.alert(
+        "Edit occurrence",
+        `${
+          getEntryLabel(entry)
+        }\n\nEditing an existing page range will be wired once the entry-update operation is added.`
+      );
+    };
+
+    const renderEntry = (
+      entry: SetlistEntry
+    ) => {
+      const isExcerpt =
+        entry.start_page != null ||
+        entry.end_page != null;
+
+      return (
+        <View
+          key={entry.id}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginTop: 8,
+            marginLeft: 12,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            backgroundColor: "#F9FAFB",
+            borderRadius: 10,
+          }}
+        >
+          <Ionicons
+            name={
+              isExcerpt
+                ? "copy-outline"
+                : "document-outline"
+            }
+            size={20}
+            color={ACCENT_COLOR}
+          />
+
+          <View
+            style={{
+              flex: 1,
+              marginLeft: 10,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: "600",
+                color: "#111827",
+              }}
+            >
+              {getEntryLabel(entry)}
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 12,
+                color: "#6B7280",
+                marginTop: 2,
+              }}
+            >
+              {isExcerpt
+                ? "Excerpt"
+                : "Complete document"}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={() =>
+              handleEditEntry(entry)
+            }
+            disabled={busy}
+            style={{
+              padding: 6,
+            }}
+          >
+            <Ionicons
+              name="create-outline"
+              size={19}
+              color="#6B7280"
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() =>
+              handleRemoveEntry(
+                entry
+              )
+            }
+            disabled={busy}
+            style={{
+              padding: 6,
+            }}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={19}
+              color="#DC2626"
+            />
+          </TouchableOpacity>
+        </View>
+      );
     };
 
     return (
-        <Modal visible={visible} transparent animationType="fade">
+      <Modal
+        visible={visible}
+        transparent
+        animationType="fade"
+        onRequestClose={onClose}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor:
+              "rgba(0,0,0,0.35)",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          <View
+            style={{
+              width: "72%",
+              maxWidth: 640,
+              maxHeight: "82%",
+              backgroundColor: "white",
+              borderRadius: 18,
+              padding: 20,
+            }}
+          >
+            {/* Header */}
             <View
-                style={{
-                flex: 1,
-                backgroundColor: "rgba(0,0,0,0.35)",
+              style={{
+                flexDirection: "row",
+                justifyContent:
+                  "space-between",
                 alignItems: "center",
-                justifyContent: "center",
-                padding: 24,
-                }}
+                marginBottom: 14,
+              }}
             >
-                <View
+              <View>
+                <Text
+                  style={{
+                    fontSize: 22,
+                    fontWeight: "700",
+                    color: "#111827",
+                  }}
+                >
+                  Manage Setlists
+                </Text>
+
+                <Text
+                  style={{
+                    marginTop: 3,
+                    fontSize: 13,
+                    color: "#6B7280",
+                  }}
+                >
+                  Add this score as a full
+                  document or page excerpt.
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={onClose}
+                disabled={busy}
+              >
+                <Ionicons
+                  name="close"
+                  size={26}
+                  color={ACCENT_COLOR}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search */}
+            <TextInput
+              placeholder="Search setlists..."
+              value={searchText}
+              onChangeText={setSearchText}
+              style={{
+                borderWidth: 1,
+                borderColor: "#D1D5DB",
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                fontSize: 16,
+                marginBottom: 12,
+              }}
+            />
+
+            {loading ? (
+              <Text
                 style={{
-                    width: "72%",
-                    maxWidth: 560,
-                    maxHeight: "78%",
-                    backgroundColor: "white",
-                    borderRadius: 18,
-                    padding: 20,
+                  color: "#6B7280",
+                  paddingVertical: 16,
                 }}
-                >
-                <View
+              >
+                Loading setlists...
+              </Text>
+            ) : (
+              <FlatList
+                data={filteredSetlists}
+                keyExtractor={(item) =>
+                  item.id.toString()
+                }
+                style={{
+                  maxHeight: 380,
+                }}
+                keyboardShouldPersistTaps="handled"
+                ListEmptyComponent={
+                  <Text
                     style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 14,
+                      color: "#6B7280",
+                      paddingVertical: 18,
+                      textAlign: "center",
                     }}
+                  >
+                    No setlists found.
+                  </Text>
+                }
+                renderItem={({
+                  item,
+                }) => {
+                  const entries =
+                    entriesBySetlist[
+                      item.id
+                    ] ?? [];
+
+                  return (
+                    <View
+                      style={{
+                        paddingVertical: 14,
+                        borderBottomWidth: 1,
+                        borderBottomColor:
+                          "#E5E7EB",
+                      }}
+                    >
+                      {/* Setlist heading */}
+                      <TouchableOpacity
+                        onPress={() =>
+                          navigateToSetlist(
+                            item.id
+                          )
+                        }
+                        style={{
+                          flexDirection:
+                            "row",
+                          alignItems:
+                            "center",
+                        }}
+                      >
+                        <View
+                          style={{
+                            flex: 1,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 16,
+                              fontWeight:
+                                "700",
+                              color:
+                                "#111827",
+                            }}
+                          >
+                            {item.name}
+                          </Text>
+
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              color:
+                                "#6B7280",
+                              marginTop: 2,
+                            }}
+                          >
+                            {entries.length ===
+                            0
+                              ? "Not currently used"
+                              : `${
+                                  entries.length
+                                } ${
+                                  entries.length ===
+                                  1
+                                    ? "occurrence"
+                                    : "occurrences"
+                                }`}
+                            {" · "}
+                            {item.item_count}{" "}
+                            total{" "}
+                            {item.item_count ===
+                            1
+                              ? "item"
+                              : "items"}
+                          </Text>
+                        </View>
+
+                        <Ionicons
+                          name="chevron-forward"
+                          size={20}
+                          color="#9CA3AF"
+                        />
+                      </TouchableOpacity>
+
+                      {/* Existing occurrences */}
+                      {entries.map(
+                        renderEntry
+                      )}
+
+                      {/* Add occurrence */}
+                      <View
+                        style={{
+                          flexDirection:
+                            "row",
+                          flexWrap: "wrap",
+                          gap: 16,
+                          marginTop: 10,
+                          marginLeft: 12,
+                        }}
+                      >
+                        <TouchableOpacity
+                          disabled={busy}
+                          onPress={() =>
+                            void handleAddFullScore(
+                              item.id
+                            )
+                          }
+                          style={{
+                            flexDirection:
+                              "row",
+                            alignItems:
+                              "center",
+                          }}
+                        >
+                          <Ionicons
+                            name="add"
+                            size={18}
+                            color={
+                              ACCENT_COLOR
+                            }
+                          />
+
+                          <Text
+                            style={{
+                              color:
+                                ACCENT_COLOR,
+                              fontWeight:
+                                "600",
+                              marginLeft: 3,
+                            }}
+                          >
+                            Full score
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          disabled={busy}
+                          onPress={() =>
+                            setExcerptEditor(
+                              {
+                                setlistId:
+                                  item.id,
+                                startPage:
+                                  "",
+                                endPage: "",
+                              }
+                            )
+                          }
+                          style={{
+                            flexDirection:
+                              "row",
+                            alignItems:
+                              "center",
+                          }}
+                        >
+                          <Ionicons
+                            name="copy-outline"
+                            size={17}
+                            color={
+                              ACCENT_COLOR
+                            }
+                          />
+
+                          <Text
+                            style={{
+                              color:
+                                ACCENT_COLOR,
+                              fontWeight:
+                                "600",
+                              marginLeft: 5,
+                            }}
+                          >
+                            Add excerpt
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                }}
+              />
+            )}
+
+            {/* Excerpt editor */}
+            {excerptEditor && (
+              <View
+                style={{
+                  marginTop: 16,
+                  padding: 14,
+                  borderWidth: 1,
+                  borderColor: "#D1D5DB",
+                  borderRadius: 12,
+                  backgroundColor:
+                    "#F9FAFB",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: "#111827",
+                    marginBottom: 4,
+                  }}
                 >
-                    <Text style={{ fontSize: 22, fontWeight: "700", color: "#111827" }}>
-                    Manage Setlists
+                  Add Excerpt
+                </Text>
+
+                <Text
+                  style={{
+                    fontSize: 13,
+                    color: "#6B7280",
+                    marginBottom: 12,
+                  }}
+                >
+                  Enter the physical PDF
+                  page range to use for this
+                  occurrence.
+                </Text>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: 12,
+                  }}
+                >
+                  <View
+                    style={{
+                      flex: 1,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: "#6B7280",
+                        marginBottom: 4,
+                      }}
+                    >
+                      Start page
                     </Text>
 
-                    <TouchableOpacity onPress={onClose}>
-                    <Ionicons name="close" size={26} color="#2563EB" />
-                    </TouchableOpacity>
+                    <TextInput
+                      keyboardType="number-pad"
+                      value={
+                        excerptEditor.startPage
+                      }
+                      onChangeText={(
+                        value
+                      ) =>
+                        setExcerptEditor(
+                          (previous) =>
+                            previous
+                              ? {
+                                  ...previous,
+                                  startPage:
+                                    value,
+                                }
+                              : null
+                        )
+                      }
+                      placeholder="1"
+                      style={{
+                        borderWidth: 1,
+                        borderColor:
+                          "#D1D5DB",
+                        borderRadius: 8,
+                        paddingHorizontal:
+                          10,
+                        paddingVertical: 9,
+                        backgroundColor:
+                          "white",
+                      }}
+                    />
+                  </View>
+
+                  <View
+                    style={{
+                      flex: 1,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: "#6B7280",
+                        marginBottom: 4,
+                      }}
+                    >
+                      End page
+                    </Text>
+
+                    <TextInput
+                      keyboardType="number-pad"
+                      value={
+                        excerptEditor.endPage
+                      }
+                      onChangeText={(
+                        value
+                      ) =>
+                        setExcerptEditor(
+                          (previous) =>
+                            previous
+                              ? {
+                                  ...previous,
+                                  endPage:
+                                    value,
+                                }
+                              : null
+                        )
+                      }
+                      placeholder="5"
+                      style={{
+                        borderWidth: 1,
+                        borderColor:
+                          "#D1D5DB",
+                        borderRadius: 8,
+                        paddingHorizontal:
+                          10,
+                        paddingVertical: 9,
+                        backgroundColor:
+                          "white",
+                      }}
+                    />
+                  </View>
                 </View>
 
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent:
+                      "flex-end",
+                    gap: 16,
+                    marginTop: 14,
+                  }}
+                >
+                  <TouchableOpacity
+                    disabled={busy}
+                    onPress={() =>
+                      setExcerptEditor(
+                        null
+                      )
+                    }
+                  >
+                    <Text
+                      style={{
+                        color: "#6B7280",
+                        fontSize: 15,
+                      }}
+                    >
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    disabled={busy}
+                    onPress={() =>
+                      void handleAddExcerpt()
+                    }
+                  >
+                    <Text
+                      style={{
+                        color:
+                          ACCENT_COLOR,
+                        fontWeight: "700",
+                        fontSize: 15,
+                      }}
+                    >
+                      {busy
+                        ? "Adding..."
+                        : "Add"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* New setlist */}
+            {addNewSetlist ? (
+              <View
+                style={{
+                  marginTop: 16,
+                  padding: 12,
+                  borderWidth: 1,
+                  borderColor: "#D1D5DB",
+                  borderRadius: 10,
+                }}
+              >
                 <TextInput
-                    placeholder="Search setlists..."
-                    value={searchText}
-                    onChangeText={setSearchText}
-                    style={{
+                  placeholder="New setlist name..."
+                  value={newSetlistName}
+                  onChangeText={
+                    setNewSetlistName
+                  }
+                  autoFocus
+                  style={{
                     borderWidth: 1,
                     borderColor: "#D1D5DB",
                     borderRadius: 10,
                     paddingHorizontal: 12,
                     paddingVertical: 10,
                     fontSize: 16,
-                    marginBottom: 12,
-                    }}
+                  }}
                 />
-
-                <Text style={{ fontSize: 13, color: "#717376", marginBottom: 8 }}>
-                    Tap a setlist to select it. Press and hold to open it.
-                    You can also create a new setlist below.
-                </Text>
-
-                <FlatList
-                    data={filteredSetlists}
-                    keyExtractor={(item) => item.id.toString()}
-                    style={{ maxHeight: 320 }}
-                    renderItem={({ item }) => {
-                    const selected = selectedIds.includes(item.id);
-
-                    return (
-                        <TouchableOpacity
-                        onPress={() => toggleSetlist(item.id)}
-                        onLongPress={() => navigateToSetlist(item.id)}
-                        style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            paddingVertical: 12,
-                            borderBottomWidth: 1,
-                            borderBottomColor: "#F3F4F6",
-                        }}
-                        >
-                        <Ionicons
-                            name={selected ? "checkbox" : "square-outline"}
-                            size={24}
-                            color="#2563EB"
-                        />
-
-                        <View style={{ marginLeft: 12, flex: 1 }}>
-                            <Text style={{ fontSize: 16, fontWeight: "600", color: "#111827" }}>
-                            {item.name}
-                            </Text>
-
-                            <Text style={{ fontSize: 13, color: "#6B7280", marginTop: 2 }}>
-                            {item.item_count} scores
-                            </Text>
-                        </View>
-
-                        <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-                        </TouchableOpacity>
-                    );
-                    }}
-                />
-
-                {addNewSetlist && (
-                    <View style={{ marginTop: 16, marginBottom: 8, padding: 12, borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 10 }}>
-                    <TextInput
-                        placeholder="New setlist name..."
-                        value={newSetlistName}
-                        onChangeText={setNewSetlistName}
-                        style={{
-                            borderWidth: 1,
-                            borderColor: "#D1D5DB",
-                            borderRadius: 10,
-                            paddingHorizontal: 12,
-                            paddingVertical: 10,
-                            fontSize: 16,
-                            marginTop: 14,
-                        }}
-                    />
-                    <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 16 }} >
-                        <TouchableOpacity
-                        onPress={setAddNewSetlist.bind(null, false)}
-                        style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        marginTop: 14,
-                        paddingVertical: 10,
-                        }}
-                    >
-                        <Text style={{ marginLeft: 8, color: "#6B7280", fontWeight: "700" }}>
-                        Cancel
-                        </Text>
-                    </TouchableOpacity>
-                        <TouchableOpacity
-                        onPress={handleCreateSetlist}
-                        style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        marginTop: 14,
-                        paddingVertical: 10,
-                        }}
-                    >
-                        <Text style={{ marginLeft: 8, color: "#2563EB", fontWeight: "700" }}>
-                        Add Setlist
-                        </Text>
-                    </TouchableOpacity>
-                    </View>
-                    </View>
-                )}
-
-                {!addNewSetlist && (
-                    <TouchableOpacity
-                        onPress={() => setAddNewSetlist(true)}
-                        style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        marginTop: 14,
-                        paddingVertical: 10,
-                        }}
-                    >
-                        <Ionicons name="add" size={22} color="#2563EB" />
-                        <Text style={{ marginLeft: 8, color: "#2563EB", fontWeight: "700" }}>
-                        New Setlist
-                        </Text>
-                    </TouchableOpacity>
-                )}
 
                 <View
-                    style={{
+                  style={{
                     flexDirection: "row",
-                    justifyContent: "flex-end",
+                    justifyContent:
+                      "flex-end",
                     gap: 16,
-                    marginTop: 18,
-                    }}
+                    marginTop: 14,
+                  }}
                 >
-                    <TouchableOpacity onPress={onClose}>
-                    <Text style={{ color: "#6B7280", fontSize: 16 }}>Cancel</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity onPress={handleSave}>
-                    <Text style={{ color: "#2563EB", fontWeight: "700", fontSize: 16 }}>
-                        Save
+                  <TouchableOpacity
+                    disabled={busy}
+                    onPress={() => {
+                      setAddNewSetlist(
+                        false
+                      );
+                      setNewSetlistName(
+                        ""
+                      );
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#6B7280",
+                        fontWeight: "600",
+                      }}
+                    >
+                      Cancel
                     </Text>
-                    </TouchableOpacity>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    disabled={busy}
+                    onPress={() =>
+                      void handleCreateSetlist()
+                    }
+                  >
+                    <Text
+                      style={{
+                        color:
+                          ACCENT_COLOR,
+                        fontWeight: "700",
+                      }}
+                    >
+                      Create
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-                </View>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() =>
+                  setAddNewSetlist(true)
+                }
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginTop: 14,
+                  paddingVertical: 8,
+                }}
+              >
+                <Ionicons
+                  name="add"
+                  size={22}
+                  color={ACCENT_COLOR}
+                />
+
+                <Text
+                  style={{
+                    marginLeft: 6,
+                    color: ACCENT_COLOR,
+                    fontWeight: "700",
+                  }}
+                >
+                  New Setlist
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Footer */}
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent:
+                  "flex-end",
+                marginTop: 18,
+              }}
+            >
+              <TouchableOpacity
+                onPress={onClose}
+                disabled={busy}
+              >
+                <Text
+                  style={{
+                    color:
+                      ACCENT_COLOR,
+                    fontWeight: "700",
+                    fontSize: 16,
+                  }}
+                >
+                  Close
+                </Text>
+              </TouchableOpacity>
             </View>
-            </Modal>
-    )
-}
+          </View>
+        </View>
+      </Modal>
+    );
+  };
 
 export default ManageSetlistsModal;

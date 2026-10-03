@@ -1,17 +1,42 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
-import { Entypo, Ionicons } from '@expo/vector-icons';
-import { Menu, MenuOption, MenuOptions, MenuTrigger } from 'react-native-popup-menu';
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  Alert,
+} from "react-native";
 
-import { MusicItemWithAllData } from '../types'; // Adjust the import path as necessary
-import AriaScorePdfRenderer from '../native/AriaScorePdfRenderer';
+import { Ionicons } from "@expo/vector-icons";
+import {
+  Menu,
+  MenuOption,
+  MenuOptions,
+  MenuTrigger,
+} from "react-native-popup-menu";
+
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+
+import {
+  MusicItemWithAllData,
+  RootStackParamList,
+} from "../types";
+
+import AriaScorePdfRenderer
+  from "../native/AriaScorePdfRenderer";
 
 type Props = {
   item: MusicItemWithAllData;
-  onEditMetadata: (id: number, title: string, uri: string) => void;
-  onDelete: (id: number | undefined) => void;
-  onShare?: (id: number | undefined) => void;
+
+  onDelete:
+    (id: number | undefined) => void;
+
+  onShare?:
+    (id: number | undefined) => void;
+
   onOpen?: () => void;
+
   deleteTitle?: string;
   deleteMessage?: string;
 };
@@ -60,15 +85,22 @@ function MusicMenuItem({
   );
 }
 
+type NavigationProp =
+  NativeStackNavigationProp<
+    RootStackParamList
+  >;
+
 const MusicItemCard: React.FC<Props> = ({
   item,
-  onEditMetadata,
   onDelete,
   onShare,
   onOpen,
   deleteTitle,
   deleteMessage,
 }) => {
+  const navigation =
+    useNavigation<NavigationProp>();
+
   const [thumbnailUri, setThumbnailUri] = useState("");
 
   useEffect(() => {
@@ -238,8 +270,15 @@ const MusicItemCard: React.FC<Props> = ({
             icon="create-outline"
             label="Edit Details"
             onPress={() => {
-              if (!item.id) return;
-              onEditMetadata(item.id, title, item.uri);
+              if (item.id == null || !item.uri) {
+                return;
+              }
+
+              navigation.navigate("Metadata", {
+                mode: "edit",
+                musicId: item.id,
+                pdfUri: item.uri,
+              });
             }}
           />
 

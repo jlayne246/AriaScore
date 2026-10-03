@@ -45,7 +45,6 @@ const ReaderScreen = ({
     const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [music, setMusic] = useState<any>(null);
     const [settings, setSettings] = useState<ReaderSettings>()
-    
 
     const loadSettings = useCallback(async () => {
         if (!musicId) return;
@@ -138,22 +137,28 @@ const ReaderScreen = ({
     }, []);
 
     const openSetlistScore = async (
-        nextIndex: number,
+        nextIndex: number, // target array index of the next score to open
         openAt: "first" | "last" = "first"
     ) => {
-        if (!context?.musicIds?.length) return;
+        if (!context?.entries?.length) return;
+
+        const currentEntry =
+            context?.entries[context.currentIndex];
 
         if (nextIndex < 0) {
             showToast("Start of setlist");
             return;
         }
 
-        if (nextIndex >= context.musicIds.length) {
+        if (nextIndex >= context.entries.length) {
             showToast("End of setlist");
             return;
         }
 
-        const nextMusicId = context.musicIds[nextIndex];
+        const nextEntry =
+            context?.entries[context.currentIndex + 1];
+
+        const nextMusicId = nextEntry?.music_id;
 
         const allMusic = await getMusicWithAllData();
         const fullItem = allMusic.find(item => item.id === nextMusicId);
@@ -221,9 +226,9 @@ const ReaderScreen = ({
                     notes: music?.notes ?? "",
                     labels: music?.labels ?? [],
                 }}
-                onMetadataUpdated={async () => {
-                    await loadMetadata();
-                }}
+                // onMetadataUpdated={async () => {
+                //     await loadMetadata();
+                // }}
                 onPreviousScore={() => {
                     if (!context) return;
                     return openSetlistScore(

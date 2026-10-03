@@ -19,6 +19,7 @@ import {
   MusicMetadata,
   MusicMetadataWithLabels,
   MusicItemWithAllData,
+  SetlistEntry,
 } from "../types";
 
 import { migrateDatabaseIfNeeded, DATABASE_NAME } from "./databaseMigration";
@@ -109,28 +110,46 @@ export const initDB = async (): Promise<void> => {
       console.log("DB init: creating music_setlists table");
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS music_setlists (
-          music_id INTEGER,
-          setlist_id INTEGER,
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          music_id INTEGER NOT NULL,
+          setlist_id INTEGER NOT NULL,
           position INTEGER NOT NULL DEFAULT 0,
+          start_page INTEGER,
+          end_page INTEGER,
           created_at TEXT DEFAULT (datetime('now')),
           updated_at TEXT DEFAULT (datetime('now')),
-          PRIMARY KEY (music_id, setlist_id),
-          FOREIGN KEY (music_id) REFERENCES music (id) ON DELETE CASCADE,
-          FOREIGN KEY (setlist_id) REFERENCES setlists (id) ON DELETE CASCADE
+
+          FOREIGN KEY (music_id)
+            REFERENCES music(id)
+            ON DELETE CASCADE,
+
+          FOREIGN KEY (setlist_id)
+            REFERENCES setlists(id)
+            ON DELETE CASCADE
         );
       `);
+
+      await migrateMusicSetlists(db);
 
       console.log("DB init: creating setlist_progress table");
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS setlist_progress (
           setlist_id INTEGER PRIMARY KEY,
-          music_id INTEGER NOT NULL,
+          setlist_entry_id INTEGER NOT NULL,
           page_number INTEGER DEFAULT 1,
           updated_at TEXT DEFAULT (datetime('now')),
-          FOREIGN KEY (setlist_id) REFERENCES setlists(id) ON DELETE CASCADE,
-          FOREIGN KEY (music_id) REFERENCES music(id) ON DELETE CASCADE
+
+          FOREIGN KEY (setlist_id)
+            REFERENCES setlists(id)
+            ON DELETE CASCADE,
+
+          FOREIGN KEY (setlist_entry_id)
+            REFERENCES music_setlists(id)
+            ON DELETE CASCADE
         );
       `);
+
+      await migrateSetlistProgress(db);
 
       console.log("DB init: creating music_metadata table");
       await db.execAsync(`
@@ -355,6 +374,166 @@ async function ensureColumn(
     await db.execAsync(addColumnSql);
   }
 }
+
+const hasColumn = async (
+  db: SQLite.SQLiteDatabase,
+  tableName: string,
+  columnName: string
+): Promise<boolean> => {
+  const columns = await db.getAllAsync<{
+    name: string;
+  }>(
+    `PRAGMA table_info(${tableName});`
+  );
+
+  return columns.some(
+    (column) => column.name === columnName
+  );
+};
+
+const migrateMusicSetlists = async (
+  db: SQLite.SQLiteDatabase
+): Promise<void> => {
+  const hasId = await hasColumn(
+    db,
+    "music_setlists",
+    "id"
+  );
+
+  // New schema is already installed.
+  if (hasId) {
+    return;
+  }
+
+  console.log(
+    "DB migration: migrating music_setlists to entry-based schema"
+  );
+
+  await db.withTransactionAsync(async () => {
+    await db.execAsync(`
+      CREATE TABLE music_setlists_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        music_id INTEGER NOT NULL,
+        setlist_id INTEGER NOT NULL,
+        position INTEGER NOT NULL DEFAULT 0,
+        start_page INTEGER,
+        end_page INTEGER,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now')),
+
+        FOREIGN KEY (music_id)
+          REFERENCES music(id)
+          ON DELETE CASCADE,
+
+        FOREIGN KEY (setlist_id)
+          REFERENCES setlists(id)
+          ON DELETE CASCADE
+      );
+    `);
+
+    await db.execAsync(`
+      INSERT INTO music_setlists_new (
+        music_id,
+        setlist_id,
+        position,
+        start_page,
+        end_page,
+        created_at,
+        updated_at
+      )
+      SELECT
+        music_id,
+        setlist_id,
+        position,
+        NULL,
+        NULL,
+        created_at,
+        updated_at
+      FROM music_setlists;
+    `);
+
+    await db.execAsync(`
+      DROP TABLE music_setlists;
+    `);
+
+    await db.execAsync(`
+      ALTER TABLE music_setlists_new
+      RENAME TO music_setlists;
+    `);
+  });
+
+  console.log(
+    "DB migration: music_setlists migration complete"
+  );
+};
+
+const migrateSetlistProgress = async (
+  db: SQLite.SQLiteDatabase
+): Promise<void> => {
+  const hasEntryId = await hasColumn(
+    db,
+    "setlist_progress",
+    "setlist_entry_id"
+  );
+
+  if (hasEntryId) {
+    return;
+  }
+
+  console.log(
+    "DB migration: migrating setlist_progress to entry-based schema"
+  );
+
+  await db.withTransactionAsync(async () => {
+    await db.execAsync(`
+      CREATE TABLE setlist_progress_new (
+        setlist_id INTEGER PRIMARY KEY,
+        setlist_entry_id INTEGER NOT NULL,
+        page_number INTEGER DEFAULT 1,
+        updated_at TEXT DEFAULT (datetime('now')),
+
+        FOREIGN KEY (setlist_id)
+          REFERENCES setlists(id)
+          ON DELETE CASCADE,
+
+        FOREIGN KEY (setlist_entry_id)
+          REFERENCES music_setlists(id)
+          ON DELETE CASCADE
+      );
+    `);
+
+    await db.execAsync(`
+      INSERT INTO setlist_progress_new (
+        setlist_id,
+        setlist_entry_id,
+        page_number,
+        updated_at
+      )
+      SELECT
+        sp.setlist_id,
+        ms.id,
+        sp.page_number,
+        sp.updated_at
+      FROM setlist_progress sp
+      INNER JOIN music_setlists ms
+        ON ms.setlist_id = sp.setlist_id
+        AND ms.music_id = sp.music_id;
+    `);
+
+    await db.execAsync(`
+      DROP TABLE setlist_progress;
+    `);
+
+    await db.execAsync(`
+      ALTER TABLE setlist_progress_new
+      RENAME TO setlist_progress;
+    `);
+  });
+
+  console.log(
+    "DB migration: setlist_progress migration complete"
+  );
+};
 
 export const getRecentlyOpenedMusic = async (
   limit: number = 10
@@ -648,7 +827,7 @@ export const getAllMusicWithSetlists = async (): Promise<
             }
 
             const setlists = await db.getAllAsync<{ name: string }>(
-                `SELECT g.name
+                `SELECT DISTINCT g.name
                     FROM setlists g
                     JOIN music_setlists mg ON g.id = mg.setlist_id
                     WHERE mg.music_id = ?`,
@@ -712,31 +891,53 @@ export const deleteMusic = async (id: number) => {
 }
 
 /**
- * Add a music item to a setlist
- * @param musicId - ID of the music item
- * @param setlistName - Name of the setlist
+ * Creates a setlist entry for a music item using the setlist name.
+ *
+ * Creates the setlist if it does not already exist.
+ *
+ * @param musicId - ID of the underlying music item
+ * @param setlistName - Name of the target setlist
+ * @param startPage - Optional first physical page of the excerpt
+ * @param endPage - Optional last physical page of the excerpt
+ * @returns ID of the newly created setlist entry
  */
-export const addMusicToSetlist = async (
+export const addSetlistEntryByName = async (
   musicId: number,
-  setlistName: string
-) => {
+  setlistName: string,
+  startPage: number | null = null,
+  endPage: number | null = null
+): Promise<number> => {
   const db = await openDatabase();
 
   await db.runAsync(
-    "INSERT OR IGNORE INTO setlists (name) VALUES (?)",
+    `
+    INSERT OR IGNORE INTO setlists (name)
+    VALUES (?)
+    `,
     [setlistName]
   );
 
   const setlist = await db.getFirstAsync<Setlist>(
-    "SELECT id FROM setlists WHERE name = ?",
+    `
+    SELECT *
+    FROM setlists
+    WHERE name = ?
+    `,
     [setlistName]
   );
 
   if (!setlist?.id) {
-    throw new Error(`Setlist "${setlistName}" not found`);
+    throw new Error(
+      `Setlist "${setlistName}" not found after insertion`
+    );
   }
 
-  await addMusicToSetlistById(musicId, setlist.id);
+  return addSetlistEntry(
+    musicId,
+    setlist.id,
+    startPage,
+    endPage
+  );
 };
 
 /**
@@ -772,102 +973,141 @@ const getNextSetlistPosition = async (
     return row?.position ?? 1;
 };
 
-export const setMusicSetlists = async (
+// export const setMusicSetlists = async (
+//   musicId: number,
+//   setlistNames: string[]
+// ): Promise<void> => {
+//   const db = await openDatabase();
+
+//   try {
+//     await db.execAsync("BEGIN TRANSACTION");
+
+//     const cleanedSetlistNames = setlistNames
+//       .map((name) => name.trim())
+//       .filter((name) => name !== "");
+
+//     for (const setlistName of cleanedSetlistNames) {
+//       await db.runAsync(
+//         "INSERT OR IGNORE INTO setlists (name) VALUES (?)",
+//         [setlistName]
+//       );
+//     }
+
+//     const selectedSetlists: Array<{ id: number }> = [];
+
+//     for (const setlistName of cleanedSetlistNames) {
+//       const setlist = await db.getFirstAsync<{ id: number }>(
+//         "SELECT id FROM setlists WHERE name = ?",
+//         [setlistName]
+//       );
+
+//       if (!setlist?.id) {
+//         throw new Error(`Setlist "${setlistName}" not found after insertion`);
+//       }
+
+//       selectedSetlists.push(setlist);
+//     }
+
+//     const selectedSetlistIds = selectedSetlists.map((setlist) => setlist.id);
+
+//     const existingRows = await db.getAllAsync<{ setlist_id: number }>(
+//       `
+//       SELECT setlist_id
+//       FROM music_setlists
+//       WHERE music_id = ?
+//       `,
+//       [musicId]
+//     );
+
+//     const existingSetlistIds = new Set(
+//       existingRows.map((row) => row.setlist_id)
+//     );
+
+//     if (selectedSetlistIds.length === 0) {
+//       await db.runAsync(
+//         "DELETE FROM music_setlists WHERE music_id = ?",
+//         [musicId]
+//       );
+//     } else {
+//       const placeholders = selectedSetlistIds.map(() => "?").join(",");
+
+//       await db.runAsync(
+//         `
+//         DELETE FROM music_setlists
+//         WHERE music_id = ?
+//           AND setlist_id NOT IN (${placeholders})
+//         `,
+//         [musicId, ...selectedSetlistIds]
+//       );
+//     }
+
+//     for (const setlistId of selectedSetlistIds) {
+//       if (existingSetlistIds.has(setlistId)) {
+//         continue;
+//       }
+
+//       const position = await getNextSetlistPosition(db, setlistId);
+
+//       await db.runAsync(
+//         `
+//         INSERT INTO music_setlists (
+//           music_id,
+//           setlist_id,
+//           position
+//         )
+//         VALUES (?, ?, ?)
+//         `,
+//         [musicId, setlistId, position]
+//       );
+//     }
+
+//     await db.execAsync("COMMIT");
+//   } catch (error) {
+//     await db.execAsync("ROLLBACK");
+//     console.error("Failed to set music setlists:", error);
+//     throw error;
+//   }
+// };
+
+export const getSetlistEntriesForMusicInSetlist = async (
   musicId: number,
-  setlistNames: string[]
+  setlistId: number
+): Promise<SetlistEntry[]> => {
+  const db = await openDatabase();
+
+  return db.getAllAsync<SetlistEntry>(
+    `
+    SELECT
+      id,
+      music_id,
+      setlist_id,
+      position,
+      start_page,
+      end_page
+    FROM music_setlists
+    WHERE music_id = ?
+      AND setlist_id = ?
+    ORDER BY position ASC
+    `,
+    [musicId, setlistId]
+  );
+};
+  
+export const removeAllMusicEntriesFromSetlist = async (
+  musicId: number,
+  setlistId: number
 ): Promise<void> => {
   const db = await openDatabase();
 
-  try {
-    await db.execAsync("BEGIN TRANSACTION");
-
-    const cleanedSetlistNames = setlistNames
-      .map((name) => name.trim())
-      .filter((name) => name !== "");
-
-    for (const setlistName of cleanedSetlistNames) {
-      await db.runAsync(
-        "INSERT OR IGNORE INTO setlists (name) VALUES (?)",
-        [setlistName]
-      );
-    }
-
-    const selectedSetlists: Array<{ id: number }> = [];
-
-    for (const setlistName of cleanedSetlistNames) {
-      const setlist = await db.getFirstAsync<{ id: number }>(
-        "SELECT id FROM setlists WHERE name = ?",
-        [setlistName]
-      );
-
-      if (!setlist?.id) {
-        throw new Error(`Setlist "${setlistName}" not found after insertion`);
-      }
-
-      selectedSetlists.push(setlist);
-    }
-
-    const selectedSetlistIds = selectedSetlists.map((setlist) => setlist.id);
-
-    const existingRows = await db.getAllAsync<{ setlist_id: number }>(
-      `
-      SELECT setlist_id
-      FROM music_setlists
-      WHERE music_id = ?
-      `,
-      [musicId]
-    );
-
-    const existingSetlistIds = new Set(
-      existingRows.map((row) => row.setlist_id)
-    );
-
-    if (selectedSetlistIds.length === 0) {
-      await db.runAsync(
-        "DELETE FROM music_setlists WHERE music_id = ?",
-        [musicId]
-      );
-    } else {
-      const placeholders = selectedSetlistIds.map(() => "?").join(",");
-
-      await db.runAsync(
-        `
-        DELETE FROM music_setlists
-        WHERE music_id = ?
-          AND setlist_id NOT IN (${placeholders})
-        `,
-        [musicId, ...selectedSetlistIds]
-      );
-    }
-
-    for (const setlistId of selectedSetlistIds) {
-      if (existingSetlistIds.has(setlistId)) {
-        continue;
-      }
-
-      const position = await getNextSetlistPosition(db, setlistId);
-
-      await db.runAsync(
-        `
-        INSERT INTO music_setlists (
-          music_id,
-          setlist_id,
-          position
-        )
-        VALUES (?, ?, ?)
-        `,
-        [musicId, setlistId, position]
-      );
-    }
-
-    await db.execAsync("COMMIT");
-  } catch (error) {
-    await db.execAsync("ROLLBACK");
-    console.error("Failed to set music setlists:", error);
-    throw error;
-  }
+  await db.runAsync(
+    `
+    DELETE FROM music_setlists
+    WHERE music_id = ?
+      AND setlist_id = ?
+    `,
+    [musicId, setlistId]
+  );
 };
-  
 
 /**
  * Drops specified tables from the database
@@ -1171,7 +1411,7 @@ export const getMusicWithAllData = async (): Promise<
 
             // Get setlists
             const setlists = await db.getAllAsync<{ name: string }>(
-            `SELECT g.name
+            `SELECT DISTINCT g.name
                         FROM setlists g
                         JOIN music_setlists mg ON g.id = mg.setlist_id
                         WHERE mg.music_id = ?`,
@@ -1244,7 +1484,7 @@ export const getSetlistNamesForMusic = async (musicId: number): Promise<string[]
         // This assumes you have a junction table like 'music_setlists' or similar
         const setlists = await db.getAllAsync<{ setlist_name: string }>(
         `
-            SELECT g.name as setlist_name
+            SELECT DISTINCT g.name as setlist_name
             FROM setlists g
             INNER JOIN music_setlists mg ON g.id = mg.setlist_id
             WHERE mg.music_id = ?
@@ -1262,21 +1502,46 @@ export const getSetlistNamesForMusic = async (musicId: number): Promise<string[]
     }
 };
 
-export const getSetlistsForMusicByIds = async (
+export const getSetlistEntriesForMusic = async (
   musicId: number
-): Promise<number[]> => {
+): Promise<SetlistEntry[]> => {
   const db = await openDatabase();
 
-  const rows = await db.getAllAsync<{ setlist_id: number }>(
+  return db.getAllAsync<SetlistEntry>(
     `
-    SELECT setlist_id
+    SELECT
+      id,
+      music_id,
+      setlist_id,
+      position,
+      start_page,
+      end_page
     FROM music_setlists
     WHERE music_id = ?
+    ORDER BY setlist_id, position, id
     `,
     [musicId]
   );
+};
 
-  return rows.map(row => row.setlist_id);
+export const isMusicInSetlist = async (
+  musicId: number,
+  setlistId: number
+): Promise<boolean> => {
+  const db = await openDatabase();
+
+  const row = await db.getFirstAsync<{ id: number }>(
+    `
+    SELECT id
+    FROM music_setlists
+    WHERE music_id = ?
+      AND setlist_id = ?
+    LIMIT 1
+    `,
+    [musicId, setlistId]
+  );
+
+  return !!row;
 };
 
 export const setMusicSetlistsByIds = async (
@@ -1348,22 +1613,44 @@ export const setMusicSetlistsByIds = async (
   });
 };
 
-export const getMusicIdsForSetlist = async (
+// export const getMusicIdsForSetlist = async (
+//   setlistId: number
+// ): Promise<number[]> => {
+//   const db = await openDatabase();
+
+//   const rows = await db.getAllAsync<{ music_id: number }>(
+//     `
+//     SELECT music_id
+//     FROM music_setlists
+//     WHERE setlist_id = ?
+//     ORDER BY position ASC, music_id ASC
+//     `,
+//     [setlistId]
+//   );
+
+//   return rows.map(r => r.music_id);
+// };
+
+export const getSetlistEntries = async (
   setlistId: number
-): Promise<number[]> => {
+): Promise<SetlistEntry[]> => {
   const db = await openDatabase();
 
-  const rows = await db.getAllAsync<{ music_id: number }>(
+  return db.getAllAsync<SetlistEntry>(
     `
-    SELECT music_id
+    SELECT
+      id,
+      music_id,
+      setlist_id,
+      position,
+      start_page,
+      end_page
     FROM music_setlists
     WHERE setlist_id = ?
-    ORDER BY position ASC, music_id ASC
+    ORDER BY position ASC, id ASC
     `,
     [setlistId]
   );
-
-  return rows.map(r => r.music_id);
 };
 
 export const createSetlist = async (
@@ -1431,8 +1718,19 @@ export const getSetlistSummaries = async () => {
       s.created_at,
       s.updated_at,
       s.last_opened_at,
-      COUNT(ms.music_id) AS item_count,
-      COALESCE(SUM(COALESCE(mm.page_count, 0)), 0) AS total_pages
+      COUNT(ms.id) AS item_count,
+      COALESCE(
+        SUM(
+          CASE
+            WHEN ms.start_page IS NOT NULL
+            AND ms.end_page IS NOT NULL
+            THEN ms.end_page - ms.start_page + 1
+
+            ELSE COALESCE(mm.page_count, 0)
+          END
+        ),
+        0
+      ) AS total_pages
     FROM setlists s
     LEFT JOIN music_setlists ms
       ON s.id = ms.setlist_id
@@ -1477,46 +1775,102 @@ export const getSetlistById = async (id: number) => {
   return result ?? null;
 };
 
-export const addMusicToSetlistById = async (
+export const addSetlistEntry = async (
   musicId: number,
-  setlistId: number
-) => {
+  setlistId: number,
+  startPage: number | null = null,
+  endPage: number | null = null
+): Promise<number> => {
   const db = await openDatabase();
 
-  const position = await getNextSetlistPosition(db, setlistId);
+  const position =
+    await getNextSetlistPosition(
+      db,
+      setlistId
+    );
+
+  const result = await db.runAsync(
+    `
+    INSERT INTO music_setlists (
+      music_id,
+      setlist_id,
+      position,
+      start_page,
+      end_page
+    )
+    VALUES (?, ?, ?, ?, ?)
+    `,
+    [
+      musicId,
+      setlistId,
+      position,
+      startPage,
+      endPage
+    ]
+  );
+
+  return result.lastInsertRowId;
+};
+
+export const updateSetlistEntry = async (
+  entryId: number,
+  updates: {
+    startPage?: number | null;
+    endPage?: number | null;
+  }
+): Promise<void> => {
+  const db = await openDatabase();
 
   await db.runAsync(
     `
-    INSERT OR IGNORE INTO music_setlists (
-      music_id,
-      setlist_id,
-      position
-    )
-    VALUES (?, ?, ?)
+    UPDATE music_setlists
+    SET
+      start_page = ?,
+      end_page = ?,
+      updated_at = datetime('now')
+    WHERE id = ?
     `,
-    [musicId, setlistId, position]
+    [
+      updates.startPage ?? null,
+      updates.endPage ?? null,
+      entryId,
+    ]
   );
 };
 
-export const removeMusicFromSetlistById = async (
-  musicId: number,
-  setlistId: number
+// export const removeMusicFromSetlistById = async (
+//   musicId: number,
+//   setlistId: number
+// ): Promise<void> => {
+//   const db = await openDatabase();
+
+//   await db.runAsync(
+//     `
+//     DELETE FROM music_setlists
+//     WHERE music_id = ?
+//       AND setlist_id = ?
+//     `,
+//     [musicId, setlistId]
+//   );
+// };
+
+export const removeSetlistEntry = async (
+  entryId: number
 ): Promise<void> => {
   const db = await openDatabase();
 
   await db.runAsync(
     `
     DELETE FROM music_setlists
-    WHERE music_id = ?
-      AND setlist_id = ?
+    WHERE id = ?
     `,
-    [musicId, setlistId]
+    [entryId]
   );
 };
 
 export const saveSetlistProgress = async (
   setlistId: number,
-  musicId: number,
+  entryId: number,
   currentPage: number
 ): Promise<void> => {
   const db = await openDatabase();
@@ -1527,7 +1881,7 @@ export const saveSetlistProgress = async (
     `
     INSERT INTO setlist_progress (
       setlist_id,
-      music_id,
+      setlist_entry_id ,
       page_number,
       updated_at
     )
@@ -1535,11 +1889,11 @@ export const saveSetlistProgress = async (
 
     ON CONFLICT(setlist_id)
     DO UPDATE SET
-      music_id = excluded.music_id,
+      setlist_entry_id = excluded.setlist_entry_id,
       page_number = excluded.page_number,
       updated_at = excluded.updated_at
     `,
-    [setlistId, musicId, safePage, new Date().toISOString()]
+    [setlistId, entryId, safePage, new Date().toISOString()]
   );
 };
 
@@ -1547,7 +1901,7 @@ export const getSetlistProgress = async (
   setlistId: number
 ): Promise<{
   setlist_id: number;
-  music_id: number;
+  setlist_entry_id: number;
   page_number: number;
   updated_at: string;
 } | null> => {
@@ -1555,12 +1909,12 @@ export const getSetlistProgress = async (
 
   const row = await db.getFirstAsync<{
     setlist_id: number;
-    music_id: number;
+    setlist_entry_id: number;
     page_number: number;
     updated_at: string;
   }>(
     `
-    SELECT setlist_id, music_id, page_number, updated_at
+    SELECT setlist_id, setlist_entry_id, page_number, updated_at
     FROM setlist_progress
     WHERE setlist_id = ?
     `,
@@ -1572,19 +1926,26 @@ export const getSetlistProgress = async (
 
 export const updateSetlistOrder = async (
   setlistId: number,
-  musicIds: number[]
+  entryIds: number[]
 ): Promise<void> => {
   const db = await openDatabase();
 
   await db.withTransactionAsync(async () => {
-    for (let i = 0; i < musicIds.length; i++) {
+    for (let i = 0; i < entryIds.length; i++) {
       await db.runAsync(
         `
         UPDATE music_setlists
-        SET position = ?, updated_at = datetime('now')
-        WHERE setlist_id = ? AND music_id = ?
+        SET
+          position = ?,
+          updated_at = datetime('now')
+        WHERE id = ?
+          AND setlist_id = ?
         `,
-        [i + 1, setlistId, musicIds[i]]
+        [
+          i + 1,
+          entryIds[i],
+          setlistId
+        ]
       );
     }
   });

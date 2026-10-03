@@ -4,16 +4,15 @@ import { Menu, MenuOption, MenuOptions, MenuTrigger } from 'react-native-popup-m
 
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, MusicItem, MusicItemWithAllData, MetadataFormData, MusicMetadata, ACCENT_COLOR } from '../types';
+import { RootStackParamList, MusicItemWithAllData, ACCENT_COLOR } from '../types';
 
 import {MaterialIcons, Ionicons} from '@expo/vector-icons';
 import * as SolarIconSet from "solar-icon-set";
 
 import MusicItemCard from '../components/MusicItemCard';
-import MetadataForm from '../components/MetadataForm';
 
 import { UploadLocalPDF } from '../utils/fileUtils';
-import { initDB, insertMusic, getMusicWithAllData, getMusicByMultipleSetlists, deleteMusic, saveCompleteMetadata, metadataExists, musicExistsByUri, getRecentlyOpenedMusic } from "../utils/database";
+import { deleteMusic, getRecentlyOpenedMusic } from "../utils/database";
 
 import * as troubleshooting from "../utils/troubleshooting";
 import DeleteModal from '../components/DeleteModal';
@@ -22,13 +21,6 @@ import { Pressable } from 'react-native-gesture-handler';
 
 const DashboardScreen = ({}) => {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const [selectedMusicId, setSelectedMusicId] = useState<number | undefined>();
-    const [pendingPdfUri, setPendingPdfUri] = useState<string | null>(null);
-    const [pendingOriginalFilename, setPendingOriginalFilename] =
-        useState<string>("Imported PDF.pdf");
-    const [prefilledTitle, setPrefilledTitle] = useState<string | undefined>();
-    const [infoboxMode, setInfoboxMode] = useState<string>("new");
-    const [showMetadataForm, setShowMetadataForm] = useState(false);
     const [showDeleteForm, setShowDeleteForm] = useState(false);
     const [deletedMusicId, setDeletedMusicId] = useState<number>();
     const [menuOpen, setMenuOpen] = useState(false);
@@ -134,19 +126,26 @@ const DashboardScreen = ({}) => {
     );
 
     const handleImport = async () => {
-            const uri = await UploadLocalPDF();
-        
-            if (uri) {
-            const raw_title = uri.originalFilename.split('/').pop() || 'Untitled';
-            const title = raw_title.replace('.pdf', '');
-        
-            setPendingPdfUri(uri.uri);              // store the file path
-            setPendingOriginalFilename(uri.originalFilename);
-            setPrefilledTitle(title);          // prefill title for metadata form
-            setInfoboxMode("new"); 
-            setShowMetadataForm(true);         // show metadata form
-            }
-        };
+        const file = await UploadLocalPDF();
+
+        if (!file) return;
+
+        const rawTitle =
+            file.originalFilename
+            .split("/")
+            .pop() || "Untitled";
+
+        const title =
+            rawTitle.replace(/\.pdf$/i, "");
+
+        navigation.navigate("Metadata", {
+            mode: "add",
+            pdfUri: file.uri,
+            initialTitle: title,
+            originalFilename:
+            file.originalFilename,
+        });
+    };
 
     const handleDelete = async (id: number) => {
         console.log("Handling Delete")
@@ -156,128 +155,28 @@ const DashboardScreen = ({}) => {
 
     const [openingId, setOpeningId] = useState<number | null>(null);
 
-    const openPDF = (item: MusicItemWithAllData) => {
-        if (!item.uri || openingId === item.id) return;
+    const openPDF = (
+        item: MusicItemWithAllData
+    ) => {
+        if (
+            !item.uri ||
+            openingId === item.id
+        ) {
+            return;
+        }
 
         setOpeningId(item.id ?? null);
 
         navigation.navigate("Reader", {
             uri: item.uri,
             musicId: item.id!,
+            origin: "library",
         });
 
-        setTimeout(() => setOpeningId(null), 1000);
-    };
-
-    const handleMetadataSave = async (formData?: MetadataFormData) => {
-        setShowMetadataForm(false);
-
-        // EDIT MODE: MetadataForm already saved to SQLite.
-        if (infoboxMode === "edit" && selectedMusicId) {
-            setSelectedMusicId(undefined);
-            setPrefilledTitle(undefined);
-            setPendingPdfUri(null);
-            await loadRecentItems();
-            return;
-        }
-
-        // ADD MODE
-        if (formData && pendingPdfUri) {
-            try {
-            const now = new Date().toISOString();
-
-            const duplicate = await metadataExists(
-                formData.title,
-                formData.composer || ""
-            );
-
-            if (duplicate) {
-                Alert.alert(
-                "Duplicate music",
-                "A piece with this title and composer already exists."
-                );
-                setPendingPdfUri(null);
-                return;
-            }
-
-            const duplicateUri = await musicExistsByUri(pendingPdfUri);
-
-            if (duplicateUri) {
-                Alert.alert(
-                "Duplicate PDF",
-                "This PDF has already been imported into your library."
-                );
-                setPendingPdfUri(null);
-                return;
-            }
-
-            const cleanSetlists = (formData.setlists ?? []).filter(
-                g => g !== "Ungrouped"
-            );
-
-            const insertedId = await insertMusic(
-                formData.title,
-                pendingPdfUri,
-                pendingOriginalFilename,
-                cleanSetlists,
-                now
-            );
-
-            const pageCount = await AriaScorePdfRenderer.getPageCount(pendingPdfUri);
-
-            console.log("Page Count Dash: ", pageCount)
-
-            const metadataToSave = {
-                title: formData.title,
-                document_type: formData.document_type,
-                composer: formData.composer || "",
-                arranger: formData.arranger || "",
-                editor: formData.editor || "",
-                publisher: formData.publisher || "",
-                genre: formData.genre || "",
-                key_signature: formData.key_signature || "",
-                time_signature: formData.time_signature || "",
-                page_count: formData.page_count || 0,
-                created_at: now,
-                updated_at: now,
-            };
-
-            await saveCompleteMetadata(
-                insertedId,
-                metadataToSave,
-                formData.labels || []
-            );
-
-            navigation.navigate("Reader", {
-                uri: pendingPdfUri,
-                musicId: insertedId,
-            } as any);
-            } catch (err) {
-            console.error("Error saving music and metadata:", err);
-            }
-        }
-
-        setSelectedMusicId(undefined);
-        setPrefilledTitle(undefined);
-        setPendingPdfUri(null);
-        };
-
-    // Handle opening metadata form
-    const handleEditMetadata = (musicId: number, musicTitle: string, musicUri: string) => {
-        setSelectedMusicId(musicId);
-        setPendingPdfUri(musicUri);
-        setInfoboxMode("edit");
-        setPrefilledTitle(undefined); // Clear prefilled title for existing items
-        setShowMetadataForm(true);
-    };
-          
-    
-    // Handle metadata form cancel
-    const handleMetadataCancel = () => {
-        setShowMetadataForm(false);
-        setSelectedMusicId(undefined);
-        setPrefilledTitle(undefined); // Clear prefilled title
-        setPendingPdfUri(null); // Clear pending PDF URI
+        setTimeout(
+            () => setOpeningId(null),
+            1000
+        );
     };
 
     type MenuRoute = "Settings" | "Backups" | "About";
@@ -378,11 +277,12 @@ const DashboardScreen = ({}) => {
                                 <MusicItemCard
                                     item={item}
                                     onOpen={() => openPDF(item)}
-                                    onEditMetadata={() =>
-                                        handleEditMetadata(item?.id!, item?.title, item?.uri)
+                                    onDelete={() =>
+                                        handleDelete(item.id!)
                                     }
-                                    onDelete={() => handleDelete(item?.id!)}
-                                    onShare={() => console.log(`Share ${item?.id}`)}
+                                    onShare={() =>
+                                        console.log(`Share ${item.id}`)
+                                    }
                                 />
                             // </TouchableOpacity>
                     )}
@@ -400,17 +300,6 @@ const DashboardScreen = ({}) => {
                     </View>
                 )}
             </View>
-
-            {/* Placeholder for future content */}
-            <MetadataForm
-                visible={showMetadataForm}
-                musicId={selectedMusicId}
-                pdfUri={pendingPdfUri || undefined} // Pass the pending PDF URI to the form
-                initialTitle={prefilledTitle} // New prop
-                onSave={handleMetadataSave}
-                onCancel={handleMetadataCancel}
-                mode={infoboxMode}
-            />
 
             {/* Delete Modal */}
             {showDeleteForm && (
