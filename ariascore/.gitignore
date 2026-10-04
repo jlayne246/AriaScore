@@ -17,6 +17,7 @@ android/.cxx
 android/build
 android/app/build
 android/app/.cxx
+android/local.properties
 
 ios/build
 ios/Pods
