@@ -22,8 +22,8 @@
       "env": {
         "APP_VARIANT": "preview",
         "EXPO_PUBLIC_BUILD_MODE": "preview",
-        "APP_VERSION_NAME": "1.1.0",
-        "APP_VERSION_CODE": "11004",
+        "APP_VERSION_NAME": "1.1.1",
+        "APP_VERSION_CODE": "11005",
         "USE_DEV_CLIENT": "false",
         "PREVIEW_BUILD_NUMBER": "4"
       },

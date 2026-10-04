@@ -1,41 +1,36 @@
 # Dependencies
-node_modules/
+/ariascore/node_modules
 
 # Android build outputs
-android/.gradle/
-android/.cxx/
-android/build/
-android/app/build/
-android/app/.cxx/
-
-# Native module build outputs inside dependencies
-node_modules/**/android/build/
-node_modules/**/android/.cxx/
-node_modules/**/android/.gradle/
+/ariascore/android/.gradle
+/ariascore/android/.cxx
+/ariascore/android/build
+/ariascore/android/app/build
+/ariascore/android/app/.cxx
 
 # iOS generated output
-ios/build/
-ios/Pods/
-ios/DerivedData/
+/ariascore/ios/build
+/ariascore/ios/Pods
+/ariascore/ios/DerivedData
 
 # Expo and Metro
-.expo/
-.expo-shared/
-.metro-health-check*
+/ariascore/.expo
+/ariascore/.expo-shared
 
 # General build output
-dist/
-build/
-coverage/
+/ariascore/dist
+/ariascore/build
+/ariascore/coverage
+
 *.apk
 *.aab
 *.apks
 
-# Local backup/export artifacts
+# Local artifacts
 *.ariascore
 *.zip
-backups/
-exports/
+/ariascore/backups
+/ariascore/exports
 
 # Logs
 *.log
@@ -49,10 +44,11 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Local environment files
-.env
-.env.local
-.env.*.local
+# Environment
+/ariascore/.env
+/ariascore/.env.local
+/ariascore/.env.*.local
 
-# EAS inspection output — critical
-/ariascore/.eas-build-inspect/
+# EAS inspection output
+/ariascore/eas-archive
+/ariascore/.eas-build-inspect

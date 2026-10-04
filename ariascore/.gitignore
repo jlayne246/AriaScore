@@ -5,18 +5,33 @@ node_modules/
 
 # Expo
 .expo/
+.expo-shared/
 dist/
 web-build/
 expo-env.d.ts
 
 # Native
 .kotlin/
+android/.gradle
+android/.cxx
+android/build
+android/app/build
+android/app/.cxx
+
+ios/build
+ios/Pods
+ios/DerivedData
+
 *.orig.*
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
+
+# EAS local inspection output
+eas-archive
+.eas-build-inspect
 
 # Metro
 .metro-health-check*
@@ -25,13 +40,26 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
 
-# macOS
+# macOS / Windows
 .DS_Store
+Thumbs.db
 *.pem
 
 # local env files
-.env*.local
+.env
+.env.local
+.env.*.local
 
 # typescript
 *.tsbuildinfo
+
+# Local generated/export artifacts
+*.apk
+*.aab
+*.apks
+*.ariascore
+backups/
+exports/
+coverage/
