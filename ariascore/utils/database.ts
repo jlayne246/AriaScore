@@ -114,6 +114,7 @@ export const initDB = async (): Promise<void> => {
           music_id INTEGER NOT NULL,
           setlist_id INTEGER NOT NULL,
           position INTEGER NOT NULL DEFAULT 0,
+          entry_title TEXT,
           start_page INTEGER,
           end_page INTEGER,
           created_at TEXT DEFAULT (datetime('now')),
@@ -130,6 +131,16 @@ export const initDB = async (): Promise<void> => {
       `);
 
       await migrateMusicSetlists(db);
+
+      await ensureColumn(
+        db,
+        "music_setlists",
+        "entry_title",
+        `
+          ALTER TABLE music_setlists
+          ADD COLUMN entry_title TEXT;
+        `
+      );
 
       console.log("DB init: creating setlist_progress table");
       await db.execAsync(`
@@ -416,6 +427,7 @@ const migrateMusicSetlists = async (
         music_id INTEGER NOT NULL,
         setlist_id INTEGER NOT NULL,
         position INTEGER NOT NULL DEFAULT 0,
+        entry_title TEXT,
         start_page INTEGER,
         end_page INTEGER,
         created_at TEXT DEFAULT (datetime('now')),
@@ -436,6 +448,7 @@ const migrateMusicSetlists = async (
         music_id,
         setlist_id,
         position,
+        entry_title,
         start_page,
         end_page,
         created_at,
@@ -445,6 +458,7 @@ const migrateMusicSetlists = async (
         music_id,
         setlist_id,
         position,
+        NULL,
         NULL,
         NULL,
         created_at,
@@ -904,6 +918,7 @@ export const deleteMusic = async (id: number) => {
 export const addSetlistEntryByName = async (
   musicId: number,
   setlistName: string,
+  entryTitle: string | null = null,
   startPage: number | null = null,
   endPage: number | null = null
 ): Promise<number> => {
@@ -935,6 +950,7 @@ export const addSetlistEntryByName = async (
   return addSetlistEntry(
     musicId,
     setlist.id,
+    entryTitle,
     startPage,
     endPage
   );
@@ -1082,6 +1098,7 @@ export const getSetlistEntriesForMusicInSetlist = async (
       music_id,
       setlist_id,
       position,
+      entry_title,
       start_page,
       end_page
     FROM music_setlists
@@ -1514,6 +1531,7 @@ export const getSetlistEntriesForMusic = async (
       music_id,
       setlist_id,
       position,
+      entry_title,
       start_page,
       end_page
     FROM music_setlists
@@ -1643,6 +1661,7 @@ export const getSetlistEntries = async (
       music_id,
       setlist_id,
       position,
+      entry_title,
       start_page,
       end_page
     FROM music_setlists
@@ -1778,6 +1797,7 @@ export const getSetlistById = async (id: number) => {
 export const addSetlistEntry = async (
   musicId: number,
   setlistId: number,
+  entryTitle: string | null = null,
   startPage: number | null = null,
   endPage: number | null = null
 ): Promise<number> => {
@@ -1795,15 +1815,17 @@ export const addSetlistEntry = async (
       music_id,
       setlist_id,
       position,
+      entry_title,
       start_page,
       end_page
     )
-    VALUES (?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?)
     `,
     [
       musicId,
       setlistId,
       position,
+      entryTitle?.trim() || null,
       startPage,
       endPage
     ]
@@ -1815,8 +1837,9 @@ export const addSetlistEntry = async (
 export const updateSetlistEntry = async (
   entryId: number,
   updates: {
-    startPage?: number | null;
-    endPage?: number | null;
+    entryTitle: string | null;
+    startPage: number | null;
+    endPage: number | null;
   }
 ): Promise<void> => {
   const db = await openDatabase();
@@ -1825,14 +1848,16 @@ export const updateSetlistEntry = async (
     `
     UPDATE music_setlists
     SET
+      entry_title = ?,
       start_page = ?,
       end_page = ?,
       updated_at = datetime('now')
     WHERE id = ?
     `,
     [
-      updates.startPage ?? null,
-      updates.endPage ?? null,
+      updates.entryTitle?.trim() || null,
+      updates.startPage,
+      updates.endPage,
       entryId,
     ]
   );

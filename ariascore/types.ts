@@ -205,6 +205,9 @@ export type SetlistEntry = {
   setlist_id: number;
   music_id: number;
   position: number;
+
+  entry_title: string | null;
+
   start_page: number | null;
   end_page: number | null;
 };
