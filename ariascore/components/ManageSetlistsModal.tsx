@@ -37,6 +37,7 @@ import {
   getSetlistEntriesForMusicInSetlist,
   getSetlistSummaries,
   removeSetlistEntry,
+  updateSetlistEntry,
 } from "../utils/database";
 
 interface ManageSetlistsModalProps {
@@ -56,6 +57,8 @@ type EntriesBySetlist =
 
 type ExcerptDraft = {
   setlistId: number;
+  entryId: number | null;
+  entryTitle: string;
   startPage: string;
   endPage: string;
 };
@@ -311,75 +314,83 @@ const ManageSetlistsModal:
         }
       };
 
-    const handleAddExcerpt =
-      async () => {
-        if (
-          !excerptEditor ||
-          busy
-        ) {
-          return;
-        }
+    const handleSaveExcerpt = async () => {
+      if (!excerptEditor || busy) {
+        return;
+      }
 
-        const startPage = Number(
-          excerptEditor.startPage
+      const startPage = Number(
+        excerptEditor.startPage
+      );
+
+      const endPage = Number(
+        excerptEditor.endPage
+      );
+
+      if (
+        !Number.isInteger(startPage) ||
+        !Number.isInteger(endPage) ||
+        startPage < 1 ||
+        endPage < 1
+      ) {
+        Alert.alert(
+          "Invalid pages",
+          "Start and end pages must be positive whole numbers."
         );
+        return;
+      }
 
-        const endPage = Number(
-          excerptEditor.endPage
+      if (endPage < startPage) {
+        Alert.alert(
+          "Invalid page range",
+          "The end page cannot be before the start page."
         );
+        return;
+      }
 
-        if (
-          !Number.isInteger(startPage) ||
-          !Number.isInteger(endPage) ||
-          startPage < 1 ||
-          endPage < 1
-        ) {
-          Alert.alert(
-            "Invalid pages",
-            "Start and end pages must be positive whole numbers."
-          );
+      setBusy(true);
 
-          return;
-        }
+      try {
+        const entryTitle =
+          excerptEditor.entryTitle.trim() || null;
 
-        if (endPage < startPage) {
-          Alert.alert(
-            "Invalid page range",
-            "The end page cannot be before the start page."
-          );
-
-          return;
-        }
-
-        setBusy(true);
-
-        try {
+        if (excerptEditor.entryId == null) {
           await addSetlistEntry(
             musicId,
             excerptEditor.setlistId,
             startPage,
-            endPage
+            endPage,
+            entryTitle
           );
-
-          setExcerptEditor(null);
-
-          await loadData();
-
-          notifyChanged();
-        } catch (error) {
-          console.error(
-            "Failed to add excerpt:",
-            error
+        } else {
+          await updateSetlistEntry(
+            excerptEditor.entryId,
+            {
+              entryTitle,
+              startPage,
+              endPage,
+            }
           );
-
-          Alert.alert(
-            "Error",
-            "Failed to add excerpt."
-          );
-        } finally {
-          setBusy(false);
         }
-      };
+
+        setExcerptEditor(null);
+
+        await loadData();
+        notifyChanged();
+      } catch (error) {
+        console.error(
+          "Failed to save excerpt:",
+          error
+        );
+
+        Alert.alert(
+          "Error",
+          "Failed to save excerpt."
+        );
+      } finally {
+        setBusy(false);
+      }
+    };
 
     const handleRemoveEntry = (
       entry: SetlistEntry
@@ -435,12 +446,15 @@ const ManageSetlistsModal:
     const handleEditEntry = (
       entry: SetlistEntry
     ) => {
-      Alert.alert(
-        "Edit occurrence",
-        `${
-          getEntryLabel(entry)
-        }\n\nEditing an existing page range will be wired once the entry-update operation is added.`
-      );
+      setExcerptEditor({
+        setlistId: entry.setlist_id,
+        entryId: entry.id,
+        entryTitle: entry.entry_title ?? "",
+        startPage:
+          entry.start_page?.toString() ?? "",
+        endPage:
+          entry.end_page?.toString() ?? "",
+      });
     };
 
     const renderEntry = (
@@ -487,7 +501,8 @@ const ManageSetlistsModal:
                 color: "#111827",
               }}
             >
-              {getEntryLabel(entry)}
+              {entry.entry_title?.trim() ||
+                getEntryLabel(entry)}
             </Text>
 
             <Text
@@ -497,27 +512,29 @@ const ManageSetlistsModal:
                 marginTop: 2,
               }}
             >
-              {isExcerpt
-                ? "Excerpt"
-                : "Complete document"}
+              {entry.entry_title?.trim()
+                ? getEntryLabel(entry)
+                : isExcerpt
+                  ? "Excerpt"
+                  : "Complete document"}
             </Text>
           </View>
 
-          <TouchableOpacity
-            onPress={() =>
-              handleEditEntry(entry)
-            }
-            disabled={busy}
-            style={{
-              padding: 6,
-            }}
-          >
-            <Ionicons
-              name="create-outline"
-              size={19}
-              color="#6B7280"
-            />
-          </TouchableOpacity>
+          {isExcerpt && (
+            <TouchableOpacity
+              onPress={() =>
+                handleEditEntry(entry)
+              }
+              disabled={busy}
+              style={{ padding: 6 }}
+            >
+              <Ionicons
+                name="create-outline"
+                size={19}
+                color="#6B7280"
+              />
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             onPress={() =>
@@ -796,15 +813,13 @@ const ManageSetlistsModal:
                         <TouchableOpacity
                           disabled={busy}
                           onPress={() =>
-                            setExcerptEditor(
-                              {
-                                setlistId:
-                                  item.id,
-                                startPage:
-                                  "",
-                                endPage: "",
-                              }
-                            )
+                            setExcerptEditor({
+                              setlistId: item.id,
+                              entryId: null,
+                              entryTitle: "",
+                              startPage: "",
+                              endPage: "",
+                            });
                           }
                           style={{
                             flexDirection:
@@ -849,8 +864,7 @@ const ManageSetlistsModal:
                   borderWidth: 1,
                   borderColor: "#D1D5DB",
                   borderRadius: 12,
-                  backgroundColor:
-                    "#F9FAFB",
+                  backgroundColor: "#F9FAFB",
                 }}
               >
                 <Text
@@ -861,7 +875,9 @@ const ManageSetlistsModal:
                     marginBottom: 4,
                   }}
                 >
-                  Add Excerpt
+                  {excerptEditor.entryId == null
+                    ? "Add Excerpt"
+                    : "Edit Excerpt"}
                 </Text>
 
                 <Text
@@ -871,11 +887,52 @@ const ManageSetlistsModal:
                     marginBottom: 12,
                   }}
                 >
-                  Enter the physical PDF
-                  page range to use for this
-                  occurrence.
+                  Give this occurrence an optional name and
+                  choose the physical PDF page range.
                 </Text>
 
+                {/* Excerpt name */}
+                <View
+                  style={{
+                    marginBottom: 12,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      color: "#6B7280",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Name
+                  </Text>
+
+                  <TextInput
+                    value={excerptEditor.entryTitle}
+                    onChangeText={(value) =>
+                      setExcerptEditor((previous) =>
+                        previous
+                          ? {
+                              ...previous,
+                              entryTitle: value,
+                            }
+                          : null
+                      )
+                    }
+                    placeholder="e.g. Kyrie"
+                    style={{
+                      borderWidth: 1,
+                      borderColor: "#D1D5DB",
+                      borderRadius: 8,
+                      paddingHorizontal: 10,
+                      paddingVertical: 9,
+                      backgroundColor: "white",
+                      fontSize: 15,
+                    }}
+                  />
+                </View>
+
+                {/* Page range */}
                 <View
                   style={{
                     flexDirection: "row",
@@ -899,34 +956,25 @@ const ManageSetlistsModal:
 
                     <TextInput
                       keyboardType="number-pad"
-                      value={
-                        excerptEditor.startPage
-                      }
-                      onChangeText={(
-                        value
-                      ) =>
-                        setExcerptEditor(
-                          (previous) =>
-                            previous
-                              ? {
-                                  ...previous,
-                                  startPage:
-                                    value,
-                                }
-                              : null
+                      value={excerptEditor.startPage}
+                      onChangeText={(value) =>
+                        setExcerptEditor((previous) =>
+                          previous
+                            ? {
+                                ...previous,
+                                startPage: value,
+                              }
+                            : null
                         )
                       }
                       placeholder="1"
                       style={{
                         borderWidth: 1,
-                        borderColor:
-                          "#D1D5DB",
+                        borderColor: "#D1D5DB",
                         borderRadius: 8,
-                        paddingHorizontal:
-                          10,
+                        paddingHorizontal: 10,
                         paddingVertical: 9,
-                        backgroundColor:
-                          "white",
+                        backgroundColor: "white",
                       }}
                     />
                   </View>
@@ -948,44 +996,35 @@ const ManageSetlistsModal:
 
                     <TextInput
                       keyboardType="number-pad"
-                      value={
-                        excerptEditor.endPage
-                      }
-                      onChangeText={(
-                        value
-                      ) =>
-                        setExcerptEditor(
-                          (previous) =>
-                            previous
-                              ? {
-                                  ...previous,
-                                  endPage:
-                                    value,
-                                }
-                              : null
+                      value={excerptEditor.endPage}
+                      onChangeText={(value) =>
+                        setExcerptEditor((previous) =>
+                          previous
+                            ? {
+                                ...previous,
+                                endPage: value,
+                              }
+                            : null
                         )
                       }
                       placeholder="5"
                       style={{
                         borderWidth: 1,
-                        borderColor:
-                          "#D1D5DB",
+                        borderColor: "#D1D5DB",
                         borderRadius: 8,
-                        paddingHorizontal:
-                          10,
+                        paddingHorizontal: 10,
                         paddingVertical: 9,
-                        backgroundColor:
-                          "white",
+                        backgroundColor: "white",
                       }}
                     />
                   </View>
                 </View>
 
+                {/* Actions */}
                 <View
                   style={{
                     flexDirection: "row",
-                    justifyContent:
-                      "flex-end",
+                    justifyContent: "flex-end",
                     gap: 16,
                     marginTop: 14,
                   }}
@@ -993,9 +1032,7 @@ const ManageSetlistsModal:
                   <TouchableOpacity
                     disabled={busy}
                     onPress={() =>
-                      setExcerptEditor(
-                        null
-                      )
+                      setExcerptEditor(null)
                     }
                   >
                     <Text
@@ -1011,20 +1048,22 @@ const ManageSetlistsModal:
                   <TouchableOpacity
                     disabled={busy}
                     onPress={() =>
-                      void handleAddExcerpt()
+                      void handleSaveExcerpt()
                     }
                   >
                     <Text
                       style={{
-                        color:
-                          ACCENT_COLOR,
+                        color: ACCENT_COLOR,
                         fontWeight: "700",
                         fontSize: 15,
+                        opacity: busy ? 0.6 : 1,
                       }}
                     >
                       {busy
-                        ? "Adding..."
-                        : "Add"}
+                        ? "Saving..."
+                        : excerptEditor.entryId == null
+                          ? "Add"
+                          : "Save"}
                     </Text>
                   </TouchableOpacity>
                 </View>
