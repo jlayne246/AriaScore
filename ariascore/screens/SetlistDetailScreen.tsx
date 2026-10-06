@@ -137,10 +137,29 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
       item.title?.trim() ||
       "Untitled Score";
 
+    const getEntryPageLabel = (
+      entry: SetlistEntry
+    ) => {
+      if (
+        entry.start_page != null &&
+        entry.end_page != null
+      ) {
+        return `Pages ${entry.start_page}–${entry.end_page}`;
+      }
+
+      return "Full score";
+    };
+
+    const getEntryDisplayTitle = (
+      entry: SetlistEntryWithMusic
+    ) =>
+      entry.entry_title?.trim() ||
+      getScoreTitle(entry.music);
+
     const confirmDeleteSetlistItem = (
       entry: SetlistEntryWithMusic
     ) => {
-      const title = getScoreTitle(entry.music);
+      const title = getEntryDisplayTitle(entry);
 
       Alert.alert(
         `Remove "${title}"?`,
@@ -325,10 +344,6 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
         setlist
     ]);
 
-  const musicIds = entries
-    .map(entry => entry.music?.id)
-    .filter((id): id is number => typeof id === 'number');
-
   const existingMusicIds = entries.map(
     entry => entry.music_id
   );
@@ -487,6 +502,22 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
             const music = entry.music;
             const index = entries.findIndex(score => score.id === entry.id);
 
+            const sourceTitle =
+              getScoreTitle(music);
+
+            const occurrenceTitle =
+              getEntryDisplayTitle(entry);
+
+            const pageLabel =
+              getEntryPageLabel(entry);
+
+            const isExcerpt =
+              entry.start_page != null ||
+              entry.end_page != null;
+
+            const hasCustomTitle =
+              !!entry.entry_title?.trim();
+
             return (
                 <View
                     style={{
@@ -515,6 +546,38 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                     </TouchableOpacity>
 
                     <View style={{ flex: 1 }}>
+
+                    {(isExcerpt || hasCustomTitle) && (
+                      <View
+                        style={{
+                          marginBottom: 6,
+                          paddingHorizontal: 4,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 16,
+                            fontWeight: "700",
+                            color: "#111827",
+                          }}
+                        >
+                          {occurrenceTitle}
+                        </Text>
+
+                        <Text
+                          style={{
+                            marginTop: 2,
+                            fontSize: 13,
+                            color: "#6B7280",
+                          }}
+                        >
+                          {hasCustomTitle
+                            ? `${sourceTitle} · ${pageLabel}`
+                            : pageLabel}
+                        </Text>
+                      </View>
+                    )}
+
                     <MusicItemCard
                         item={music}
                         onOpen={() => {
@@ -527,10 +590,6 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                                   currentEntry.id === entry.id
                               ) + 1;
 
-                            const currentMusicIds = currentEntries
-                                .map(entry => entry.id)
-                                .filter((id): id is number => typeof id === "number");
-
                             // const currentIndex = currentMusicIds.indexOf(music.id!) + 1;
 
                             navigation.navigate("Reader", {
@@ -538,6 +597,7 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                                 musicId: music.id!,
                                 startPage:
                                   entry.start_page ?? 1,
+                                origin: "setlist",
                                 context: {
                                   setlistId,
                                   setlistName: setlist?.name ?? "",
@@ -558,7 +618,9 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                             });
                         }}
                         onDelete={() => confirmDeleteSetlistItem(entry)}
-                        deleteTitle={`Remove "${music?.title}"?`}
+                        deleteTitle={
+                          `Remove "${getEntryDisplayTitle(entry)}"?`
+                        }
                         deleteMessage="This removes the score from this setlist only. The score remains in your library."
                         onShare={() => {}}
                     />
