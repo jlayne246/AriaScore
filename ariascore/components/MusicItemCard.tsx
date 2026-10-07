@@ -21,6 +21,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   MusicItemWithAllData,
   RootStackParamList,
+  SetlistEntry,
 } from "../types";
 
 import AriaScorePdfRenderer

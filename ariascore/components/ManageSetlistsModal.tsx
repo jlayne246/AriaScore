@@ -79,6 +79,13 @@ const getEntryLabel = (
     entry.start_page != null &&
     entry.end_page != null
   ) {
+    if (
+      entry.start_page ===
+      entry.end_page
+    ) {
+      return `Page ${entry.start_page}`;
+    }
+
     return `Pages ${entry.start_page}–${entry.end_page}`;
   }
 
@@ -314,83 +321,114 @@ const ManageSetlistsModal:
         }
       };
 
-    const handleSaveExcerpt = async () => {
-      if (!excerptEditor || busy) {
-        return;
-      }
-
-      const startPage = Number(
-        excerptEditor.startPage
-      );
-
-      const endPage = Number(
-        excerptEditor.endPage
-      );
-
-      if (
-        !Number.isInteger(startPage) ||
-        !Number.isInteger(endPage) ||
-        startPage < 1 ||
-        endPage < 1
-      ) {
-        Alert.alert(
-          "Invalid pages",
-          "Start and end pages must be positive whole numbers."
-        );
-        return;
-      }
-
-      if (endPage < startPage) {
-        Alert.alert(
-          "Invalid page range",
-          "The end page cannot be before the start page."
-        );
-        return;
-      }
-
-      setBusy(true);
-
-      try {
-        const entryTitle =
-          excerptEditor.entryTitle.trim() || null;
-
-        if (excerptEditor.entryId == null) {
-          await addSetlistEntry(
-            musicId,
-            excerptEditor.setlistId,
-            entryTitle,
-            startPage,
-            endPage
-          );
-        } else {
-          await updateSetlistEntry(
-            excerptEditor.entryId,
-            {
-              entryTitle,
-              startPage,
-              endPage,
-            }
-          );
+    const handleSaveExcerpt =
+      async () => {
+        if (!excerptEditor || busy) {
+          return;
         }
 
-        setExcerptEditor(null);
+        const startPageText =
+          excerptEditor.startPage.trim();
 
-        await loadData();
-        notifyChanged();
-      } catch (error) {
-        console.error(
-          "Failed to save excerpt:",
-          error
-        );
+        const endPageText =
+          excerptEditor.endPage.trim();
 
-        Alert.alert(
-          "Error",
-          "Failed to save excerpt."
-        );
-      } finally {
-        setBusy(false);
-      }
-    };
+        const startPage =
+          Number(startPageText);
+
+        if (
+          startPageText === "" ||
+          !Number.isInteger(startPage) ||
+          startPage < 1
+        ) {
+          Alert.alert(
+            "Invalid start page",
+            "Start page must be a positive whole number."
+          );
+
+          return;
+        }
+
+        // Blank end page means a single-page
+        // excerpt.
+        let endPage = startPage;
+
+        if (endPageText !== "") {
+          const parsedEndPage =
+            Number(endPageText);
+
+          if (
+            !Number.isInteger(
+              parsedEndPage
+            ) ||
+            parsedEndPage < 1
+          ) {
+            Alert.alert(
+              "Invalid end page",
+              "End page must be a positive whole number."
+            );
+
+            return;
+          }
+
+          endPage = parsedEndPage;
+        }
+
+        if (endPage < startPage) {
+          Alert.alert(
+            "Invalid page range",
+            "The end page cannot be before the start page."
+          );
+
+          return;
+        }
+
+        setBusy(true);
+
+        try {
+          const entryTitle =
+            excerptEditor.entryTitle.trim() ||
+            null;
+
+          if (
+            excerptEditor.entryId == null
+          ) {
+            await addSetlistEntry(
+              musicId,
+              excerptEditor.setlistId,
+              entryTitle,
+              startPage,
+              endPage
+            );
+          } else {
+            await updateSetlistEntry(
+              excerptEditor.entryId,
+              {
+                entryTitle,
+                startPage,
+                endPage,
+              }
+            );
+          }
+
+          setExcerptEditor(null);
+
+          await loadData();
+          notifyChanged();
+        } catch (error) {
+          console.error(
+            "Failed to save excerpt:",
+            error
+          );
+
+          Alert.alert(
+            "Error",
+            "Failed to save excerpt."
+          );
+        } finally {
+          setBusy(false);
+        }
+      };
 
     const handleRemoveEntry = (
       entry: SetlistEntry
@@ -446,14 +484,31 @@ const ManageSetlistsModal:
     const handleEditEntry = (
       entry: SetlistEntry
     ) => {
+      const isSinglePage =
+        entry.start_page != null &&
+        entry.end_page != null &&
+        entry.start_page ===
+          entry.end_page;
+
       setExcerptEditor({
-        setlistId: entry.setlist_id,
-        entryId: entry.id,
-        entryTitle: entry.entry_title ?? "",
+        setlistId:
+          entry.setlist_id,
+
+        entryId:
+          entry.id,
+
+        entryTitle:
+          entry.entry_title ?? "",
+
         startPage:
-          entry.start_page?.toString() ?? "",
+          entry.start_page?.toString() ??
+          "",
+
         endPage:
-          entry.end_page?.toString() ?? "",
+          isSinglePage
+            ? ""
+            : entry.end_page?.toString() ??
+              "",
       });
     };
 
@@ -991,23 +1046,27 @@ const ManageSetlistsModal:
                         marginBottom: 4,
                       }}
                     >
-                      End page
+                      End page (optional)
                     </Text>
 
                     <TextInput
                       keyboardType="number-pad"
-                      value={excerptEditor.endPage}
+                      editable={!busy}
+                      value={
+                        excerptEditor.endPage
+                      }
                       onChangeText={(value) =>
-                        setExcerptEditor((previous) =>
-                          previous
-                            ? {
-                                ...previous,
-                                endPage: value,
-                              }
-                            : null
+                        setExcerptEditor(
+                          (previous) =>
+                            previous
+                              ? {
+                                  ...previous,
+                                  endPage: value,
+                                }
+                              : null
                         )
                       }
-                      placeholder="5"
+                      placeholder="Same as start"
                       style={{
                         borderWidth: 1,
                         borderColor: "#D1D5DB",
@@ -1017,6 +1076,17 @@ const ManageSetlistsModal:
                         backgroundColor: "white",
                       }}
                     />
+
+                    <Text
+                      style={{
+                        marginTop: 4,
+                        fontSize: 11,
+                        color: "#9CA3AF",
+                      }}
+                    >
+                      Leave blank for a single-page
+                      excerpt.
+                    </Text>
                   </View>
                 </View>
 

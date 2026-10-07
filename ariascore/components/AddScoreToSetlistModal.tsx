@@ -197,6 +197,7 @@ const AddScoreToSetlistModal = ({
 
         setSelectedIds([]);
         setSearchText("");
+        setExcerptEditor(null);
       } catch (error) {
         console.error(
           "Failed to add full scores:",
@@ -221,32 +222,49 @@ const AddScoreToSetlistModal = ({
         return;
       }
 
-      const startPage =
-        Number(
-          excerptEditor.startPage
-        );
+      const startPageText =
+        excerptEditor.startPage.trim();
 
-      const endPage =
-        Number(
-          excerptEditor.endPage
-        );
+      const endPageText =
+        excerptEditor.endPage.trim();
+
+      const startPage =
+        Number(startPageText);
 
       if (
-        !Number.isInteger(
-          startPage
-        ) ||
-        !Number.isInteger(
-          endPage
-        ) ||
-        startPage < 1 ||
-        endPage < 1
+        startPageText === "" ||
+        !Number.isInteger(startPage) ||
+        startPage < 1
       ) {
         Alert.alert(
-          "Invalid pages",
-          "Start and end pages must be positive whole numbers."
+          "Invalid start page",
+          "Start page must be a positive whole number."
         );
 
         return;
+      }
+
+      let endPage = startPage;
+
+      if (endPageText !== "") {
+        const parsedEndPage =
+          Number(endPageText);
+
+        if (
+          !Number.isInteger(
+            parsedEndPage
+          ) ||
+          parsedEndPage < 1
+        ) {
+          Alert.alert(
+            "Invalid end page",
+            "End page must be a positive whole number."
+          );
+
+          return;
+        }
+
+        endPage = parsedEndPage;
       }
 
       if (endPage < startPage) {
@@ -261,9 +279,12 @@ const AddScoreToSetlistModal = ({
       setBusy(true);
 
       try {
+        const addedMusicId =
+          excerptEditor.musicId;
+
         await onAddExcerpt({
           musicId:
-            excerptEditor.musicId,
+            addedMusicId,
 
           entryTitle:
             excerptEditor
@@ -274,6 +295,19 @@ const AddScoreToSetlistModal = ({
           startPage,
           endPage,
         });
+
+        /*
+         * Adding an excerpt consumes the
+         * selection for this score so it
+         * is not still queued to be added
+         * as a full-score occurrence.
+         */
+        setSelectedIds((previous) =>
+          previous.filter(
+            id =>
+              id !== addedMusicId
+          )
+        );
 
         setExcerptEditor(null);
       } catch (error) {
@@ -535,23 +569,37 @@ const AddScoreToSetlistModal = ({
 
                   {/* Add excerpt */}
                   <TouchableOpacity
-                    disabled={busy || !selected}
+                    disabled={
+                      busy ||
+                      !selected
+                    }
                     onPress={() =>
                       setExcerptEditor({
                         musicId: id,
-                        scoreTitle: title,
-                        entryTitle: "",
-                        startPage: "",
-                        endPage: "",
+                        scoreTitle:
+                          title,
+                        entryTitle:
+                          "",
+                        startPage:
+                          "",
+                        endPage:
+                          "",
                       })
                     }
                     style={{
-                      flexDirection: "row",
-                      alignItems: "center",
+                      flexDirection:
+                        "row",
+                      alignItems:
+                        "center",
                       marginLeft: 10,
-                      paddingHorizontal: 8,
-                      paddingVertical: 8,
-                      opacity: selected ? 1 : 0.4,
+                      paddingHorizontal:
+                        8,
+                      paddingVertical:
+                        8,
+                      opacity:
+                        selected
+                          ? 1
+                          : 0.4,
                     }}
                   >
                     <Ionicons
@@ -571,7 +619,8 @@ const AddScoreToSetlistModal = ({
                           selected
                             ? ACCENT_COLOR
                             : "#9CA3AF",
-                        fontWeight: "600",
+                        fontWeight:
+                          "600",
                         fontSize: 14,
                       }}
                     >
@@ -734,6 +783,7 @@ const AddScoreToSetlistModal = ({
                   marginTop: 12,
                 }}
               >
+                {/* Start page */}
                 <View
                   style={{
                     flex: 1,
@@ -788,6 +838,7 @@ const AddScoreToSetlistModal = ({
                   />
                 </View>
 
+                {/* End page */}
                 <View
                   style={{
                     flex: 1,
@@ -801,7 +852,7 @@ const AddScoreToSetlistModal = ({
                       marginBottom: 4,
                     }}
                   >
-                    End page
+                    End page (optional)
                   </Text>
 
                   <TextInput
@@ -826,7 +877,7 @@ const AddScoreToSetlistModal = ({
                             : null
                       )
                     }
-                    placeholder="5"
+                    placeholder="Same as start"
                     style={{
                       borderWidth: 1,
                       borderColor:
@@ -840,6 +891,18 @@ const AddScoreToSetlistModal = ({
                         9,
                     }}
                   />
+
+                  <Text
+                    style={{
+                      fontSize: 11,
+                      color:
+                        "#9CA3AF",
+                      marginTop: 4,
+                    }}
+                  >
+                    Leave blank for a
+                    single-page excerpt.
+                  </Text>
                 </View>
               </View>
 
@@ -920,7 +983,10 @@ const AddScoreToSetlistModal = ({
               }
               disabled={busy}
               style={{
-                marginRight: 16,
+                marginRight:
+                  excerptEditor
+                    ? 0
+                    : 16,
               }}
             >
               <Text
@@ -938,42 +1004,52 @@ const AddScoreToSetlistModal = ({
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() =>
-                void handleAddFullScores()
-              }
-              disabled={
-                selectedIds.length ===
-                  0 ||
-                busy
-              }
-              style={{
-                backgroundColor:
+            {/*
+             * Do not show the full-score
+             * action while configuring an
+             * excerpt. This prevents the
+             * selected score from looking
+             * as though it still needs to
+             * be added separately.
+             */}
+            {!excerptEditor && (
+              <TouchableOpacity
+                onPress={() =>
+                  void handleAddFullScores()
+                }
+                disabled={
                   selectedIds.length ===
                     0 ||
                   busy
-                    ? "#9CA3AF"
-                    : ACCENT_COLOR,
-                paddingHorizontal:
-                  16,
-                paddingVertical:
-                  10,
-                borderRadius: 8,
-              }}
-            >
-              <Text
+                }
                 style={{
-                  color: "white",
-                  fontWeight: "600",
+                  backgroundColor:
+                    selectedIds.length ===
+                      0 ||
+                    busy
+                      ? "#9CA3AF"
+                      : ACCENT_COLOR,
+                  paddingHorizontal:
+                    16,
+                  paddingVertical:
+                    10,
+                  borderRadius: 8,
                 }}
               >
-                {busy &&
-                selectedIds.length >
-                  0
-                  ? "Adding..."
-                  : `Add Scores (${selectedIds.length})`}
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={{
+                    color: "white",
+                    fontWeight: "600",
+                  }}
+                >
+                  {busy &&
+                  selectedIds.length >
+                    0
+                    ? "Adding..."
+                    : `Add Full Scores (${selectedIds.length})`}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>

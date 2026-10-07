@@ -143,13 +143,20 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
       entry: SetlistEntry
     ) => {
       if (
-        entry.start_page != null &&
-        entry.end_page != null
+        entry.start_page == null ||
+        entry.end_page == null
       ) {
-        return `Pages ${entry.start_page}–${entry.end_page}`;
+        return "Full score";
       }
-
-      return "Full score";
+  
+      if (
+        entry.start_page ===
+        entry.end_page
+      ) {
+        return `Page ${entry.start_page}`;
+      }
+  
+      return `Pages ${entry.start_page}–${entry.end_page}`;
     };
 
     const getEntryDisplayTitle = (
@@ -551,9 +558,7 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
               entry.start_page != null &&
               entry.end_page != null;
 
-            const pageLabel = isExcerpt
-              ? `Pages ${entry.start_page}–${entry.end_page}`
-              : "Full score";
+            const pageLabel = getEntryPageLabel(entry);
 
             const excerptPageCount =
               isExcerpt
