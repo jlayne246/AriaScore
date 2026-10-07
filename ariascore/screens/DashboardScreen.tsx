@@ -267,6 +267,19 @@ const DashboardScreen = ({}) => {
             </View>
 
             <View className='flex-1 ml-14'>
+                <Text className="text-dodger text-xl mt-4">Debug Screens</Text>
+                <Pressable
+                    onPress={() =>
+                        navigation.navigate(
+                        "FaceGestureDebug",
+                        )
+                    }
+                    >
+                    <Text>
+                        Open Face Gesture Debugging
+                    </Text>
+                </Pressable>
+
                 <Text className="text-dodger text-xl mt-4">Recent Items</Text>
 
                 {recentMusicItems && (recentMusicItems.length > 0) ? (

@@ -217,6 +217,15 @@ export default function App() {
                     component={OpenSourceLicensesScreen}
                     options={{ title: "Open Source Licences" }}
                   />
+
+                  {/* DEBUG SCREENS */}
+                  <Stack.Screen
+                    name="FaceGestureDebug"
+                    component={FaceGestureDebugScreen}
+                    options={{
+                      title: "Face Gesture Debug",
+                    }}
+                  />
                 </Stack.Navigator>
               </NavigationContainer>
             </MenuProvider>
