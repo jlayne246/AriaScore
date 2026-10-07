@@ -477,8 +477,8 @@ const SetlistsScreen = () => {
               style={{
                 flex: 1,
                 fontSize: 24,
-                fontWeight: "300",
-                color: "#111827",
+                color: '#464950',
+                fontWeight: '400',
               }}
             >
               Setlists

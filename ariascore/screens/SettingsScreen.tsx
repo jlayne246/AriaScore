@@ -84,8 +84,8 @@ const SettingsScreen = () => {
                       style={{
                       fontSize: 24,
                       // fontWeight: '700',
-                      fontWeight: '300',
-                      color: '#111827',
+                      color: '#464950',
+                      fontWeight: '400',
                       }}
                   >
                       Settings

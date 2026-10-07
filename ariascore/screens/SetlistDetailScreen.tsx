@@ -22,7 +22,9 @@ import {
   markSetlistOpened,
 } from "../utils/database";
 import MusicItemCard from '../components/MusicItemCard';
-import AddScoreToSetlistModal from '../components/AddScoreToSetlistModal'
+import AddScoreToSetlistModal, {
+  ExcerptToAdd,
+} from "../components/AddScoreToSetlistModal";
 import { Ionicons } from '@expo/vector-icons';
 import {
   Menu,
@@ -205,6 +207,47 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
       );
     };
 
+  const handleAddFullScores = async (
+    selectedIds: number[]
+  ) => {
+    try {
+      for (
+        const musicId of selectedIds
+      ) {
+        await addSetlistEntry(
+          musicId,
+          setlistId,
+          null,
+          null,
+          null
+        );
+      }
+
+      setAddScoresVisible(false);
+
+      await loadScores();
+    } catch (error) {
+      console.error(
+        "Failed to add scores to setlist:",
+        error
+      );
+    }
+  };
+
+  const handleAddExcerpt = async (
+    excerpt: ExcerptToAdd
+  ) => {
+    await addSetlistEntry(
+      excerpt.musicId,
+      setlistId,
+      excerpt.entryTitle,
+      excerpt.startPage,
+      excerpt.endPage
+    );
+
+    await loadScores();
+  };
+
   useLayoutEffect(() => {
     navigation.setOptions({
         header: () => (
@@ -249,8 +292,8 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                     numberOfLines={1}
                     style={{
                     fontSize: 24,
-                    color: '#111827',
-                    fontWeight: '300',
+                    color: '#464950',
+                    fontWeight: '400',
                     }}
                 >
                     {setlist?.name}
@@ -343,10 +386,6 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
         navigation,
         setlist
     ]);
-
-  const existingMusicIds = entries.map(
-    entry => entry.music_id
-  );
 
   const totalPages = entries.reduce(
     (sum, entry) => {
@@ -505,18 +544,23 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
             const sourceTitle =
               getScoreTitle(music);
 
-            const occurrenceTitle =
-              getEntryDisplayTitle(entry);
-
-            const pageLabel =
-              getEntryPageLabel(entry);
+            const customEntryTitle =
+              entry.entry_title?.trim();
 
             const isExcerpt =
-              entry.start_page != null ||
+              entry.start_page != null &&
               entry.end_page != null;
 
-            const hasCustomTitle =
-              !!entry.entry_title?.trim();
+            const pageLabel = isExcerpt
+              ? `Pages ${entry.start_page}–${entry.end_page}`
+              : "Full score";
+
+            const excerptPageCount =
+              isExcerpt
+                ? entry.end_page! -
+                  entry.start_page! +
+                  1
+                : undefined;
 
             return (
                 <View
@@ -546,41 +590,30 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                     </TouchableOpacity>
 
                     <View style={{ flex: 1 }}>
-
-                    {(isExcerpt || hasCustomTitle) && (
-                      <View
-                        style={{
-                          marginBottom: 6,
-                          paddingHorizontal: 4,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 16,
-                            fontWeight: "700",
-                            color: "#111827",
-                          }}
-                        >
-                          {occurrenceTitle}
-                        </Text>
-
-                        <Text
-                          style={{
-                            marginTop: 2,
-                            fontSize: 13,
-                            color: "#6B7280",
-                          }}
-                        >
-                          {hasCustomTitle
-                            ? `${sourceTitle} · ${pageLabel}`
-                            : pageLabel}
-                        </Text>
-                      </View>
-                    )}
-
                     <MusicItemCard
-                        item={music}
-                        onOpen={() => {
+                      item={music}
+
+                      displayTitle={
+                        customEntryTitle || undefined
+                      }
+
+                      displaySubtitle={
+                        isExcerpt
+                          ? customEntryTitle
+                            ? `${sourceTitle} · ${pageLabel}`
+                            : pageLabel
+                          : customEntryTitle
+                            ? `${sourceTitle} · Full score`
+                            : undefined
+                      }
+
+                      displayPageCount={
+                        isExcerpt
+                          ? excerptPageCount
+                          : undefined
+                      }
+
+                      onOpen={() => {
                             const currentEntries =
                               entriesRef.current;
 
@@ -617,12 +650,20 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                                 },
                             });
                         }}
-                        onDelete={() => confirmDeleteSetlistItem(entry)}
-                        deleteTitle={
-                          `Remove "${getEntryDisplayTitle(entry)}"?`
-                        }
-                        deleteMessage="This removes the score from this setlist only. The score remains in your library."
-                        onShare={() => {}}
+
+                      onDelete={() =>
+                        confirmDeleteSetlistItem(entry)
+                      }
+
+                      deleteTitle={
+                        `Remove "${
+                          customEntryTitle || sourceTitle
+                        }"?`
+                      }
+
+                      deleteMessage="This removes the score from this setlist only. The score remains in your library."
+
+                      onShare={() => {}}
                     />
                     </View>
                 </View>
@@ -671,10 +712,16 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
       <AddScoreToSetlistModal
         visible={addScoresVisible}
         scores={allScores}
-        existingMusicIds={existingMusicIds}
-        onClose={() => setAddScoresVisible(false)}
-        onAdd={handleAddScores}
-    />
+        onClose={() =>
+          setAddScoresVisible(false)
+        }
+        onAddFullScores={
+          handleAddFullScores
+        }
+        onAddExcerpt={
+          handleAddExcerpt
+        }
+      />
 
     <Modal visible={editSetlistVisible} transparent animationType="fade">
       <View style={{

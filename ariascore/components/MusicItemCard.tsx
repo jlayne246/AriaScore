@@ -39,6 +39,10 @@ type Props = {
 
   deleteTitle?: string;
   deleteMessage?: string;
+
+  displayTitle?: string;
+  displaySubtitle?: string;
+  displayPageCount?: number | null;
 };
 
 const ACCENT_COLOR = "#2563EB";
@@ -97,6 +101,9 @@ const MusicItemCard: React.FC<Props> = ({
   onOpen,
   deleteTitle,
   deleteMessage,
+  displayTitle,
+  displaySubtitle,
+  displayPageCount,
 }) => {
   const navigation =
     useNavigation<NavigationProp>();
@@ -124,7 +131,8 @@ const MusicItemCard: React.FC<Props> = ({
     loadDocumentData();
   }, [item.uri]);
 
-  const title = item.metadata?.title ?? item.title ?? "Untitled";
+  const metadata = item.metadata;
+
   const documentType = item.metadata?.document_type ?? "Score";
 
   const creator =
@@ -139,6 +147,37 @@ const MusicItemCard: React.FC<Props> = ({
         : item.metadata?.editor ||
         item.metadata?.publisher ||
         documentType;
+
+  const sourceTitle =
+    metadata?.title?.trim() ||
+    item.title?.trim() ||
+    "Untitled Score";
+
+  const resolvedTitle =
+    displayTitle?.trim() ||
+    sourceTitle;
+
+  const defaultSubtitle =
+    creator.trim();
+
+  const resolvedSubtitle =
+    displaySubtitle !== undefined
+      ? displaySubtitle
+      : defaultSubtitle;
+
+  const resolvedPageCount =
+    displayPageCount !== undefined
+      ? displayPageCount
+      : metadata?.page_count;
+
+  const detailParts = [
+    metadata?.document_type,
+    metadata?.genre,
+    resolvedPageCount != null
+      ? `${resolvedPageCount} pages`
+      : null,
+  ].filter(Boolean);
+  // const title = item.metadata?.title ?? item.title ?? "Untitled";
 
   return (
     <TouchableOpacity
@@ -186,16 +225,17 @@ const MusicItemCard: React.FC<Props> = ({
 
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 17, fontWeight: "700", color: "#1f2937" }}>
-          {title}
+          {resolvedTitle}
         </Text>
 
-        <Text style={{ fontSize: 14, color: "#666", marginTop: 4 }}>
-          {creator}
-        </Text>
+        {!!resolvedSubtitle && (
+          <Text style={{ fontSize: 14, color: "#666", marginTop: 4 }}>
+            {resolvedSubtitle}
+          </Text>
+        )}
 
         <Text style={{ fontSize: 13, color: "#888", marginTop: 4 }}>
-          {documentType} · {item.metadata?.genre || "Uncategorised"} ·{" "}
-          {item.metadata?.page_count || 0} pages
+          {detailParts.join(" • ")}
         </Text>
 
         <View style={{
@@ -294,7 +334,7 @@ const MusicItemCard: React.FC<Props> = ({
             destructive
             onPress={() => {
               Alert.alert(
-                deleteTitle ?? `Delete "${title}"?`,
+                deleteTitle ?? `Delete "${resolvedTitle}"?`,
                 deleteMessage ??
                   "This will permanently remove this score from your library.",
                 [

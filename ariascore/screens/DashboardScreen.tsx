@@ -56,8 +56,8 @@ const DashboardScreen = ({}) => {
                     >
                         <Text
                             style={{
-                                color: 'black',
-                                fontWeight: '300',
+                                color: '#464950',
+                                fontWeight: '400',
                                 fontSize: 24,
                                 padding: 12,
                                 marginLeft: 20,
