@@ -169,15 +169,29 @@ const LibraryScreen = () => {
     }, [navigation]);
 
 
-  const loadMusic = async () => {
+  const loadMusic = useCallback(async () => {
     try {
-      const results = await getMusicWithAllData();
-      console.log(`Music loaded: ${results.length}`)
+      const results =
+        await getMusicWithAllData();
+
+      console.log(
+        `Music loaded: ${results.length}`
+      );
+
       setMusicList(results);
     } catch (error) {
-      console.error('Failed to load music:', error);
+      console.error(
+        "Failed to load music:",
+        error
+      );
     }
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadMusic();
+    }, [loadMusic])
+  );
 
   const refreshMusicList = async () => {
     setRefreshing(true);
@@ -458,51 +472,71 @@ const LibraryScreen = () => {
         )}
       </View>
 
-      {musicList.length > 0 ? (
-        <SectionList
-          ref={sectionListRef}
-          sections={sections}
-          keyExtractor={(item, index) =>
-            item.id?.toString() || index.toString()
-          }
-          renderItem={renderMusicItem}
-          renderSectionHeader={({ section: { title } }) => (
-            <View
-                style={{
-                paddingHorizontal: 16,
-                paddingTop: 12,
-                paddingBottom: 4,
-                backgroundColor: 'white',
-                }}
+      <SectionList
+        ref={sectionListRef}
+        sections={sections}
+        keyExtractor={(item, index) =>
+          item.id?.toString() ??
+          index.toString()
+        }
+        renderItem={renderMusicItem}
+        renderSectionHeader={({
+          section: { title },
+        }) => (
+          <View
+            style={{
+              paddingHorizontal: 16,
+              paddingTop: 12,
+              paddingBottom: 4,
+              backgroundColor: "white",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "700",
+                color: "#9CA3AF",
+                letterSpacing: 0.5,
+              }}
             >
-                <Text
-                style={{
-                    fontSize: 13,
-                    fontWeight: '700',
-                    color: '#9CA3AF',
-                    letterSpacing: 0.5,
-                }}
-                >
-                {title}
-                </Text>
-            </View>
-            )}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={refreshMusicList} />
-          }
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            paddingTop: 12,
-            paddingBottom: 110,
-          }}
-        />
-      ) : (
-        <View className="flex-1 items-center justify-center px-4">
-          <Text className="text-center text-sm text-gray-600">
-            No music in library. Press + to add music.
-          </Text>
-        </View>
-      )}
+              {title}
+            </Text>
+          </View>
+        )}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refreshMusicList}
+          />
+        }
+        ListEmptyComponent={
+          <View
+            style={{
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingHorizontal: 16,
+              paddingTop: 80,
+            }}
+          >
+            <Text
+              style={{
+                textAlign: "center",
+                fontSize: 14,
+                color: "#4B5563",
+              }}
+            >
+              No music in library. Press + to add music.
+            </Text>
+          </View>
+        }
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: 110,
+        }}
+      />
 
       <TouchableOpacity
         className="absolute right-4 bottom-24 bg-gray-800 px-3 py-2 rounded-full"

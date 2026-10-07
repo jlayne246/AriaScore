@@ -356,8 +356,21 @@ const SetlistsScreen = () => {
   const loadSetlists = useCallback(async () => {
     try {
       setLoading(true);
-      const results = await getSetlistSummaries();
+
+      const results =
+        await getSetlistSummaries();
+
+      console.log(
+        `Setlists loaded: ${results.length}`,
+        results
+      );
+
       setSetlists(results);
+    } catch (error) {
+      console.error(
+        "Failed to load setlists:",
+        error
+      );
     } finally {
       setLoading(false);
     }
@@ -530,7 +543,7 @@ const SetlistsScreen = () => {
         </View>
       ),
     });
-  }, [navigation]);
+  }, [navigation, sortMode]);
 
   const handleCreateSetlist = async () => {
     const name = newName.trim();

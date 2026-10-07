@@ -5,7 +5,7 @@ import React, {
   useRef,
   useCallback,
 } from "react";
-import { View, Text, FlatList, TouchableOpacity, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Modal, TextInput } from 'react-native';
 import DraggableFlatList, {
   RenderItemParams,
 } from 'react-native-draggable-flatlist';
@@ -61,64 +61,96 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
     entriesRef.current = entries;
   }, [entries]);
 
-    const loadSetlist = async () => {
-      try {
-        const result = await getSetlistById(setlistId);
+    const loadSetlist = useCallback(
+      async () => {
+        try {
+          const result =
+            await getSetlistById(setlistId);
 
-        if (result != null) {
-          setSetlist(result as Setlist);
-
-          await markSetlistOpened(setlistId);
+          if (result != null) {
+            setSetlist(result as Setlist);
+          }
+        } catch (error) {
+          console.error(
+            "Failed to load setlist:",
+            error
+          );
         }
-      } catch (err) {
-        console.error("Failed to load setlist", err);
-      }
-    };
+      },
+      [setlistId]
+    );
 
-    useEffect(() => {
-      loadSetlist();
-    }, [setlistId]);
-
-    const loadScores = useCallback(async () => {
-      const setlistEntries =
-        await getSetlistEntries(setlistId);
-
-      const allMusic =
-        await getMusicWithAllData();
-
-      setAllScores(allMusic);
-
-      const entriesWithMusic: SetlistEntryWithMusic[] =
-        setlistEntries
-          .map((entry) => {
-            const music = allMusic.find(
-              (item) => item.id === entry.music_id
+    const loadScores = useCallback(
+      async () => {
+        try {
+          const setlistEntries =
+            await getSetlistEntries(
+              setlistId
             );
 
-            if (!music) {
-              return null;
-            }
+          const allMusic =
+            await getMusicWithAllData();
 
-            return {
-              ...entry,
-              music,
-            };
-          })
-          .filter(
-            (
-              item
-            ): item is SetlistEntryWithMusic =>
-              item !== null
+          setAllScores(allMusic);
+
+          const entriesWithMusic:
+            SetlistEntryWithMusic[] =
+            setlistEntries
+              .map((entry) => {
+                const music =
+                  allMusic.find(
+                    (item) =>
+                      item.id ===
+                      entry.music_id
+                  );
+
+                if (!music) {
+                  return null;
+                }
+
+                return {
+                  ...entry,
+                  music,
+                };
+              })
+              .filter(
+                (
+                  item
+                ): item is SetlistEntryWithMusic =>
+                  item !== null
+              );
+
+          entriesRef.current =
+            entriesWithMusic;
+
+          setEntries(entriesWithMusic);
+        } catch (error) {
+          console.error(
+            "Failed to load setlist entries:",
+            error
           );
-
-      entriesRef.current = entriesWithMusic;
-      setEntries(entriesWithMusic);
-    }, [setlistId]);
+        }
+      },
+      [setlistId]
+    );
 
     useFocusEffect(
       useCallback(() => {
-        void loadScores();
-      }, [loadScores])
+        void (async () => {
+          await markSetlistOpened(
+            setlistId
+          );
+
+          await Promise.all([
+            loadSetlist(),
+            loadScores(),
+          ]);
+        })();
+      }, [
+        setlistId,
+        loadSetlist,
+        loadScores,
+      ])
     );
 
     const handleAddScores = async (selectedIds: number[]) => {
@@ -459,19 +491,33 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <DraggableFlatList
         data={entries}
-        keyExtractor={(item) => item.id!.toString()}
+
+        alwaysBounceVertical
+
+        keyExtractor={(item) =>
+          item.id.toString()
+        }
+
         contentContainerStyle={{
+          flexGrow: 1,
           paddingBottom: 32,
         }}
+
         onDragEnd={async ({ data }) => {
-            entriesRef.current = data;
-            setEntries(data);
+          entriesRef.current = data;
+          setEntries(data);
 
-            const orderedIds = data
-                .map(score => score.id)
-                .filter((id): id is number => typeof id === 'number');
+          const orderedIds = data
+            .map((score) => score.id)
+            .filter(
+              (id): id is number =>
+                typeof id === "number"
+            );
 
-            await updateSetlistOrder(setlistId, orderedIds);
+          await updateSetlistOrder(
+            setlistId,
+            orderedIds
+          );
         }}
         ListHeaderComponent={
           <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14 }}>
