@@ -184,12 +184,15 @@ export class BackupRepository {
   > {
     return this.db.getAllAsync<BackupSetlistItem>(`
       SELECT
+        id,
         music_id AS musicId,
         setlist_id AS setlistId,
         position,
+        entry_title AS entryTitle,
+        start_page AS startPage,
+        end_page AS endPage,
         created_at AS createdAt,
         updated_at AS updatedAt
-
       FROM music_setlists
 
       ORDER BY
@@ -205,10 +208,9 @@ export class BackupRepository {
     return this.db.getAllAsync<BackupSetlistProgress>(`
       SELECT
         setlist_id AS setlistId,
-        music_id AS musicId,
+        setlist_entry_id AS setlistEntryId,
         page_number AS pageNumber,
         updated_at AS updatedAt
-
       FROM setlist_progress
 
       ORDER BY setlist_id ASC
@@ -359,9 +361,8 @@ export class BackupRepository {
         );
 
         await this.restoreSetlistProgress(
-            library.setlistProgress,
-            restoredMusicIds,
-            warnings
+          library.setlistProgress,
+          warnings
         );
 
         await this.restoreBookmarks(
@@ -596,18 +597,26 @@ private async restoreSetlistItems(
     await this.db.runAsync(
       `
         INSERT INTO music_setlists (
+          id,
           music_id,
           setlist_id,
           position,
+          entry_title,
+          start_page,
+          end_page,
           created_at,
           updated_at
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
+        item.id,
         item.musicId,
         item.setlistId,
         item.position,
+        item.entryTitle,
+        item.startPage,
+        item.endPage,
         item.createdAt,
         item.updatedAt,
       ]
@@ -617,16 +626,40 @@ private async restoreSetlistItems(
 
 private async restoreSetlistProgress(
   progressRows: BackupSetlistProgress[],
-  restoredMusicIds: Set<number>,
   warnings: RestoreBackupWarning[]
 ): Promise<void> {
+  const restoredEntries =
+    await this.db.getAllAsync<{
+      id: number;
+      setlistId: number;
+    }>(`
+      SELECT
+        id,
+        setlist_id AS setlistId
+      FROM music_setlists
+    `);
+
+  const restoredEntryKeys =
+    new Set(
+      restoredEntries.map(
+        entry =>
+          `${entry.setlistId}:${entry.id}`
+      )
+    );
+
   for (const progress of progressRows) {
-    if (!restoredMusicIds.has(progress.musicId)) {
+    const entryKey =
+      `${progress.setlistId}:${progress.setlistEntryId}`;
+
+    if (
+      !restoredEntryKeys.has(entryKey)
+    ) {
       warnings.push({
-        reason: "related-record-skipped",
-        musicId: progress.musicId,
+        reason:
+          "related-record-skipped",
+
         message:
-          `Setlist progress was skipped because music ${progress.musicId} was not restored.`,
+          `Setlist progress was skipped because setlist entry ${progress.setlistEntryId} was not restored for setlist ${progress.setlistId}.`,
       });
 
       continue;
@@ -636,7 +669,7 @@ private async restoreSetlistProgress(
       `
         INSERT INTO setlist_progress (
           setlist_id,
-          music_id,
+          setlist_entry_id,
           page_number,
           updated_at
         )
@@ -644,7 +677,7 @@ private async restoreSetlistProgress(
       `,
       [
         progress.setlistId,
-        progress.musicId,
+        progress.setlistEntryId,
         progress.pageNumber,
         progress.updatedAt,
       ]
@@ -846,6 +879,19 @@ private async resetSequences(): Promise<void> {
       VALUES (
         'setlists',
         COALESCE((SELECT MAX(id) FROM setlists), 0)
+      )
+    `
+  );
+
+  await this.db.runAsync(
+    `
+      INSERT OR REPLACE INTO sqlite_sequence (
+        name,
+        seq
+      )
+      VALUES (
+        'music_setlists',
+        COALESCE((SELECT MAX(id) FROM music_setlists), 0)
       )
     `
   );

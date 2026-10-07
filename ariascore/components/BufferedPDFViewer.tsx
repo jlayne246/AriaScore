@@ -1831,11 +1831,22 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             : 1;
       }
 
-      const initialMinimumPage =
-        activeEntry?.start_page ?? 1;
+      const initialMinimumPage = Math.min(
+        detectedTotal,
+        Math.max(
+          1,
+          activeEntry?.start_page ?? 1
+        )
+      );
 
-      const initialMaximumPage =
-        activeEntry?.end_page ?? detectedTotal;
+      const initialMaximumPage = Math.min(
+        detectedTotal,
+        Math.max(
+          initialMinimumPage,
+          activeEntry?.end_page ??
+            detectedTotal
+        )
+      );
 
       const safePage = Math.min(
         initialMaximumPage,
