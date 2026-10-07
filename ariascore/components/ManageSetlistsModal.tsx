@@ -358,9 +358,9 @@ const ManageSetlistsModal:
           await addSetlistEntry(
             musicId,
             excerptEditor.setlistId,
+            entryTitle,
             startPage,
-            endPage,
-            entryTitle
+            endPage
           );
         } else {
           await updateSetlistEntry(
@@ -819,7 +819,7 @@ const ManageSetlistsModal:
                               entryTitle: "",
                               startPage: "",
                               endPage: "",
-                            });
+                            })
                           }
                           style={{
                             flexDirection:
