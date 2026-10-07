@@ -20,6 +20,7 @@ import SetlistDetailScreen from './screens/SetlistDetailScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import SetlistSettingsScreen from './screens/setlists/SetlistSettingsScreen';
 import MusicSettingsScreen from './screens/music/MusicSettingsScreen';
+import MetadataScreen from './screens/MetadataScreen';
 import AboutScreen from './screens/AboutScreen';
 import BackupsScreen from './screens/BackupsScreen';
 import OpenSourceLicensesScreen from './screens/LicensesScreen';
@@ -206,6 +207,10 @@ export default function App() {
                   <Stack.Screen
                     name="MusicSettings"
                     component={MusicSettingsScreen}
+                  />
+                  <Stack.Screen
+                    name="Metadata"
+                    component={MetadataScreen}
                   />
                   <Stack.Screen
                     name="OpenSourceLicenses"

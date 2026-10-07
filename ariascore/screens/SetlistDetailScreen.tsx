@@ -1,44 +1,65 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { View, Text, FlatList, TouchableOpacity, Alert, Modal, TextInput } from 'react-native';
 import DraggableFlatList, {
   RenderItemParams,
 } from 'react-native-draggable-flatlist';
-import { MusicItemWithAllData, Setlist } from '../types';
-import { addMusicToSetlistById, getMusicIdsForSetlist, getMusicWithAllData, getSetlistById, removeMusicFromSetlistById, updateSetlistOrder, updateSetlist,
-deleteSetlist,
-markSetlistOpened} from '../utils/database';
+import { MusicItemWithAllData, Setlist, SetlistEntry } from '../types';
+import {
+  addSetlistEntry,
+  getSetlistEntries,
+  getMusicWithAllData,
+  getSetlistById,
+  removeSetlistEntry,
+  updateSetlistOrder,
+  updateSetlist,
+  deleteSetlist,
+  markSetlistOpened,
+} from "../utils/database";
 import MusicItemCard from '../components/MusicItemCard';
-import AddScoreToSetlistModal from '../components/AddScoreToSetlistModal'
+import AddScoreToSetlistModal, {
+  ExcerptToAdd,
+} from "../components/AddScoreToSetlistModal";
 import { Ionicons } from '@expo/vector-icons';
-import MetadataForm from '../components/MetadataForm';
 import {
   Menu,
   MenuOptions,
   MenuOption,
   MenuTrigger,
 } from "react-native-popup-menu";
+import {
+  useFocusEffect,
+} from "@react-navigation/native";
 
 const ACCENT_COLOR = '#2563EB';
+
+type SetlistEntryWithMusic = SetlistEntry & {
+  music: MusicItemWithAllData;
+};
 
 const SetlistDetailScreen = ({ route, navigation }: any) => {
   const { setlistId } = route.params;
 
-  const scoresRef = useRef<MusicItemWithAllData[]>([]);
-
   const [setlist, setSetlist] = useState<Setlist | null>(null);
-  const [scores, setScores] = useState<MusicItemWithAllData[]>([]);
+  const [entries, setEntries] =
+    useState<SetlistEntryWithMusic[]>([]);
+
+  const entriesRef =
+    useRef<SetlistEntryWithMusic[]>([]);
   const [allScores, setAllScores] = useState<MusicItemWithAllData[]>([]);
   const [addScoresVisible, setAddScoresVisible] = useState(false);
-  const [selectedMusicId, setSelectedMusicId] = useState<number | undefined>();
-  const [selectedPdfUri, setSelectedPdfUri] = useState<string | undefined>();
-  const [metadataFormVisible, setMetadataFormVisible] = useState(false);
   const [editSetlistVisible, setEditSetlistVisible] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
 
   useEffect(() => {
-    scoresRef.current = scores;
-  }, [scores]);
+    entriesRef.current = entries;
+  }, [entries]);
 
     const loadSetlist = async () => {
       try {
@@ -54,31 +75,56 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
       }
     };
 
-  useEffect(() => {
-    loadSetlist();
-  }, [setlistId]);
-
-    const loadScores = async () => {
-        const ids = await getMusicIdsForSetlist(setlistId);
-        const allMusic = await getMusicWithAllData();
-
-        setAllScores(allMusic);
-
-        const orderedScores = ids
-            .map(id => allMusic.find(m => m.id === id))
-            .filter((item): item is MusicItemWithAllData => !!item);
-
-        setScores(orderedScores);
-    };
-
     useEffect(() => {
-        loadScores();
+      loadSetlist();
     }, [setlistId]);
+
+    const loadScores = useCallback(async () => {
+      const setlistEntries =
+        await getSetlistEntries(setlistId);
+
+      const allMusic =
+        await getMusicWithAllData();
+
+      setAllScores(allMusic);
+
+      const entriesWithMusic: SetlistEntryWithMusic[] =
+        setlistEntries
+          .map((entry) => {
+            const music = allMusic.find(
+              (item) => item.id === entry.music_id
+            );
+
+            if (!music) {
+              return null;
+            }
+
+            return {
+              ...entry,
+              music,
+            };
+          })
+          .filter(
+            (
+              item
+            ): item is SetlistEntryWithMusic =>
+              item !== null
+          );
+
+      entriesRef.current = entriesWithMusic;
+      setEntries(entriesWithMusic);
+    }, [setlistId]);
+
+    useFocusEffect(
+      useCallback(() => {
+        void loadScores();
+      }, [loadScores])
+    );
 
     const handleAddScores = async (selectedIds: number[]) => {
         try {
             for (const musicId of selectedIds) {
-                await addMusicToSetlistById(musicId, setlistId);
+                await addSetlistEntry(musicId, setlistId);
             }
 
             setAddScoresVisible(false);
@@ -93,35 +139,69 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
       item.title?.trim() ||
       "Untitled Score";
 
-    const confirmDeleteSetlistItem = (item: MusicItemWithAllData) => {
-      if (!item.id) return;
+    const getEntryPageLabel = (
+      entry: SetlistEntry
+    ) => {
+      if (
+        entry.start_page == null ||
+        entry.end_page == null
+      ) {
+        return "Full score";
+      }
+  
+      if (
+        entry.start_page ===
+        entry.end_page
+      ) {
+        return `Page ${entry.start_page}`;
+      }
+  
+      return `Pages ${entry.start_page}–${entry.end_page}`;
+    };
 
-      const title = getScoreTitle(item);
+    const getEntryDisplayTitle = (
+      entry: SetlistEntryWithMusic
+    ) =>
+      entry.entry_title?.trim() ||
+      getScoreTitle(entry.music);
+
+    const confirmDeleteSetlistItem = (
+      entry: SetlistEntryWithMusic
+    ) => {
+      const title = getEntryDisplayTitle(entry);
 
       Alert.alert(
         `Remove "${title}"?`,
-        "This removes the score from this setlist only. It will remain in your library.",
+        "This removes this entry from the setlist only. The score remains in your library.",
         [
-          { text: "Cancel", style: "cancel" },
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
           {
             text: "Remove",
             style: "destructive",
             onPress: async () => {
               try {
-                await removeMusicFromSetlistById(item.id!, setlistId);
+                await removeSetlistEntry(entry.id);
 
-                const updatedScores = scoresRef.current.filter(
-                  score => score.id !== item.id
+                const updatedEntries =
+                  entriesRef.current.filter(
+                    item => item.id !== entry.id
+                  );
+
+                entriesRef.current = updatedEntries;
+                setEntries(updatedEntries);
+
+                const orderedEntryIds =
+                  updatedEntries.map(
+                    item => item.id
+                  );
+
+                await updateSetlistOrder(
+                  setlistId,
+                  orderedEntryIds
                 );
-
-                scoresRef.current = updatedScores;
-                setScores(updatedScores);
-
-                const orderedIds = updatedScores
-                  .map(score => score.id)
-                  .filter((id): id is number => typeof id === "number");
-
-                await updateSetlistOrder(setlistId, orderedIds);
               } catch (error) {
                 Alert.alert(
                   "Could not remove score",
@@ -133,6 +213,47 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
         ]
       );
     };
+
+  const handleAddFullScores = async (
+    selectedIds: number[]
+  ) => {
+    try {
+      for (
+        const musicId of selectedIds
+      ) {
+        await addSetlistEntry(
+          musicId,
+          setlistId,
+          null,
+          null,
+          null
+        );
+      }
+
+      setAddScoresVisible(false);
+
+      await loadScores();
+    } catch (error) {
+      console.error(
+        "Failed to add scores to setlist:",
+        error
+      );
+    }
+  };
+
+  const handleAddExcerpt = async (
+    excerpt: ExcerptToAdd
+  ) => {
+    await addSetlistEntry(
+      excerpt.musicId,
+      setlistId,
+      excerpt.entryTitle,
+      excerpt.startPage,
+      excerpt.endPage
+    );
+
+    await loadScores();
+  };
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -178,8 +299,8 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                     numberOfLines={1}
                     style={{
                     fontSize: 24,
-                    color: '#111827',
-                    fontWeight: '300',
+                    color: '#464950',
+                    fontWeight: '400',
                     }}
                 >
                     {setlist?.name}
@@ -273,28 +394,28 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
         setlist
     ]);
 
-  useEffect(() => {
-    const load = async () => {
-      const ids = await getMusicIdsForSetlist(setlistId);
-      const allMusic = await getMusicWithAllData();
+  const totalPages = entries.reduce(
+    (sum, entry) => {
+      if (
+        entry.start_page != null &&
+        entry.end_page != null
+      ) {
+        return (
+          sum +
+          (entry.end_page -
+            entry.start_page +
+            1)
+        );
+      }
 
-      const orderedScores = ids
-        .map(id => allMusic.find(m => m.id === id))
-        .filter((item): item is MusicItemWithAllData => !!item);
-
-      setScores(orderedScores);
-    };
-
-    load();
-  }, [setlistId]);
-
-  const musicIds = scores
-    .map(score => score.id)
-    .filter((id): id is number => typeof id === 'number');
-
-  const totalPages = scores.reduce((sum, score) => {
-    return sum + (score.metadata?.page_count ?? 0);
-  }, 0);
+      return (
+        sum +
+        (entry.music.metadata?.page_count ??
+          0)
+      );
+    },
+    0
+  );
 
   function MenuItem({
     icon,
@@ -337,14 +458,14 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <DraggableFlatList
-        data={scores}
+        data={entries}
         keyExtractor={(item) => item.id!.toString()}
         contentContainerStyle={{
           paddingBottom: 32,
         }}
         onDragEnd={async ({ data }) => {
-            scoresRef.current = data;
-            setScores(data);
+            entriesRef.current = data;
+            setEntries(data);
 
             const orderedIds = data
                 .map(score => score.id)
@@ -385,7 +506,7 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                 }}
               >
                 <Text style={{ color: '#2563EB', fontWeight: '700', fontSize: 13 }}>
-                  {scores.length} scores
+                  {entries.length} entries
                 </Text>
               </View>
 
@@ -419,8 +540,32 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
             </View>
           </View>
         }
-        renderItem={({ item, drag, isActive }: RenderItemParams<MusicItemWithAllData>) => {
-            const index = scores.findIndex(score => score.id === item.id);
+        renderItem={({
+            item: entry,
+            drag,
+            isActive,
+          }: RenderItemParams<SetlistEntryWithMusic>) => {
+            const music = entry.music;
+            const index = entries.findIndex(score => score.id === entry.id);
+
+            const sourceTitle =
+              getScoreTitle(music);
+
+            const customEntryTitle =
+              entry.entry_title?.trim();
+
+            const isExcerpt =
+              entry.start_page != null &&
+              entry.end_page != null;
+
+            const pageLabel = getEntryPageLabel(entry);
+
+            const excerptPageCount =
+              isExcerpt
+                ? entry.end_page! -
+                  entry.start_page! +
+                  1
+                : undefined;
 
             return (
                 <View
@@ -451,39 +596,79 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
 
                     <View style={{ flex: 1 }}>
                     <MusicItemCard
-                        item={item}
-                        onOpen={() => {
-                            const currentScores = scoresRef.current;
+                      item={music}
 
-                            const currentMusicIds = currentScores
-                                .map(score => score.id)
-                                .filter((id): id is number => typeof id === "number");
+                      displayTitle={
+                        customEntryTitle || undefined
+                      }
 
-                            const currentIndex = currentMusicIds.indexOf(item.id!) + 1;
+                      displaySubtitle={
+                        isExcerpt
+                          ? customEntryTitle
+                            ? `${sourceTitle} · ${pageLabel}`
+                            : pageLabel
+                          : customEntryTitle
+                            ? `${sourceTitle} · Full score`
+                            : undefined
+                      }
+
+                      displayPageCount={
+                        isExcerpt
+                          ? excerptPageCount
+                          : undefined
+                      }
+
+                      onOpen={() => {
+                            const currentEntries =
+                              entriesRef.current;
+
+                            const currentIndex =
+                              currentEntries.findIndex(
+                                currentEntry =>
+                                  currentEntry.id === entry.id
+                              ) + 1;
+
+                            // const currentIndex = currentMusicIds.indexOf(music.id!) + 1;
 
                             navigation.navigate("Reader", {
-                                uri: item.uri,
-                                musicId: item.id!,
-                                startPage: 1,
+                                uri: music.uri,
+                                musicId: music.id!,
+                                startPage:
+                                  entry.start_page ?? 1,
+                                origin: "setlist",
                                 context: {
-                                    setlistId,
-                                    setlistName: setlist?.name,
-                                    setlistDescription: setlist?.description,
-                                    currentIndex,
-                                    totalItems: currentMusicIds.length,
-                                    musicIds: currentMusicIds,
+                                  setlistId,
+                                  setlistName: setlist?.name ?? "",
+                                  setlistDescription:
+                                    setlist?.description,
+
+                                  currentIndex,
+                                  totalItems:
+                                    currentEntries.length,
+
+                                  entries: currentEntries.map(
+                                    ({
+                                      music,
+                                      ...entry
+                                    }) => entry
+                                  ),
                                 },
                             });
                         }}
-                        onEditMetadata={() => {
-                            setSelectedMusicId(item.id);
-                            setSelectedPdfUri(item.uri);
-                            setMetadataFormVisible(true);
-                        }}
-                        onDelete={() => confirmDeleteSetlistItem(item)}
-                        deleteTitle={`Remove "${item?.title}"?`}
-                        deleteMessage="This removes the score from this setlist only. The score remains in your library."
-                        onShare={() => {}}
+
+                      onDelete={() =>
+                        confirmDeleteSetlistItem(entry)
+                      }
+
+                      deleteTitle={
+                        `Remove "${
+                          customEntryTitle || sourceTitle
+                        }"?`
+                      }
+
+                      deleteMessage="This removes the score from this setlist only. The score remains in your library."
+
+                      onShare={() => {}}
                     />
                     </View>
                 </View>
@@ -529,31 +714,19 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
         }
       />
 
-      <MetadataForm
-            visible={metadataFormVisible}
-            musicId={selectedMusicId}
-            pdfUri={selectedPdfUri}
-            mode="edit"
-            onCancel={() => {
-                setMetadataFormVisible(false);
-                setSelectedMusicId(undefined);
-                setSelectedPdfUri(undefined);
-            }}
-            onSave={async () => {
-                setMetadataFormVisible(false);
-                setSelectedMusicId(undefined);
-                setSelectedPdfUri(undefined);
-                await loadScores();
-            }}
-        />
-
       <AddScoreToSetlistModal
         visible={addScoresVisible}
         scores={allScores}
-        existingMusicIds={musicIds}
-        onClose={() => setAddScoresVisible(false)}
-        onAdd={handleAddScores}
-    />
+        onClose={() =>
+          setAddScoresVisible(false)
+        }
+        onAddFullScores={
+          handleAddFullScores
+        }
+        onAddExcerpt={
+          handleAddExcerpt
+        }
+      />
 
     <Modal visible={editSetlistVisible} transparent animationType="fade">
       <View style={{
@@ -646,7 +819,3 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
 };
 
 export default SetlistDetailScreen;
-
-function markSetlistAsOpened(setlistId: any) {
-  throw new Error('Function not implemented.');
-}

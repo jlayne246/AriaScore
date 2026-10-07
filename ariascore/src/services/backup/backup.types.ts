@@ -1,5 +1,5 @@
 export const BACKUP_FORMAT = "ariascore-backup" as const;
-export const BACKUP_FORMAT_VERSION = 1;
+export const BACKUP_FORMAT_VERSION = 2;
 
 /**
  * A score as stored in the application database before its PDF is copied
@@ -97,16 +97,22 @@ export interface BackupSetlist {
 }
 
 export interface BackupSetlistItem {
+  id: number;
   musicId: number;
   setlistId: number;
   position: number;
+
+  entryTitle: string | null;
+  startPage: number | null;
+  endPage: number | null;
+
   createdAt: string | null;
   updatedAt: string | null;
 }
 
 export interface BackupSetlistProgress {
   setlistId: number;
-  musicId: number;
+  setlistEntryId: number;
   pageNumber: number;
   updatedAt: string | null;
 }

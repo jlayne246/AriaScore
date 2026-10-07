@@ -1,19 +1,49 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
-import { Entypo, Ionicons } from '@expo/vector-icons';
-import { Menu, MenuOption, MenuOptions, MenuTrigger } from 'react-native-popup-menu';
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  Alert,
+} from "react-native";
 
-import { MusicItemWithAllData } from '../types'; // Adjust the import path as necessary
-import AriaScorePdfRenderer from '../native/AriaScorePdfRenderer';
+import { Ionicons } from "@expo/vector-icons";
+import {
+  Menu,
+  MenuOption,
+  MenuOptions,
+  MenuTrigger,
+} from "react-native-popup-menu";
+
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+
+import {
+  MusicItemWithAllData,
+  RootStackParamList,
+  SetlistEntry,
+} from "../types";
+
+import AriaScorePdfRenderer
+  from "../native/AriaScorePdfRenderer";
 
 type Props = {
   item: MusicItemWithAllData;
-  onEditMetadata: (id: number, title: string, uri: string) => void;
-  onDelete: (id: number | undefined) => void;
-  onShare?: (id: number | undefined) => void;
+
+  onDelete:
+    (id: number | undefined) => void;
+
+  onShare?:
+    (id: number | undefined) => void;
+
   onOpen?: () => void;
+
   deleteTitle?: string;
   deleteMessage?: string;
+
+  displayTitle?: string;
+  displaySubtitle?: string;
+  displayPageCount?: number | null;
 };
 
 const ACCENT_COLOR = "#2563EB";
@@ -60,15 +90,25 @@ function MusicMenuItem({
   );
 }
 
+type NavigationProp =
+  NativeStackNavigationProp<
+    RootStackParamList
+  >;
+
 const MusicItemCard: React.FC<Props> = ({
   item,
-  onEditMetadata,
   onDelete,
   onShare,
   onOpen,
   deleteTitle,
   deleteMessage,
+  displayTitle,
+  displaySubtitle,
+  displayPageCount,
 }) => {
+  const navigation =
+    useNavigation<NavigationProp>();
+
   const [thumbnailUri, setThumbnailUri] = useState("");
 
   useEffect(() => {
@@ -92,7 +132,8 @@ const MusicItemCard: React.FC<Props> = ({
     loadDocumentData();
   }, [item.uri]);
 
-  const title = item.metadata?.title ?? item.title ?? "Untitled";
+  const metadata = item.metadata;
+
   const documentType = item.metadata?.document_type ?? "Score";
 
   const creator =
@@ -107,6 +148,37 @@ const MusicItemCard: React.FC<Props> = ({
         : item.metadata?.editor ||
         item.metadata?.publisher ||
         documentType;
+
+  const sourceTitle =
+    metadata?.title?.trim() ||
+    item.title?.trim() ||
+    "Untitled Score";
+
+  const resolvedTitle =
+    displayTitle?.trim() ||
+    sourceTitle;
+
+  const defaultSubtitle =
+    creator.trim();
+
+  const resolvedSubtitle =
+    displaySubtitle !== undefined
+      ? displaySubtitle
+      : defaultSubtitle;
+
+  const resolvedPageCount =
+    displayPageCount !== undefined
+      ? displayPageCount
+      : metadata?.page_count;
+
+  const detailParts = [
+    metadata?.document_type,
+    metadata?.genre,
+    resolvedPageCount != null
+      ? `${resolvedPageCount} pages`
+      : null,
+  ].filter(Boolean);
+  // const title = item.metadata?.title ?? item.title ?? "Untitled";
 
   return (
     <TouchableOpacity
@@ -154,16 +226,17 @@ const MusicItemCard: React.FC<Props> = ({
 
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 17, fontWeight: "700", color: "#1f2937" }}>
-          {title}
+          {resolvedTitle}
         </Text>
 
-        <Text style={{ fontSize: 14, color: "#666", marginTop: 4 }}>
-          {creator}
-        </Text>
+        {!!resolvedSubtitle && (
+          <Text style={{ fontSize: 14, color: "#666", marginTop: 4 }}>
+            {resolvedSubtitle}
+          </Text>
+        )}
 
         <Text style={{ fontSize: 13, color: "#888", marginTop: 4 }}>
-          {documentType} · {item.metadata?.genre || "Uncategorised"} ·{" "}
-          {item.metadata?.page_count || 0} pages
+          {detailParts.join(" • ")}
         </Text>
 
         <View style={{
@@ -238,8 +311,15 @@ const MusicItemCard: React.FC<Props> = ({
             icon="create-outline"
             label="Edit Details"
             onPress={() => {
-              if (!item.id) return;
-              onEditMetadata(item.id, title, item.uri);
+              if (item.id == null || !item.uri) {
+                return;
+              }
+
+              navigation.navigate("Metadata", {
+                mode: "edit",
+                musicId: item.id,
+                pdfUri: item.uri,
+              });
             }}
           />
 
@@ -255,7 +335,7 @@ const MusicItemCard: React.FC<Props> = ({
             destructive
             onPress={() => {
               Alert.alert(
-                deleteTitle ?? `Delete "${title}"?`,
+                deleteTitle ?? `Delete "${resolvedTitle}"?`,
                 deleteMessage ??
                   "This will permanently remove this score from your library.",
                 [

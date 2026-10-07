@@ -25,6 +25,13 @@ export type RootStackParamList = {
     musicId: number;
     setlistId?: number;
   };
+  Metadata: {
+    mode: "add" | "edit" | "view";
+    musicId?: number;
+    pdfUri?: string;
+    initialTitle?: string;
+    originalFilename?: string;
+  };
   About: undefined;
   Backups: undefined;
   OpenSourceLicenses: undefined;
@@ -84,21 +91,21 @@ export interface Setlist {
 }
 
 // Updated interface to include all metadata
-export interface MetadataFormData {
-  title: string;
-  setlists: string[];
-  // Add all the metadata fields
-  composer?: string;
-  arranger?: string;
-  editor?: string;
-  publisher?: string;
-  document_type: string;
-  genre?: string;
-  key_signature?: string;
-  time_signature?: string;
-  page_count?: number;
-  labels?: string[];
-}
+// export interface MetadataFormData {
+//   title: string;
+//   setlists: string[];
+//   // Add all the metadata fields
+//   composer?: string;
+//   arranger?: string;
+//   editor?: string;
+//   publisher?: string;
+//   document_type: string;
+//   genre?: string;
+//   key_signature?: string;
+//   time_signature?: string;
+//   page_count?: number;
+//   labels?: string[];
+// }
 
 export type Bookmark = {
   id: number;
@@ -141,9 +148,11 @@ export type ReaderContext = {
   setlistId: number;
   setlistName: string;
   setlistDescription?: string;
+
   currentIndex: number;
   totalItems: number;
-  musicIds: number[];
+
+  entries: SetlistEntry[];
 };
 
 export const ACCENT_COLOR = '#2563EB';
@@ -189,6 +198,22 @@ export type SetlistSummary = {
   created_at?: string | null;
   updated_at?: string | null;
   last_opened_at?: string | null;
+};
+
+export type SetlistEntry = {
+  id: number;
+  setlist_id: number;
+  music_id: number;
+  position: number;
+
+  entry_title: string | null;
+
+  start_page: number | null;
+  end_page: number | null;
+};
+
+export type SetlistEntryWithMusic = SetlistEntry & {
+  music: MusicItemWithAllData;
 };
 
 export const qualityScaleMap = {

@@ -245,19 +245,11 @@ export class BackupImportService {
     }
 
     if (
-      manifest.formatVersion >
+      manifest.formatVersion !==
       BACKUP_FORMAT_VERSION
     ) {
       throw new BackupError(
-        "This backup was created by a newer version of AriaScore."
-      );
-    }
-
-    if (
-      manifest.formatVersion < 1
-    ) {
-      throw new BackupError(
-        "The backup format version is invalid."
+        "This backup uses an incompatible AriaScore backup format."
       );
     }
 
@@ -496,38 +488,58 @@ export class BackupImportService {
   ): void {
     const musicIds = new Set(
       library.scores.map(
-        (score) => score.id
+        score => score.id
       )
     );
 
     const setlistIds = new Set(
       library.setlists.map(
-        (setlist) => setlist.id
+        setlist => setlist.id
+      )
+    );
+
+    const setlistEntryKeys = new Set(
+      library.setlistItems.map(
+        item =>
+          `${item.setlistId}:${item.id}`
       )
     );
 
     const labelIds = new Set(
       library.labels.map(
-        (label) => label.id
+        label => label.id
       )
     );
 
-    for (const item of library.setlistItems) {
-      if (!musicIds.has(item.musicId)) {
+    for (
+      const item of library.setlistItems
+    ) {
+      if (
+        !musicIds.has(item.musicId)
+      ) {
         throw new BackupError(
           `A setlist item refers to missing music record ${item.musicId}.`
         );
       }
 
-      if (!setlistIds.has(item.setlistId)) {
+      if (
+        !setlistIds.has(item.setlistId)
+      ) {
         throw new BackupError(
           `A setlist item refers to missing setlist ${item.setlistId}.`
         );
       }
     }
 
-    for (const bookmark of library.bookmarks) {
-      if (!musicIds.has(bookmark.musicId)) {
+    for (
+      const bookmark of
+      library.bookmarks
+    ) {
+      if (
+        !musicIds.has(
+          bookmark.musicId
+        )
+      ) {
         throw new BackupError(
           `Bookmark ${bookmark.id} refers to missing music record ${bookmark.musicId}.`
         );
@@ -539,11 +551,25 @@ export class BackupImportService {
       library.setlistProgress
     ) {
       if (
-        !musicIds.has(progress.musicId) ||
-        !setlistIds.has(progress.setlistId)
+        !setlistIds.has(
+          progress.setlistId
+        )
       ) {
         throw new BackupError(
-          "The backup contains invalid setlist progress data."
+          `Setlist progress refers to missing setlist ${progress.setlistId}.`
+        );
+      }
+
+      const entryKey =
+        `${progress.setlistId}:${progress.setlistEntryId}`;
+
+      if (
+        !setlistEntryKeys.has(
+          entryKey
+        )
+      ) {
+        throw new BackupError(
+          `Setlist progress refers to missing setlist entry ${progress.setlistEntryId} in setlist ${progress.setlistId}.`
         );
       }
     }
@@ -553,8 +579,12 @@ export class BackupImportService {
       library.musicLabels
     ) {
       if (
-        !musicIds.has(relation.musicId) ||
-        !labelIds.has(relation.labelId)
+        !musicIds.has(
+          relation.musicId
+        ) ||
+        !labelIds.has(
+          relation.labelId
+        )
       ) {
         throw new BackupError(
           "The backup contains an invalid label assignment."
@@ -566,7 +596,11 @@ export class BackupImportService {
       const setting of
       library.musicSettings
     ) {
-      if (!musicIds.has(setting.musicId)) {
+      if (
+        !musicIds.has(
+          setting.musicId
+        )
+      ) {
         throw new BackupError(
           `A music setting refers to missing music record ${setting.musicId}.`
         );
@@ -578,7 +612,9 @@ export class BackupImportService {
       library.setlistSettings
     ) {
       if (
-        !setlistIds.has(setting.setlistId)
+        !setlistIds.has(
+          setting.setlistId
+        )
       ) {
         throw new BackupError(
           `A setlist setting refers to missing setlist ${setting.setlistId}.`

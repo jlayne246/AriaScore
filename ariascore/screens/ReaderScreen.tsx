@@ -1,14 +1,11 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, SafeAreaView, Alert } from 'react-native';
+import { Text, SafeAreaView } from 'react-native';
 
-import { useNavigation, RouteProp, useFocusEffect } from "@react-navigation/native";
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-import PDFViewer from '../components/PDFViewer';
+import { useFocusEffect } from "@react-navigation/native";
 import BufferedPDFViewer from '../components/BufferedPDFViewer';
 
-import { MusicMetadataWithLabels, ReaderContext, RootStackParamList } from '../types';
-import { getMusicWithAllData, getMusicWithMetadata, markMusicAsOpened, saveSetlistProgress } from '../utils/database';
+import { RootStackParamList } from '../types';
+import { getMusicWithAllData, getMusicWithMetadata, markMusicAsOpened } from '../utils/database';
 import AriaScorePdfRenderer from '../native/AriaScorePdfRenderer';
 import { getResolvedReaderSettings } from '../utils/settings/resolver';
 import { ReaderSettings } from '../utils/settings/types';
@@ -37,36 +34,11 @@ const ReaderScreen = ({
     // const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     // const { uri, musicId, context, startPage } = route.params as { uri: string; musicId?: number, context: ReaderContext, startPage?: number };
 
-    const [title, setTitle] = useState("Untitled");
-    const [composer, setComposer] = useState("");
-    const [setlistLabel, setSetlistLabel] = useState("");
     const [toastVisible, setToastVisible] = useState(false);
     const [toastMessage, setToastMessage] = useState("");
     const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [music, setMusic] = useState<any>(null);
     const [settings, setSettings] = useState<ReaderSettings>()
-    
-
-    const loadSettings = useCallback(async () => {
-        if (!musicId) return;
-
-        try {
-            const resolved = await getResolvedReaderSettings(
-                musicId,
-                context?.setlistId
-            );
-
-            setSettings(resolved);
-        } catch (error) {
-            console.error("Failed to load reader settings:", error);
-        }
-    }, [musicId, context?.setlistId]);
-
-    useFocusEffect(
-        useCallback(() => {
-            void loadSettings();
-        }, [loadSettings])
-    );
 
       useEffect(() => {
           return () => {
@@ -137,46 +109,71 @@ const ReaderScreen = ({
         }, 3000); // 3 seconds
     }, []);
 
-    const openSetlistScore = async (
-        nextIndex: number,
-        openAt: "first" | "last" = "first"
-    ) => {
-        if (!context?.musicIds?.length) return;
+    const openSetlistScore = useCallback(
+        async (
+            targetArrayIndex: number,
+            openAt: "first" | "last" = "first"
+        ) => {
+            if (!context?.entries?.length) {
+            return;
+            }
 
-        if (nextIndex < 0) {
+            if (targetArrayIndex < 0) {
             showToast("Start of setlist");
             return;
-        }
+            }
 
-        if (nextIndex >= context.musicIds.length) {
+            if (
+            targetArrayIndex >=
+            context.entries.length
+            ) {
             showToast("End of setlist");
             return;
-        }
+            }
 
-        const nextMusicId = context.musicIds[nextIndex];
+            const targetEntry =
+            context.entries[targetArrayIndex];
 
-        const allMusic = await getMusicWithAllData();
-        const fullItem = allMusic.find(item => item.id === nextMusicId);
+            const targetMusicId =
+            targetEntry.music_id;
 
-        if (!fullItem?.uri) return;
+            const allMusic =
+            await getMusicWithAllData();
 
-        let startPage = 1;
+            const fullItem = allMusic.find(
+            item => item.id === targetMusicId
+            );
 
-        if (openAt === "last") {
-            startPage = await AriaScorePdfRenderer.getPageCount(fullItem.uri);
-        }
+            if (!fullItem?.uri) {
+            return;
+            }
 
-        navigation.replace("Reader", {
+            const targetPage =
+            openAt === "last"
+                ? targetEntry.end_page ??
+                await AriaScorePdfRenderer.getPageCount(
+                    fullItem.uri
+                )
+                : targetEntry.start_page ?? 1;
+
+            navigation.replace("Reader", {
             uri: fullItem.uri,
-            musicId: nextMusicId,
-            startPage,
-            origin,
+            musicId: targetMusicId,
+            startPage: targetPage,
+            origin: "setlist",
             context: {
                 ...context,
-                currentIndex: nextIndex + 1,
+                currentIndex:
+                targetArrayIndex + 1,
             },
-        });
-    };
+            });
+        },
+        [
+            context,
+            navigation,
+            showToast,
+        ]
+        );
 
     React.useLayoutEffect(() => {
         navigation.setOptions({
@@ -212,8 +209,9 @@ const ReaderScreen = ({
                 uri={uri} 
                 musicId={musicId}
                 score={{
-                    title: music?.metadata?.title ?? music?.title ?? "Untitled",
-                    document_type: music?.document_type ?? "Single Work",
+                    title: music?.title ?? "Untitled",
+                    document_type:
+                        music?.document_type ?? "Single Work",
                     composer: music?.composer ?? "",
                     arranger: music?.arranger ?? "",
                     editor: music?.editor ?? "",
@@ -221,9 +219,9 @@ const ReaderScreen = ({
                     notes: music?.notes ?? "",
                     labels: music?.labels ?? [],
                 }}
-                onMetadataUpdated={async () => {
-                    await loadMetadata();
-                }}
+                // onMetadataUpdated={async () => {
+                //     await loadMetadata();
+                // }}
                 onPreviousScore={() => {
                     if (!context) return;
                     return openSetlistScore(

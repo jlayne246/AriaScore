@@ -1,0 +1,51 @@
+# EAS inspection output — critical
+/ariascore/.eas-build-inspect/
+
+# Dependencies
+/ariascore/node_modules/
+
+# Expo local state
+/ariascore/.expo/
+/ariascore/.expo-shared/
+
+# Android generated files
+/ariascore/android/.gradle/
+/ariascore/android/.cxx/
+/ariascore/android/.idea/
+/ariascore/android/.kotlin/
+/ariascore/android/build/
+/ariascore/android/app/build/
+/ariascore/android/app/.cxx/
+/ariascore/android/local.properties
+
+# iOS generated files
+/ariascore/ios/build/
+/ariascore/ios/Pods/
+/ariascore/ios/DerivedData/
+
+# General generated output
+/ariascore/dist/
+/ariascore/build/
+/ariascore/coverage/
+
+# Generated binaries and backups
+*.apk
+*.aab
+*.apks
+*.ariascore
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Unrelated repository projects, if not needed by AriaScore
+/docs/
+/landing/

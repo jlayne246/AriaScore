@@ -4,9 +4,8 @@
     "strict": true
   },
   "include": [
-    // "nativewind-extend.d.ts",
-    "src",
-    "App.tsx",
+    "**/*.ts",
+    "**/*.tsx",
     "nativewind-env.d.ts"
   ]
 }
