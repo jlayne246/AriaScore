@@ -1,9 +1,7 @@
-import { CameraFrameSource } from "./CameraFrameSource";
-import { FaceLandmarkDetector } from "./FaceLandmarkDetector";
 import { GestureDebouncer } from "./GestureDebouncer";
 import { MouthGestureRecognizer } from "./MouthGestureRecognizer";
 
-import {
+import type {
   FaceGestureEvent,
   FaceLandmarks,
   MouthGestureSample,
@@ -24,12 +22,6 @@ interface CalibrationSession {
 }
 
 export class FaceGestureService {
-  private readonly camera =
-    new CameraFrameSource();
-
-  private readonly detector =
-    new FaceLandmarkDetector();
-
   private readonly recognizer =
     new MouthGestureRecognizer();
 
@@ -43,78 +35,24 @@ export class FaceGestureService {
     new Set<FaceGestureSampleListener>();
 
   private running = false;
-  private processingFrame = false;
 
   private calibration:
     | CalibrationSession
     | null = null;
 
-  private static readonly CALIBRATION_SAMPLE_COUNT = 20;
-  private static readonly CALIBRATION_TIMEOUT_MS = 3000;
+  private static readonly CALIBRATION_SAMPLE_COUNT = 15;
+  private static readonly CALIBRATION_TIMEOUT_MS = 5000;
 
-  async start(): Promise<void> {
+  start(): void {
     if (this.running) {
       return;
     }
 
     this.running = true;
+    this.debouncer.reset();
 
-    await this.camera.start(
-      async (frame) => {
-        if (this.processingFrame) {
-          return;
-        }
-
-        this.processingFrame = true;
-
-        try {
-          const landmarks =
-            await this.detector.detect(frame);
-
-          if (!landmarks) {
-            return;
-          }
-
-          /*
-           * If calibration is active, collect the landmarks
-           * before running normal recognition.
-           */
-          this.handleCalibrationSample(
-            landmarks,
-          );
-
-          const sample =
-            this.recognizer.process(
-              landmarks,
-            );
-
-          this.emitSample(sample);
-
-          /*
-           * I'd suppress actual gesture events while
-           * calibration is in progress.
-           */
-          if (this.calibration) {
-            return;
-          }
-
-          const event =
-            this.debouncer.process(
-              sample,
-            );
-
-          if (event) {
-            this.emit(event);
-          }
-        } catch (error) {
-          console.error(
-            "[FaceGestureService] Frame processing failed:",
-            error,
-          );
-        } finally {
-          this.processingFrame = false;
-        }
-      },
+    console.log(
+      "[FaceGestureService] started",
     );
   }
 
@@ -124,12 +62,53 @@ export class FaceGestureService {
     }
 
     this.cancelCalibration();
-
-    this.camera.stop();
     this.debouncer.reset();
 
     this.running = false;
-    this.processingFrame = false;
+
+    console.log(
+      "[FaceGestureService] stopped",
+    );
+  }
+
+  /**
+   * Called by the camera/face-detection layer whenever
+   * a valid face has been detected.
+   */
+  processLandmarks(
+    landmarks: FaceLandmarks,
+  ): void {
+    if (!this.running) {
+      return;
+    }
+
+    /*
+     * Calibration gets first access to each valid sample.
+     */
+    if (this.calibration) {
+      this.handleCalibrationSample(
+        landmarks,
+      );
+
+      /*
+       * Do not emit gestures while calibrating.
+       */
+      return;
+    }
+
+    const sample =
+      this.recognizer.process(
+        landmarks,
+      );
+
+    this.emitSample(sample);
+
+    const event =
+      this.debouncer.process(sample);
+
+    if (event) {
+      this.emit(event);
+    }
   }
 
   async calibrate(): Promise<boolean> {
@@ -139,19 +118,12 @@ export class FaceGestureService {
       );
     }
 
-    /*
-     * Prevent overlapping calibration attempts.
-     */
     if (this.calibration) {
       throw new Error(
         "Calibration is already in progress.",
       );
     }
 
-    /*
-     * Reset old state so stale gestures don't fire immediately
-     * after calibration.
-     */
     this.debouncer.reset();
 
     return new Promise<boolean>(
@@ -166,6 +138,7 @@ export class FaceGestureService {
           );
 
           this.calibration = null;
+
           resolve(false);
         }, FaceGestureService.CALIBRATION_TIMEOUT_MS);
 
@@ -189,6 +162,13 @@ export class FaceGestureService {
       landmarks,
     );
 
+    console.log(
+      "[Calibration]",
+      this.calibration.samples.length,
+      "/",
+      FaceGestureService.CALIBRATION_SAMPLE_COUNT,
+    );
+
     if (
       this.calibration.samples.length <
       FaceGestureService.CALIBRATION_SAMPLE_COUNT
@@ -204,10 +184,6 @@ export class FaceGestureService {
 
     clearTimeout(timeout);
 
-    /*
-     * Clear calibration first, so the service returns
-     * to normal processing after this frame.
-     */
     this.calibration = null;
 
     const success =
@@ -258,6 +234,7 @@ export class FaceGestureService {
 
   resetCalibration(): void {
     this.recognizer.resetCalibration();
+    this.debouncer.reset();
   }
 
   isCalibrated(): boolean {
@@ -284,7 +261,8 @@ export class FaceGestureService {
     sample: MouthGestureSample,
   ): void {
     for (
-      const listener of this.sampleListeners
+      const listener
+      of this.sampleListeners
     ) {
       listener(sample);
     }

@@ -1,39 +1,59 @@
-import {
-  CameraFrame,
+import type {
   FaceLandmarks,
   Point,
 } from "./types";
 
-export class FaceLandmarkDetector {
-  async detect(
-    frame: CameraFrame,
-  ): Promise<FaceLandmarks | null> {
-    /**
-     * TODO:
-     *
-     * Pass frame.nativeFrame to your actual face detector.
-     *
-     * Example flow:
-     *
-     * const faces = await detector.detect(frame.nativeFrame);
-     *
-     * if (faces.length === 0) {
-     *   return null;
-     * }
-     *
-     * const face = faces[0];
-     *
-     * Convert the detector-specific landmark format into the
-     * application-level FaceLandmarks interface below.
-     */
+export interface DetectedFace {
+  leftEye?: Point;
+  rightEye?: Point;
+  mouthLeft?: Point;
+  mouthRight?: Point;
+  nose?: Point;
+}
 
-    return null;
+export class FaceLandmarkDetector {
+  convert(
+    face: DetectedFace,
+    timestamp: number,
+  ): FaceLandmarks | null {
+    const {
+      leftEye,
+      rightEye,
+      mouthLeft,
+      mouthRight,
+      nose,
+    } = face;
+
+    if (
+      !leftEye ||
+      !rightEye ||
+      !mouthLeft ||
+      !mouthRight
+    ) {
+      return null;
+    }
+
+    const mouthCenter =
+      FaceLandmarkDetector.midpoint(
+        mouthLeft,
+        mouthRight,
+      );
+
+    return {
+      leftEye,
+      rightEye,
+      mouthLeft,
+      mouthRight,
+      mouthCenter,
+      nose,
+      timestamp,
+    };
   }
 
-  /**
-   * Helper for calculating the midpoint between two landmarks.
-   */
-  static midpoint(a: Point, b: Point): Point {
+  private static midpoint(
+    a: Point,
+    b: Point,
+  ): Point {
     return {
       x: (a.x + b.x) / 2,
       y: (a.y + b.y) / 2,

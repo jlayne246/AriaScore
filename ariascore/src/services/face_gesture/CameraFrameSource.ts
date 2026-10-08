@@ -1,50 +1,38 @@
-import { CameraFrame } from "./types";
+export interface Point {
+  x: number;
+  y: number;
+}
 
-export type FrameListener = (frame: CameraFrame) => void;
+export interface FaceLandmarks {
+  leftEye: Point;
+  rightEye: Point;
 
-export class CameraFrameSource {
-  private listener: FrameListener | null = null;
-  private running = false;
+  mouthLeft: Point;
+  mouthRight: Point;
+  mouthCenter: Point;
 
-  async start(listener: FrameListener): Promise<void> {
-    if (this.running) {
-      return;
-    }
+  nose?: Point;
 
-    this.listener = listener;
-    this.running = true;
+  timestamp: number;
+}
 
-    /**
-     * TODO:
-     *
-     * Connect to your actual front-camera frame processor here.
-     *
-     * Whenever a frame becomes available:
-     *
-     * this.listener?.({
-     *   nativeFrame: frame,
-     *   width: frame.width,
-     *   height: frame.height,
-     *   timestamp: Date.now(),
-     * });
-     */
-  }
+export type MouthGestureDirection =
+  | "left"
+  | "neutral"
+  | "right";
 
-  stop(): void {
-    if (!this.running) {
-      return;
-    }
+export interface MouthGestureSample {
+  direction: MouthGestureDirection;
+  displacement: number;
+  confidence: number;
+  timestamp: number;
+}
 
-    /**
-     * TODO:
-     * Detach/stop the native camera frame processor here.
-     */
+export type FaceGestureType =
+  | "mouth-left"
+  | "mouth-right";
 
-    this.listener = null;
-    this.running = false;
-  }
-
-  isRunning(): boolean {
-    return this.running;
-  }
+export interface FaceGestureEvent {
+  type: FaceGestureType;
+  timestamp: number;
 }

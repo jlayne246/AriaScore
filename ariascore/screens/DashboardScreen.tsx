@@ -36,6 +36,10 @@ const DashboardScreen = ({}) => {
       },
     });
 
+    useEffect(() => {
+        console.log("[DashboardScreen] useEffect - component mounted");
+    }, []);
+
     useLayoutEffect(() => {
         navigation.setOptions({
             header: () => (
@@ -271,7 +275,7 @@ const DashboardScreen = ({}) => {
                 <Pressable
                     onPress={() =>
                         navigation.navigate(
-                        "FaceGestureDebug",
+                            "FaceGestureDebug",
                         )
                     }
                     >

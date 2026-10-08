@@ -35,6 +35,7 @@ export type RootStackParamList = {
   About: undefined;
   Backups: undefined;
   OpenSourceLicenses: undefined;
+  FaceGestureDebug: undefined;
 };
 
 // Define types for music items

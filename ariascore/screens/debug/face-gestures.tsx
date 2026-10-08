@@ -17,7 +17,17 @@ import {
   faceGestureService,
   FaceGestureEvent,
   MouthGestureSample,
-} from "@/services/face_gesture";
+} from "../../src/services/face_gesture";
+
+import {
+  useCameraDevice,
+  useCameraPermission,
+} from "react-native-vision-camera";
+
+import {
+  Camera as FaceCamera,
+  Face,
+} from "react-native-vision-camera-face-detector";
 
 export default function FaceGestureDebugScreen() {
   const [running, setRunning] =
@@ -44,6 +54,37 @@ export default function FaceGestureDebugScreen() {
   const [error, setError] =
     useState<string | null>(null);
 
+  const device = useCameraDevice("front");
+
+  const {
+    hasPermission,
+    requestPermission,
+  } = useCameraPermission();
+
+  const [cameraPermission, setCameraPermission] =
+    useState(false);
+
+  const [faceDetected, setFaceDetected] =
+    useState(false);
+
+  useEffect(() => {
+      console.log(
+        "[FaceGestureDebugScreen] mounted",
+      );
+
+      return () => {
+        console.log(
+          "[FaceGestureDebugScreen] unmounted",
+        );
+      };
+    }, []);
+
+    useEffect(() => {
+    if (!hasPermission) {
+      requestPermission();
+    }
+  }, [hasPermission, requestPermission]);
+
   useEffect(() => {
     const unsubscribeSamples =
       faceGestureService.subscribeToSamples(
@@ -67,11 +108,11 @@ export default function FaceGestureDebugScreen() {
     };
   }, []);
 
-  const start = async () => {
+  const start = () => {
     try {
       setError(null);
 
-      await faceGestureService.start();
+      faceGestureService.start();
 
       setRunning(true);
     } catch (err) {
@@ -82,8 +123,6 @@ export default function FaceGestureDebugScreen() {
           ? err.message
           : "Unable to start face gesture service.",
       );
-
-      setRunning(false);
     }
   };
 
@@ -166,6 +205,24 @@ export default function FaceGestureDebugScreen() {
         setCalibrating(false);
     }
   };
+  
+  const handleFacesDetected = (
+    faces: Face[],
+  ) => {
+    if (faces.length === 0) {
+      setFaceDetected(false);
+      return;
+    }
+
+    setFaceDetected(true);
+
+    const face = faces[0];
+
+    console.log(
+      "[FaceDetector]",
+      JSON.stringify(face.landmarks, null, 2),
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -210,6 +267,38 @@ export default function FaceGestureDebugScreen() {
             value={confidenceLabel}
           />
         </View>
+
+        <View style={styles.cameraContainer}>
+        {device && hasPermission ? (
+          <FaceCamera
+            style={StyleSheet.absoluteFill}
+            device={device}
+            isActive={running}
+            runLandmarks
+            runContours
+            performanceMode="fast"
+            onFacesDetected={handleFacesDetected}
+            onError={(error) => {
+              console.error(
+                "[FaceCamera] error:",
+                error,
+              );
+
+              setError(
+                error instanceof Error
+                  ? error.message
+                  : "Face camera error.",
+              );
+            }}
+          />
+        ) : (
+          <View style={styles.cameraPlaceholder}>
+            <Text style={styles.help}>
+              Camera permission required
+            </Text>
+          </View>
+        )}
+      </View>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>
@@ -552,5 +641,18 @@ const styles = StyleSheet.create({
   help: {
     color: "#888",
     lineHeight: 20,
+  },
+
+  cameraContainer: {
+    height: 280,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#1e1e1e",
+  },
+
+  cameraPlaceholder: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

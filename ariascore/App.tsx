@@ -24,6 +24,7 @@ import MetadataScreen from './screens/MetadataScreen';
 import AboutScreen from './screens/AboutScreen';
 import BackupsScreen from './screens/BackupsScreen';
 import OpenSourceLicensesScreen from './screens/LicensesScreen';
+import FaceGestureDebugScreen from './screens/debug/face-gestures';
 
 import DevToolsButton from "./components/DevToolsButton";
 import TestComponent from "./components/TestTailwind";
@@ -35,11 +36,6 @@ import { useEffect, useState } from 'react';
 import { initDB } from './utils/database';
 import { importPdfFromUri } from './utils/fileUtils';
 import { importPdfNative } from "./native/AriaScorePdfImport";
-
-import { NativeModules } from "react-native";
-
-console.log(NativeModules);
-console.log(NativeModules.AriaScorePdfImportModule);
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

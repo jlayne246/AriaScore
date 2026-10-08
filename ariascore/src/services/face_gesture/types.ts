@@ -3,19 +3,19 @@ export interface Point {
   y: number;
 }
 
-export interface CameraFrame {
-  /**
-   * Library/native-specific frame object.
-   *
-   * Keep this opaque so the rest of the gesture system does not
-   * depend directly on a particular camera implementation.
-   */
-  nativeFrame: unknown;
+// export interface CameraFrame {
+//   /**
+//    * Library/native-specific frame object.
+//    *
+//    * Keep this opaque so the rest of the gesture system does not
+//    * depend directly on a particular camera implementation.
+//    */
+//   nativeFrame: unknown;
 
-  width: number;
-  height: number;
-  timestamp: number;
-}
+//   width: number;
+//   height: number;
+//   timestamp: number;
+// }
 
 export interface FaceLandmarks {
   leftEye: Point;
