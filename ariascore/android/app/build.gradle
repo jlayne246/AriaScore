@@ -4,9 +4,6 @@ apply plugin: "com.facebook.react"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
-def appVersionName =
-    System.getenv("APP_VERSION") ?: "1.0.0"
-
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -35,9 +32,7 @@ react {
     //   The list of variants to that are debuggable. For those we're going to
     //   skip the bundling of the JS bundle and the assets. By default is just 'debug'.
     //   If you add flavors like lite, prod, etc. you'll have to list your debuggableVariants.
-    debuggableVariants = [
-        "developmentDebug"
-    ]
+    debuggableVariants = ["developmentDebug"]
 
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
@@ -69,9 +64,9 @@ react {
 }
 
 /**
- * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
+ * Set this to true in release builds to optimize the app using [R8](https://developer.android.com/topic/performance/app-optimization/enable-app-optimization).
  */
-def enableProguardInReleaseBuilds = (findProperty('android.enableProguardInReleaseBuilds') ?: false).toBoolean()
+def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBuilds') ?: false).toBoolean()
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -86,6 +81,9 @@ def enableProguardInReleaseBuilds = (findProperty('android.enableProguardInRelea
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+def appVersionName =
+    System.getenv("APP_VERSION") ?: "1.0.0"
+
 android {
     ndkVersion rootProject.ext.ndkVersion
 
@@ -93,7 +91,6 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace 'com.jlayne246.ariascore.dev'
-
     defaultConfig {
         applicationId 'com.jlayne246.ariascore.dev'
         minSdkVersion rootProject.ext.minSdkVersion
@@ -101,142 +98,79 @@ android {
         versionCode 7
         versionName appVersionName
 
-        buildConfigField(
-            "String",
-            "REACT_NATIVE_RELEASE_LEVEL",
-            "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
-        )
+        buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
-
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
     flavorDimensions "environment"
 
     productFlavors {
         production {
             dimension "environment"
-
             applicationId 'com.jlayne246.ariascore'
-
-            resValue(
-                "string",
-                "app_name",
-                "AriaScore"
-            )
+            resValue "string", "app_name", "AriaScore"
         }
 
         preview {
             dimension "environment"
-
             applicationId 'com.jlayne246.ariascore.preview'
             versionNameSuffix "-preview"
-
-            resValue(
-                "string",
-                "app_name",
-                "AriaScore Preview"
-            )
+            resValue "string", "app_name", "AriaScore Preview"
         }
 
         development {
             dimension "environment"
-
             applicationId 'com.jlayne246.ariascore.dev'
             versionNameSuffix "-dev"
-
-            resValue(
-                "string",
-                "app_name",
-                "AriaScore Dev"
-            )
+            resValue "string", "app_name", "AriaScore Dev"
         }
     }
-
-    signingConfigs {
-        debug {
-            storeFile file("debug.keystore")
-            storePassword "android"
-            keyAlias "androiddebugkey"
-            keyPassword "android"
-        }
-    }
-
-    buildTypes {
-        debug {
-            signingConfig signingConfigs.debug
-        }
-
-        release {
-            /*
-             * EAS replaces/configures the release signing credentials
-             * during cloud builds.
-             *
-             * Keeping debug signing here is useful only for local
-             * release testing.
-             */
-            signingConfig signingConfigs.debug
-
-            shrinkResources(
-                findProperty(
-                    "android.enableShrinkResourcesInReleaseBuilds"
-                )?.toBoolean() ?: false
-            )
-
-            minifyEnabled enableProguardInReleaseBuilds
-
-            proguardFiles(
-                getDefaultProguardFile(
-                    "proguard-android.txt"
-                ),
-                "proguard-rules.pro"
-            )
-
-            crunchPngs(
-                findProperty(
-                    "android.enablePngCrunchInReleaseBuilds"
-                )?.toBoolean() ?: true
-            )
-        }
-    }
-
     variantFilter { variant ->
-        def flavorNames =
-            variant.flavors*.name
-
-        def buildTypeName =
-            variant.buildType.name
+        def flavorNames = variant.flavors*.name
+        def buildTypeName = variant.buildType.name
 
         def isValid =
-            (
-                flavorNames.contains("development") &&
-                buildTypeName == "debug"
-            ) ||
-            (
-                flavorNames.contains("preview") &&
-                buildTypeName == "release"
-            ) ||
-            (
-                flavorNames.contains("production") &&
-                buildTypeName == "release"
-            )
+            (flavorNames.contains("development") &&
+            buildTypeName == "debug") ||
+            (flavorNames.contains("preview") &&
+            buildTypeName == "release") ||
+            (flavorNames.contains("production") &&
+            buildTypeName == "release")
 
         if (!isValid) {
             setIgnore(true)
         }
     }
-
-    packagingOptions {
-        jniLibs {
-            useLegacyPackaging(
-                findProperty(
-                    "expo.useLegacyPackaging"
-                )?.toBoolean() ?: false
-            )
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            // Caution! In production, you need to generate your own keystore file.
+            // see https://reactnative.dev/docs/signed-apk-android.
+            signingConfig signingConfigs.debug
+            def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
+            shrinkResources enableShrinkResources.toBoolean()
+            minifyEnabled enableMinifyInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'
+            crunchPngs enablePngCrunchInRelease.toBoolean()
         }
     }
-
+    packagingOptions {
+        jniLibs {
+            def enableLegacyPackaging = findProperty('expo.useLegacyPackaging') ?: 'false'
+            useLegacyPackaging enableLegacyPackaging.toBoolean()
+        }
+    }
     androidResources {
-        ignoreAssetsPattern(
-            "!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~"
-        )
+        ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
 }
 

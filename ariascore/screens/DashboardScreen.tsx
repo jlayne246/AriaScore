@@ -130,6 +130,8 @@ const DashboardScreen = ({}) => {
     );
 
     const handleImport = async () => {
+        console.log("Importing PDF...");
+        
         const file = await UploadLocalPDF();
 
         if (!file) return;

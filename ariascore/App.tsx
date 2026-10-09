@@ -37,6 +37,8 @@ import { initDB } from './utils/database';
 import { importPdfFromUri } from './utils/fileUtils';
 import { importPdfNative } from "./native/AriaScorePdfImport";
 
+import "./global.css";
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 import { createNavigationContainerRef } from "@react-navigation/native";

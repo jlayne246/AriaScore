@@ -26,7 +26,7 @@ import {
 import {
   createBackupService,
 } from "../src/services/backup/createBackupService";
-import { exportBackupFile, shareBackupFile } from "../src/services/backup/backups.helpers";
+import { exportBackupFile, shareBackupFile } from "../src/services/backup/backup.destination.service";
 import { getDatabase } from "../utils/database";
 import { BackupImportService } from "../src/services/backup/backupImportService";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -661,24 +661,27 @@ export default function BackupsScreen() {
       </View>
 
       {/* <View style={{ flexDirection: "row", gap: 12, marginBottom: 20, justifyContent: "center" }}> */}
-        <Pressable
-        onPress={handleExportBackup}
-        disabled={isBackupBusy}
-        accessibilityRole="button"
-        accessibilityLabel="Save backup"
-        accessibilityState={{ disabled: isBackupBusy, busy: isExporting }}
-        style={({ pressed }) => ({
-          minHeight: 54,
-          backgroundColor: isBackupBusy ? "#9CA3AF" : ACCENT_COLOR,
-          borderRadius: 14,
-          paddingVertical: 14,
-          paddingHorizontal: 18,
-          alignItems: "center",
-          justifyContent: "center",
-          opacity: pressed && !isBackupBusy ? 0.85 : 1,
-          marginBottom: 12,
-        })}
-      >
+        <TouchableOpacity
+          onPress={handleExportBackup}
+          disabled={isBackupBusy}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Save backup"
+          accessibilityState={{
+            disabled: isBackupBusy,
+            busy: isExporting,
+          }}
+          style={{
+            minHeight: 54,
+            backgroundColor: isBackupBusy ? "#9CA3AF" : ACCENT_COLOR,
+            borderRadius: 14,
+            paddingVertical: 14,
+            paddingHorizontal: 18,
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: 12,
+          }}
+        >
         {isExporting ? (
           <View
             style={{
@@ -724,15 +727,15 @@ export default function BackupsScreen() {
             </Text>
           </View>
         )}
-      </Pressable>
+      </TouchableOpacity>
 
-      <Pressable
+      <TouchableOpacity
         onPress={handleShareBackup}
         disabled={isBackupBusy}
         accessibilityRole="button"
         accessibilityLabel="Share backup"
         accessibilityState={{ disabled: isBackupBusy, busy: isSharing }}
-        style={({ pressed }) => ({
+        style={{
           minHeight: 54,
           backgroundColor: isBackupBusy ? "#9CA3AF" : ACCENT_COLOR,
           borderRadius: 14,
@@ -740,9 +743,9 @@ export default function BackupsScreen() {
           paddingHorizontal: 18,
           alignItems: "center",
           justifyContent: "center",
-          opacity: pressed && !isBackupBusy ? 0.85 : 1,
+          opacity: !isBackupBusy ? 0.85 : 1,
           marginBottom: 12,
-        })}
+        }}
       >
         {isSharing ? (
           <View
@@ -789,12 +792,13 @@ export default function BackupsScreen() {
             </Text>
           </View>
         )}
-      </Pressable>
+      </TouchableOpacity>
       {/* </View> */}
 
-      <Pressable
+      <TouchableOpacity
         onPress={handleImportBackup}
         disabled={isBackupBusy}
+        activeOpacity={0.85}
         accessibilityRole="button"
         accessibilityLabel="Restore backup"
         accessibilityHint="Replaces the current library with a selected AriaScore backup"
@@ -802,7 +806,7 @@ export default function BackupsScreen() {
           disabled: isBackupBusy,
           busy: isImporting,
         }}
-        style={({ pressed }) => ({
+        style={{
           minHeight: 54,
           backgroundColor: isBackupBusy
             ? "#9CA3AF"
@@ -813,10 +817,10 @@ export default function BackupsScreen() {
           alignItems: "center",
           justifyContent: "center",
           opacity:
-            pressed && !isBackupBusy
+            !isBackupBusy
               ? 0.85
               : 1,
-        })}
+        }}
       >
         {isImporting ? (
           <View
@@ -866,7 +870,7 @@ export default function BackupsScreen() {
             </Text>
           </View>
         )}
-      </Pressable>
+      </TouchableOpacity>
 
       <Text
         style={{

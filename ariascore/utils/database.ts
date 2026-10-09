@@ -8,7 +8,7 @@ import { Asset } from "expo-asset";
  * Imports the Expo file system module which allows the app access to a device's local file system
  * @see {@link https://docs.expo.dev/versions/latest/sdk/filesystem/}
  * */ 
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
 import * as troubleshooting from "./troubleshooting";
 
