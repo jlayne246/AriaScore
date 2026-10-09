@@ -100,6 +100,12 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 7
         versionName appVersionName
+
+        buildConfigField(
+            "String",
+            "REACT_NATIVE_RELEASE_LEVEL",
+            "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
+        )
     }
 
     flavorDimensions "environment"
@@ -108,7 +114,7 @@ android {
         production {
             dimension "environment"
 
-            applicationId 'com.jlayne246.ariascore.dev'
+            applicationId 'com.jlayne246.ariascore'
 
             resValue(
                 "string",
@@ -120,7 +126,7 @@ android {
         preview {
             dimension "environment"
 
-            applicationId 'com.jlayne246.ariascore.dev'
+            applicationId 'com.jlayne246.ariascore.preview'
             versionNameSuffix "-preview"
 
             resValue(
