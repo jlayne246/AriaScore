@@ -1,38 +1,43 @@
+import { Platform } from "react-native";
 import {
-  NativeModules,
-  Platform,
-} from "react-native";
+  requireNativeModule,
+} from "expo-modules-core";
 
 interface AriaScoreFileExporterModule {
-  copyFileToContentUri(
+  exportFile(
     sourceFileUri: string,
-    destinationContentUri: string
+    destinationUri: string
   ): Promise<void>;
 }
 
-const nativeModule =
-  NativeModules.AriaScoreFileExporter as
-    | AriaScoreFileExporterModule
-    | undefined;
+let nativeModule:
+  | AriaScoreFileExporterModule
+  | null = null;
 
-export async function copyFileToContentUri(
-  sourceFileUri: string,
-  destinationContentUri: string
-): Promise<void> {
+function getNativeModule():
+  AriaScoreFileExporterModule {
   if (Platform.OS !== "android") {
     throw new Error(
-      "Direct folder export is currently available only on Android."
+      "Direct file export is currently available only on Android."
     );
   }
 
   if (!nativeModule) {
-    throw new Error(
-      "The AriaScore file exporter native module is unavailable. Rebuild the application."
-    );
+    nativeModule =
+      requireNativeModule<AriaScoreFileExporterModule>(
+        "AriaScoreFileExporter"
+      );
   }
 
-  await nativeModule.copyFileToContentUri(
+  return nativeModule;
+}
+
+export async function exportFile(
+  sourceFileUri: string,
+  destinationUri: string
+): Promise<void> {
+  await getNativeModule().exportFile(
     sourceFileUri,
-    destinationContentUri
+    destinationUri
   );
 }

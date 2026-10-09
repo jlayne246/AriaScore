@@ -143,6 +143,17 @@ export default ({ config }) => {
         ? ["expo-dev-client"]
         : []),
 
+      [
+        "expo-build-properties",
+        {
+          android: {
+            compileSdkVersion: 36,
+            targetSdkVersion: 36,
+            buildToolsVersion: "36.0.0",
+          },
+        },
+      ],
+
       "expo-font",
       "expo-share-intent",
     ],

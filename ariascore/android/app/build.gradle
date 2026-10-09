@@ -92,13 +92,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.jlayne246.ariascore"
+    namespace 'com.jlayne246.ariascore.dev'
 
     defaultConfig {
-        applicationId "com.jlayne246.ariascore"
+        applicationId 'com.jlayne246.ariascore.dev'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        versionCode 7
         versionName appVersionName
     }
 
@@ -108,7 +108,7 @@ android {
         production {
             dimension "environment"
 
-            applicationId "com.jlayne246.ariascore"
+            applicationId 'com.jlayne246.ariascore.dev'
 
             resValue(
                 "string",
@@ -120,7 +120,7 @@ android {
         preview {
             dimension "environment"
 
-            applicationId "com.jlayne246.ariascore.preview"
+            applicationId 'com.jlayne246.ariascore.dev'
             versionNameSuffix "-preview"
 
             resValue(
@@ -133,7 +133,7 @@ android {
         development {
             dimension "environment"
 
-            applicationId "com.jlayne246.ariascore.dev"
+            applicationId 'com.jlayne246.ariascore.dev'
             versionNameSuffix "-dev"
 
             resValue(

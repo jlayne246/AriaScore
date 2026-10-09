@@ -1,6 +1,6 @@
 import * as Application from "expo-application";
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
+// import * as Sharing from "expo-sharing";
 import { zip } from "react-native-zip-archive";
 
 import { BackupError } from "./backup.errors";
@@ -306,39 +306,39 @@ export class BackupExportService {
     }
   }
 
-  public async createAndShareBackup():
-    Promise<CreatedBackup> {
-    const backup = await this.createBackup();
+  // public async createAndShareBackup():
+  //   Promise<CreatedBackup> {
+  //   const backup = await this.createBackup();
 
-    const sharingAvailable =
-      await Sharing.isAvailableAsync();
+  //   const sharingAvailable =
+  //     await Sharing.isAvailableAsync();
 
-    if (!sharingAvailable) {
-      throw new BackupError(
-        "The backup was created, but file sharing is unavailable on this device."
-      );
-    }
+  //   if (!sharingAvailable) {
+  //     throw new BackupError(
+  //       "The backup was created, but file sharing is unavailable on this device."
+  //     );
+  //   }
 
-    try {
-      await Sharing.shareAsync(backup.uri, {
-        dialogTitle:
-          "Export AriaScore backup",
+  //   try {
+  //     await Sharing.shareAsync(backup.uri, {
+  //       dialogTitle:
+  //         "Export AriaScore backup",
 
-        /*
-         * The contents are still ZIP data despite the custom extension.
-         */
-        mimeType: "application/zip",
-        UTI: "public.zip-archive",
-      });
+  //       /*
+  //        * The contents are still ZIP data despite the custom extension.
+  //        */
+  //       mimeType: "application/zip",
+  //       UTI: "public.zip-archive",
+  //     });
 
-      return backup;
-    } catch (error) {
-      throw new BackupError(
-        "The backup was created, but the share sheet could not be opened.",
-        error
-      );
-    }
-  }
+  //     return backup;
+  //   } catch (error) {
+  //     throw new BackupError(
+  //       "The backup was created, but the share sheet could not be opened.",
+  //       error
+  //     );
+  //   }
+  // }
 
   private async copyScores(
     scores: BackupSourceScore[],
