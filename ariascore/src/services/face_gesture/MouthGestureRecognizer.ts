@@ -41,7 +41,7 @@ export interface MouthGestureRecognizerOptions {
 
 const DEFAULT_OPTIONS:
   MouthGestureRecognizerOptions = {
-    triggerStrength: 0.42,
+    triggerStrength: 0.5,
 
     // horizontalSmoothingAlpha: 0.5,
     // liftSmoothingAlpha: 0.5,
@@ -242,38 +242,43 @@ export class MouthGestureRecognizer {
     const leftHorizontalStrength =
       horizontal < 0
         ? this.safeStrength(
-            Math.abs(
-              horizontal,
+            this.removeNoiseFloor(
+              Math.abs(horizontal),
+              calibration.neutralNoise.horizontal,
             ),
-            calibration.left
-              .horizontalAmplitude,
+            calibration.left.horizontalAmplitude,
           )
         : 0;
 
     const leftLiftStrength =
       lift < 0
         ? this.safeStrength(
-            Math.abs(
-              lift,
+            this.removeNoiseFloor(
+              Math.abs(lift),
+              calibration.neutralNoise.lift,
             ),
-            calibration.left
-              .liftAmplitude,
+            calibration.left.liftAmplitude,
           )
         : 0;
 
     const rightHorizontalStrength =
       horizontal > 0
         ? this.safeStrength(
-            horizontal,
-            calibration.right
-              .horizontalAmplitude,
+            this.removeNoiseFloor(
+              Math.abs(horizontal),
+              calibration.neutralNoise.horizontal,
+            ),
+            calibration.right.horizontalAmplitude,
           )
         : 0;
 
     const rightLiftStrength =
       lift > 0
         ? this.safeStrength(
-            lift,
+            this.removeNoiseFloor(
+              Math.abs(lift),
+              calibration.neutralNoise.lift,
+            ),
             calibration.right
               .liftAmplitude,
           )
@@ -288,15 +293,25 @@ export class MouthGestureRecognizer {
      * - a combination of both
      */
     const leftStrength =
-      Math.max(
+      this.combineDirectionalStrength(
         leftHorizontalStrength,
         leftLiftStrength,
+        calibration.left
+          .horizontalAmplitude,
+        calibration.left
+          .liftAmplitude,
+        calibration,
       );
 
     const rightStrength =
-      Math.max(
+      this.combineDirectionalStrength(
         rightHorizontalStrength,
         rightLiftStrength,
+        calibration.right
+          .horizontalAmplitude,
+        calibration.right
+          .liftAmplitude,
+        calibration,
       );
 
     const leftTriggered =
@@ -406,6 +421,95 @@ export class MouthGestureRecognizer {
     };
   }
 
+  private calculateChannelWeights(
+  horizontalAmplitude: number,
+  liftAmplitude: number,
+  horizontalNoise: number,
+  liftNoise: number,
+): {
+  horizontal: number;
+  lift: number;
+} {
+  const horizontalSnr =
+    horizontalNoise > 0
+      ? horizontalAmplitude /
+        horizontalNoise
+      : horizontalAmplitude > 0
+        ? Number.POSITIVE_INFINITY
+        : 0;
+
+  const liftSnr =
+    liftNoise > 0
+      ? liftAmplitude /
+        liftNoise
+      : liftAmplitude > 0
+        ? Number.POSITIVE_INFINITY
+        : 0;
+
+  /*
+   * A channel below this SNR isn't reliable enough
+   * to influence recognition.
+   */
+  const minimumReliableSnr =
+    3.0;
+
+  const horizontalReliability =
+    horizontalSnr >=
+    minimumReliableSnr
+      ? horizontalSnr
+      : 0;
+
+  const liftReliability =
+    liftSnr >=
+    minimumReliableSnr
+      ? liftSnr
+      : 0;
+
+  const total =
+    horizontalReliability +
+    liftReliability;
+
+  if (total <= 0) {
+    return {
+      horizontal: 0,
+      lift: 0,
+    };
+  }
+
+  return {
+    horizontal:
+      horizontalReliability /
+      total,
+
+    lift:
+      liftReliability /
+      total,
+  };
+}
+
+private combineDirectionalStrength(
+  horizontalStrength: number,
+  liftStrength: number,
+  horizontalAmplitude: number,
+  liftAmplitude: number,
+  calibration: FaceGestureCalibration,
+): number {
+  const weights =
+    this.calculateChannelWeights(
+      horizontalAmplitude,
+      liftAmplitude,
+      calibration.neutralNoise.horizontal,
+      calibration.neutralNoise.lift,
+    );
+
+  return (
+    horizontalStrength *
+      weights.horizontal +
+    liftStrength *
+      weights.lift
+  );
+}
+
   private calculatePoseDelta(
     current:
       | FacePose
@@ -486,18 +590,21 @@ export class MouthGestureRecognizer {
     if (horizontal < 0) {
       horizontalStrength =
         this.safeStrength(
-          Math.abs(
-            horizontal,
+          this.removeNoiseFloor(
+            Math.abs(horizontal),
+            calibration.neutralNoise.horizontal,
           ),
-          calibration.left
-            .horizontalAmplitude,
-        );
+          calibration.left.horizontalAmplitude,
+        )
     } else if (
       horizontal > 0
     ) {
       horizontalStrength =
         this.safeStrength(
-          horizontal,
+          this.removeNoiseFloor(
+            Math.abs(horizontal),
+            calibration.neutralNoise.horizontal,
+          ),
           calibration.right
             .horizontalAmplitude,
         );
@@ -506,8 +613,9 @@ export class MouthGestureRecognizer {
     if (lift < 0) {
       liftStrength =
         this.safeStrength(
-          Math.abs(
-            lift,
+          this.removeNoiseFloor(
+            Math.abs(lift),
+            calibration.neutralNoise.lift,
           ),
           calibration.left
             .liftAmplitude,
@@ -517,7 +625,10 @@ export class MouthGestureRecognizer {
     ) {
       liftStrength =
         this.safeStrength(
-          lift,
+          this.removeNoiseFloor(
+            Math.abs(lift),
+            calibration.neutralNoise.lift,
+          ),
           calibration.right
             .liftAmplitude,
         );
@@ -528,6 +639,19 @@ export class MouthGestureRecognizer {
       horizontalStrength
         ? lift
         : horizontal
+    );
+  }
+
+  private removeNoiseFloor(
+    magnitude: number,
+    noise: number,
+  ): number {
+    const deadZone =
+      noise * 2.5;
+
+    return Math.max(
+      0,
+      magnitude - deadZone,
     );
   }
 

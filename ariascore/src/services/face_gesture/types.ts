@@ -104,24 +104,20 @@ export interface GestureAmplitudeCalibration {
   liftAmplitude: number;
 }
 
+export interface GestureNoiseCalibration {
+  horizontal: number;
+  lift: number;
+}
+
 export interface FaceGestureCalibration {
-  version: 1;
+  version: 2;
 
   createdAt: number;
-
-  /**
-   * Whether camera-space horizontal semantics need
-   * mirroring to match the user's perceived left/right.
-   */
   mirrorHorizontal: boolean;
 
   neutral: NeutralMouthCalibration;
+  neutralNoise: GestureNoiseCalibration;
 
-  /**
-   * Natural head position while looking at the score.
-   * This may legitimately have substantial yaw because
-   * the physical camera can be off-centre.
-   */
   neutralPose?: FacePose;
 
   left: GestureAmplitudeCalibration;

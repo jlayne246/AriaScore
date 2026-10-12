@@ -28,7 +28,7 @@ const DEFAULT_BUILD_OPTIONS = {
   minimumUsefulAmplitude: 0.005,
 
   minimumGestureSeparation: 0.015,
-  minimumSignalToNoiseRatio: 2.0,
+  minimumSignalToNoiseRatio: 3.0, // up to 3.5
 };
 
 export interface CalibrationSampleSet {
@@ -186,7 +186,7 @@ export function buildFaceGestureCalibration(
   }
 
   return {
-    version: 1,
+    version: 2,
 
     createdAt: Date.now(),
 
@@ -196,6 +196,11 @@ export function buildFaceGestureCalibration(
     neutral,
 
     neutralPose,
+
+    neutralNoise: {
+      horizontal: neutralNoise.horizontalNoise,
+      lift: neutralNoise.liftNoise,
+    },
 
     left: leftProfile,
     right: rightProfile,
