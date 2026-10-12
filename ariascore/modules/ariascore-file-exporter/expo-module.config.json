@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["AriascoreFileExporterModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.ariascorefileexporter.AriaScoreFileExporterModule"]
+  }
+}

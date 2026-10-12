@@ -37,6 +37,7 @@ import { initDB } from './utils/database';
 import { importPdfFromUri } from './utils/fileUtils';
 import { importPdfNative } from "./native/AriaScorePdfImport";
 
+// @ts-expect-error CSS side-effect import is provided by the bundler at build time.
 import "./global.css";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
