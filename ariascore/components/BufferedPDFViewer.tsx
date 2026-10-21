@@ -511,6 +511,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   // const effectiveFacialGestures =
   //   effectivePerformanceMode ? settings.facialGestures : false;
 
+  const effectiveFacialGestures =
+    settings.facialGestures;
+
 
   useEffect(() => {
     // console.log("[PAGE CACHE RESET] uri", {

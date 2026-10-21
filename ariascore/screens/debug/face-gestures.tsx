@@ -21,22 +21,27 @@ import {
   FaceGestureCalibration,
   FaceGestureCalibrationPhase,
   FaceGestureEvent,
-  FaceLandmarks,
   MouthGestureSample,
 } from "../../src/services/face_gesture";
 
 import {
-  useCameraDevice,
   useCameraPermission,
 } from "react-native-vision-camera";
 
-import {
-  Camera as FaceCamera,
-  Face,
-} from "react-native-vision-camera-face-detector";
+// import {
+//   useCameraDevice,
+//   useCameraPermission,
+// } from "react-native-vision-camera";
+
+// import {
+//   Camera as FaceCamera,
+//   Face,
+// } from "react-native-vision-camera-face-detector";
+
+import FaceGestureCamera from "../../components/FaceGestureCamera";
 
 const DEBUG_UI_UPDATE_INTERVAL_MS = 200;
-const PERFORMANCE_UPDATE_INTERVAL_MS = 1000;
+// const PERFORMANCE_UPDATE_INTERVAL_MS = 1000;
 const GESTURE_TOAST_DURATION_MS = 1800;
 
 interface CalibrationSequenceState {
@@ -126,22 +131,22 @@ export default function FaceGestureDebugScreen() {
   ] =
     useState(false);
 
-  const [
-    detectorFps,
-    setDetectorFps,
-  ] =
-    useState(0);
+  // const [
+  //   detectorFps,
+  //   setDetectorFps,
+  // ] =
+  //   useState(0);
 
-  const [
-    frameGapMs,
-    setFrameGapMs,
-  ] =
-    useState<number | null>(
-      null,
-    );
+  // const [
+  //   frameGapMs,
+  //   setFrameGapMs,
+  // ] =
+  //   useState<number | null>(
+  //     null,
+  //   );
 
-  const runningRef =
-    useRef(false);
+  // const runningRef =
+  //   useRef(false);
 
   const faceDetectedRef =
     useRef(false);
@@ -149,29 +154,26 @@ export default function FaceGestureDebugScreen() {
   const lastUiUpdateRef =
     useRef(0);
 
-  const previousDetectorFrameRef =
-    useRef<number | null>(
-      null,
-    );
+  // const previousDetectorFrameRef =
+  //   useRef<number | null>(
+  //     null,
+  //   );
 
-  const latestFrameGapRef =
-    useRef<number | null>(
-      null,
-    );
+  // const latestFrameGapRef =
+  //   useRef<number | null>(
+  //     null,
+  //   );
 
-  const performanceWindowStartRef =
-    useRef(Date.now());
+  // const performanceWindowStartRef =
+  //   useRef(Date.now());
 
-  const performanceFrameCountRef =
-    useRef(0);
+  // const performanceFrameCountRef =
+  //   useRef(0);
 
   const gestureToastTimerRef =
     useRef<
       ReturnType<typeof setTimeout> | null
     >(null);
-
-  const device =
-    useCameraDevice("front");
 
   const {
     hasPermission,
@@ -212,10 +214,10 @@ export default function FaceGestureDebugScreen() {
     };
   }, []);
 
-  useEffect(() => {
-    runningRef.current =
-      running;
-  }, [running]);
+  // useEffect(() => {
+  //   runningRef.current =
+  //     running;
+  // }, [running]);
 
   /*
    * Subscribe to recognizer samples and final
@@ -341,40 +343,40 @@ export default function FaceGestureDebugScreen() {
       }
     };
 
-  const resetPerformanceStats =
-    (): void => {
-      previousDetectorFrameRef.current =
-        null;
+  // const resetPerformanceStats =
+  //   (): void => {
+  //     previousDetectorFrameRef.current =
+  //       null;
 
-      latestFrameGapRef.current =
-        null;
+  //     latestFrameGapRef.current =
+  //       null;
 
-      performanceWindowStartRef.current =
-        Date.now();
+  //     performanceWindowStartRef.current =
+  //       Date.now();
 
-      performanceFrameCountRef.current =
-        0;
+  //     performanceFrameCountRef.current =
+  //       0;
 
-      setDetectorFps(
-        0,
-      );
+  //     setDetectorFps(
+  //       0,
+  //     );
 
-      setFrameGapMs(
-        null,
-      );
-    };
+  //     setFrameGapMs(
+  //       null,
+  //     );
+  //   };
 
   const start =
     (): void => {
       try {
         setError(null);
 
-        resetPerformanceStats();
+        // resetPerformanceStats();
 
         faceGestureService.start();
 
-        runningRef.current =
-          true;
+        // runningRef.current =
+        //   true;
 
         setRunning(
           true,
@@ -397,8 +399,8 @@ export default function FaceGestureDebugScreen() {
     (): void => {
       faceGestureService.stop();
 
-      runningRef.current =
-        false;
+      // runningRef.current =
+      //   false;
 
       setRunning(
         false,
@@ -427,7 +429,7 @@ export default function FaceGestureDebugScreen() {
           null;
       }
 
-      resetPerformanceStats();
+      // resetPerformanceStats();
     };
 
   const updateFaceDetected =
@@ -452,115 +454,69 @@ export default function FaceGestureDebugScreen() {
       [],
     );
 
-  const updateDetectorPerformance =
-    useCallback(
-      () => {
-        const now =
-          Date.now();
+  // const updateDetectorPerformance =
+  //   useCallback(
+  //     () => {
+  //       const now =
+  //         Date.now();
 
-        if (
-          previousDetectorFrameRef.current !==
-          null
-        ) {
-          latestFrameGapRef.current =
-            now -
-            previousDetectorFrameRef.current;
-        }
+  //       if (
+  //         previousDetectorFrameRef.current !==
+  //         null
+  //       ) {
+  //         latestFrameGapRef.current =
+  //           now -
+  //           previousDetectorFrameRef.current;
+  //       }
 
-        previousDetectorFrameRef.current =
-          now;
+  //       previousDetectorFrameRef.current =
+  //         now;
 
-        performanceFrameCountRef.current +=
-          1;
+  //       performanceFrameCountRef.current +=
+  //         1;
 
-        const elapsed =
-          now -
-          performanceWindowStartRef.current;
+  //       const elapsed =
+  //         now -
+  //         performanceWindowStartRef.current;
 
-        if (
-          elapsed <
-          PERFORMANCE_UPDATE_INTERVAL_MS
-        ) {
-          return;
-        }
+  //       if (
+  //         elapsed <
+  //         PERFORMANCE_UPDATE_INTERVAL_MS
+  //       ) {
+  //         return;
+  //       }
 
-        const fps =
-          (
-            performanceFrameCountRef.current *
-            1000
-          ) /
-          elapsed;
+  //       const fps =
+  //         (
+  //           performanceFrameCountRef.current *
+  //           1000
+  //         ) /
+  //         elapsed;
 
-        setDetectorFps(
-          Math.round(
-            fps,
-          ),
-        );
+  //       setDetectorFps(
+  //         Math.round(
+  //           fps,
+  //         ),
+  //       );
 
-        if (
-          latestFrameGapRef.current !==
-          null
-        ) {
-          setFrameGapMs(
-            latestFrameGapRef.current,
-          );
-        }
+  //       if (
+  //         latestFrameGapRef.current !==
+  //         null
+  //       ) {
+  //         setFrameGapMs(
+  //           latestFrameGapRef.current,
+  //         );
+  //       }
 
-        performanceFrameCountRef.current =
-          0;
+  //       performanceFrameCountRef.current =
+  //         0;
 
-        performanceWindowStartRef.current =
-          now;
-      },
-      [],
-    );
+  //       performanceWindowStartRef.current =
+  //         now;
+  //     },
+  //     [],
+  //   );
 
-const handleFacesDetected =
-  useCallback(
-    (faces: Face[]) => {
-      updateDetectorPerformance();
-
-      if (
-        faces.length === 0
-      ) {
-        updateFaceDetected(
-          false,
-        );
-
-        return;
-      }
-
-      updateFaceDetected(
-        true,
-      );
-
-      if (
-        !runningRef.current
-      ) {
-        return;
-      }
-
-      const landmarks =
-        mapFaceToLandmarks(
-          faces[0],
-        );
-
-      if (
-        !landmarks
-      ) {
-        return;
-      }
-
-      faceGestureService
-        .processLandmarks(
-          landmarks,
-        );
-    },
-    [
-      updateDetectorPerformance,
-      updateFaceDetected,
-    ],
-  );
 
   const captureCalibrationPhase =
     async (
@@ -805,23 +761,23 @@ const handleFacesDetected =
         )}°`
       : "—";
 
-  const frameGapLabel =
-    frameGapMs !==
-    null
-      ? `${frameGapMs} ms`
-      : "—";
+  // const frameGapLabel =
+  //   frameGapMs !==
+  //   null
+  //     ? `${frameGapMs} ms`
+  //     : "—";
 
-  const detectorStatus =
-    detectorFps ===
-    0
-      ? "—"
-      : detectorFps >=
-          10
-        ? "GOOD"
-        : detectorFps >=
-            6
-          ? "USABLE"
-          : "SLOW";
+  // const detectorStatus =
+  //   detectorFps ===
+  //   0
+  //     ? "—"
+  //     : detectorFps >=
+  //         10
+  //       ? "GOOD"
+  //       : detectorFps >=
+  //           6
+  //         ? "USABLE"
+  //         : "SLOW";
 
   const indicatorPosition =
     useMemo(
@@ -905,30 +861,6 @@ const handleFacesDetected =
           />
 
           <DebugRow
-            label="Detector FPS"
-            value={
-              detectorFps >
-              0
-                ? `${detectorFps}`
-                : "—"
-            }
-          />
-
-          <DebugRow
-            label="Detector status"
-            value={
-              detectorStatus
-            }
-          />
-
-          <DebugRow
-            label="Frame gap"
-            value={
-              frameGapLabel
-            }
-          />
-
-          <DebugRow
             label="Pose"
             value={
               poseLabel
@@ -961,7 +893,7 @@ const handleFacesDetected =
             value={
               directionLabel
             }
-          />
+          />DebugRow
 
           <DebugRow
             label="Horizontal"
@@ -1028,63 +960,28 @@ const handleFacesDetected =
               </Text>
             </TouchableOpacity>
           </View>
-        ) : !device ? (
-          <View
-            style={
-              styles.cameraPlaceholder
-            }
-          >
-            <Text
-              style={
-                styles.help
-              }
-            >
-              No front camera
-              available.
-            </Text>
-          </View>
         ) : (
           <>
             {running && (
-              <View
-                style={
+              <FaceGestureCamera
+                enabled={running}
+                showPreview={
                   showCameraPreview
-                    ? styles.cameraContainer
-                    : styles.hiddenCameraContainer
                 }
-              >
-                <FaceCamera
-                  style={
-                    StyleSheet.absoluteFill
-                  }
-                  device={
-                    device
-                  }
-                  isActive={
-                    running
-                  }
-                  runLandmarks
-                  performanceMode="fast"
-                  onFacesDetected={
-                    handleFacesDetected
-                  }
-                  onError={(
-                    cameraError,
-                  ) => {
-                    console.error(
-                      "[FaceCamera] error:",
-                      cameraError,
-                    );
-
-                    setError(
-                      cameraError instanceof
+                onFaceDetectedChange={
+                  updateFaceDetected
+                }
+                onError={(
+                  cameraError,
+                ) => {
+                  setError(
+                    cameraError instanceof
                       Error
-                        ? cameraError.message
-                        : "Face camera error.",
-                    );
-                  }}
-                />
-              </View>
+                      ? cameraError.message
+                      : "Face camera error.",
+                  );
+                }}
+              />
             )}
 
             <DebugButton
@@ -1096,9 +993,7 @@ const handleFacesDetected =
               onPress={
                 () => {
                   setShowCameraPreview(
-                    (
-                      current,
-                    ) =>
+                    current =>
                       !current,
                   );
                 }
@@ -1500,8 +1395,7 @@ const handleFacesDetected =
                 start
               }
               disabled={
-                !hasPermission ||
-                !device
+                !hasPermission
               }
             />
           ) : (
@@ -1566,163 +1460,6 @@ const handleFacesDetected =
       )}
     </SafeAreaView>
   );
-}
-
-function mapFaceToLandmarks(
-  face: Face,
-): FaceLandmarks | null {
-  const landmarks =
-    face.landmarks;
-
-  if (
-    !landmarks
-  ) {
-    return null;
-  }
-
-  const leftEye =
-    landmarks.LEFT_EYE;
-
-  const rightEye =
-    landmarks.RIGHT_EYE;
-
-  const mouthLeft =
-    landmarks.MOUTH_LEFT;
-
-  const mouthRight =
-    landmarks.MOUTH_RIGHT;
-
-  const leftCheek =
-    landmarks.LEFT_CHEEK;
-
-  const rightCheek =
-    landmarks.RIGHT_CHEEK;
-
-  if (
-    !leftEye ||
-    !rightEye ||
-    !mouthLeft ||
-    !mouthRight
-  ) {
-    return null;
-  }
-
-  const mouthCenter = {
-    x:
-      (
-        mouthLeft.x +
-        mouthRight.x
-      ) /
-      2,
-
-    y:
-      (
-        mouthLeft.y +
-        mouthRight.y
-      ) /
-      2,
-  };
-
-  const faceWithPose =
-    face as Face & {
-      yawAngle?: number;
-      pitchAngle?: number;
-      rollAngle?: number;
-    };
-
-  const hasPose =
-    typeof faceWithPose
-      .yawAngle ===
-      "number" &&
-    typeof faceWithPose
-      .pitchAngle ===
-      "number" &&
-    typeof faceWithPose
-      .rollAngle ===
-      "number";
-
-  return {
-    leftEye: {
-      x:
-        leftEye.x,
-      y:
-        leftEye.y,
-    },
-
-    rightEye: {
-      x:
-        rightEye.x,
-      y:
-        rightEye.y,
-    },
-
-    mouthLeft: {
-      x:
-        mouthLeft.x,
-      y:
-        mouthLeft.y,
-    },
-
-    mouthRight: {
-      x:
-        mouthRight.x,
-      y:
-        mouthRight.y,
-    },
-
-    mouthCenter,
-
-    leftCheek:
-      leftCheek
-        ? {
-            x: leftCheek.x,
-            y: leftCheek.y,
-          }
-        : undefined,
-
-    rightCheek:
-      rightCheek
-        ? {
-            x: rightCheek.x,
-            y: rightCheek.y,
-          }
-        : undefined,
-
-    nose:
-      landmarks.NOSE_BASE
-        ? {
-            x:
-              landmarks
-                .NOSE_BASE
-                .x,
-
-            y:
-              landmarks
-                .NOSE_BASE
-                .y,
-          }
-        : undefined,
-
-    pose:
-      hasPose
-        ? {
-            yaw:
-              faceWithPose
-                .yawAngle!,
-
-            pitch:
-              faceWithPose
-                .pitchAngle!,
-
-            roll:
-              faceWithPose
-                .rollAngle!,
-          }
-        : undefined,
-
-    timestamp:
-      Date.now(),
-  };
 }
 
 interface DebugRowProps {
@@ -2235,43 +1972,6 @@ const styles =
 
       lineHeight:
         20,
-    },
-
-    cameraContainer: {
-      height:
-        280,
-
-      borderRadius:
-        16,
-
-      overflow:
-        "hidden",
-
-      backgroundColor:
-        "#1e1e1e",
-    },
-
-    hiddenCameraContainer: {
-      position:
-        "absolute",
-
-      width:
-        2,
-
-      height:
-        2,
-
-      left:
-        0,
-
-      top:
-        0,
-
-      opacity:
-        0,
-
-      overflow:
-        "hidden",
     },
 
     cameraPlaceholder: {
