@@ -5,7 +5,7 @@ import type {
 } from "./types";
 
 const CALIBRATION_STORAGE_KEY =
-  "ariascore:face-gesture-calibration:v1";
+  "ariascore:face-gesture-calibration:v2";
 
 export async function saveFaceGestureCalibration(
   calibration: FaceGestureCalibration,
@@ -23,6 +23,11 @@ export async function loadFaceGestureCalibration():
       CALIBRATION_STORAGE_KEY,
     );
 
+  console.log(
+    "[FaceGestureCalibrationStore] Stored value:",
+    raw ? "FOUND" : "NOT FOUND",
+  );
+
   if (!raw) {
     return null;
   }
@@ -31,14 +36,38 @@ export async function loadFaceGestureCalibration():
     const parsed =
       JSON.parse(raw) as FaceGestureCalibration;
 
-    if (parsed.version !== 1) {
+    console.log(
+      "[FaceGestureCalibrationStore] Parsed version:",
+      parsed.version,
+    );
+
+    if (
+      parsed.version !== 2
+    ) {
+      console.warn(
+        "[FaceGestureCalibrationStore] Unsupported calibration version:",
+        parsed.version,
+      );
+
+      return null;
+    }
+
+    if (
+      !parsed.neutralNoise ||
+      typeof parsed.neutralNoise.horizontal !== "number" ||
+      typeof parsed.neutralNoise.lift !== "number"
+    ) {
+      console.warn(
+        "[FaceGestureCalibrationStore] Invalid v2 calibration.",
+      );
+
       return null;
     }
 
     return parsed;
   } catch (error) {
     console.warn(
-      "[FaceGesture] Could not parse saved calibration:",
+      "[FaceGestureCalibrationStore] Could not parse saved calibration:",
       error,
     );
 

@@ -235,13 +235,80 @@ const SettingsScreen = () => {
 
         <SettingsToggleRow
           title="Facial Gestures"
-          subtitle="Experimental page control using facial gestures."
+          subtitle="Use facial gestures for hands-free page turning in Performance Mode."
           value={settings.facialGestures}
           onValueChange={value =>
-            updateGlobalSetting("facialGestures", value)
+            updateGlobalSetting(
+              "facialGestures",
+              value,
+            )
           }
           icon="happy-outline"
         />
+
+        {settings.facialGestures && (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              navigation.navigate(
+                "FaceGestureCalibration" as never,
+              );
+            }}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingVertical: 14,
+              borderTopWidth: 1,
+              borderTopColor: "#E5E7EB",
+            }}
+          >
+            <View
+              style={{
+                width: 34,
+                alignItems: "center",
+              }}
+            >
+              <Ionicons
+                name="scan-outline"
+                size={21}
+                color={ACCENT_COLOR}
+              />
+            </View>
+
+            <View
+              style={{
+                flex: 1,
+                marginLeft: 10,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 16,
+                  color: "#111827",
+                  fontWeight: "500",
+                }}
+              >
+                Facial Gesture Calibration
+              </Text>
+
+              <Text
+                style={{
+                  marginTop: 2,
+                  fontSize: 13,
+                  color: "#6B7280",
+                }}
+              >
+                Set up or recalibrate hands-free page turning.
+              </Text>
+            </View>
+
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color="#9CA3AF"
+            />
+          </TouchableOpacity>
+        )}
       </SettingsSection>
     </ScrollView>
   );

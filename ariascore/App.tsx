@@ -43,6 +43,7 @@ import "./global.css";
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 import { createNavigationContainerRef } from "@react-navigation/native";
+import FaceGestureCalibrationScreen from './screens/FaceGestureCalibrationScreen';
 
 export const navigationRef =
   createNavigationContainerRef<RootStackParamList>();
@@ -215,6 +216,14 @@ export default function App() {
                     name="OpenSourceLicenses"
                     component={OpenSourceLicensesScreen}
                     options={{ title: "Open Source Licences" }}
+                  />
+
+                  <Stack.Screen
+                    name="FaceGestureCalibration"
+                    component={FaceGestureCalibrationScreen}
+                    options={{
+                      title: "Facial Gesture Calibration",
+                    }}
                   />
 
                   {/* DEBUG SCREENS */}
