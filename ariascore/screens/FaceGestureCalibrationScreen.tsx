@@ -1262,7 +1262,8 @@ const styles =
     },
 
     cameraPreview: {
-      height: 240,
+      width: "100%",
+      aspectRatio: 4/3,
       backgroundColor: "#111827",
     },
 
