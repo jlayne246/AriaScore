@@ -3861,6 +3861,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         enabled={
           faceGesturesRunning
         }
+        exposure={1}
         onFaceDetectedChange={(
           detected,
         ) => {

@@ -30,6 +30,8 @@ interface FaceGestureCameraProps {
    */
   showPreview?: boolean;
 
+  exposure?: number;
+
   onFaceDetectedChange?: (
     detected: boolean,
   ) => void;
@@ -42,6 +44,7 @@ interface FaceGestureCameraProps {
 export default function FaceGestureCamera({
   enabled,
   showPreview = false,
+  exposure = 0,
   onFaceDetectedChange,
   onError,
 }: FaceGestureCameraProps) {
@@ -105,15 +108,36 @@ export default function FaceGestureCamera({
           StyleSheet.absoluteFill
         }
         device={device}
+        exposure={exposure}
         isActive={enabled}
         runLandmarks
-        performanceMode="fast"
+        performanceMode="accurate"
+        minFaceSize={0.10}
         onFacesDetected={
           handleFacesDetected
         }
-        onError={(
-          cameraError,
-        ) => {
+        onError={(cameraError) => {
+          const message =
+            cameraError instanceof Error
+              ? cameraError.message
+              : String(cameraError);
+
+          const isInactiveExposureRace =
+            message.includes(
+              "OperationCanceledException",
+            ) &&
+            message.includes(
+              "Camera is not active",
+            );
+
+          if (isInactiveExposureRace) {
+            console.warn(
+              "[FaceGestureCamera] Ignoring transient exposure update while camera is inactive.",
+            );
+
+            return;
+          }
+
           console.error(
             "[FaceGestureCamera] Camera error:",
             cameraError,

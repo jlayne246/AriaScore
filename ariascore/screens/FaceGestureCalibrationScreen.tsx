@@ -2,6 +2,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -138,6 +139,11 @@ export default function FaceGestureCalibrationScreen() {
 
   const [faceDetected, setFaceDetected] =
     useState(false);
+
+  const faceLostTimerRef =
+    useRef<ReturnType<typeof setTimeout> | null>(
+      null,
+    );
 
   const [error, setError] =
     useState<string | null>(
@@ -294,6 +300,36 @@ export default function FaceGestureCalibrationScreen() {
     }, [
       step,
     ]);
+
+  const handleFaceDetectedChange =
+  useCallback((detected: boolean) => {
+    if (detected) {
+      if (faceLostTimerRef.current) {
+        clearTimeout(
+          faceLostTimerRef.current,
+        );
+
+        faceLostTimerRef.current =
+          null;
+      }
+
+      setFaceDetected(true);
+
+      return;
+    }
+
+    if (faceLostTimerRef.current) {
+      return;
+    }
+
+    faceLostTimerRef.current =
+      setTimeout(() => {
+        setFaceDetected(false);
+
+        faceLostTimerRef.current =
+          null;
+      }, 750);
+  }, []);
 
   const requestCameraAccess =
     useCallback(
@@ -712,6 +748,7 @@ export default function FaceGestureCalibrationScreen() {
                   enabled={
                     running
                   }
+                  exposure={1}
                   showPreview
                   onFaceDetectedChange={
                     setFaceDetected
@@ -1263,7 +1300,7 @@ const styles =
 
     cameraPreview: {
       width: "100%",
-      aspectRatio: 4/3,
+      aspectRatio: 1,
       backgroundColor: "#111827",
     },
 
