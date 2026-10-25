@@ -38,6 +38,9 @@ export default ({ config }) => {
   const appVariant = getAppVariant();
   const variantConfig = APP_VARIANTS[appVariant];
 
+  const shareExtensionBundleIdentifier =
+  `${variantConfig.packageName}.share-extension`;
+
   const appVersion =
     process.env.APP_VERSION ?? "1.0.4";
 
@@ -163,7 +166,15 @@ export default ({ config }) => {
       ],
 
       "expo-font",
-      "expo-share-intent",
+      [
+        "expo-share-intent",
+        {
+          ios: {
+            extensionBundleIdentifier:
+              shareExtensionBundleIdentifier,
+          },
+        },
+      ],
     ],
   };
 };
