@@ -17,6 +17,9 @@
 
     "ios:check": "expo-modules-autolinking resolve --platform apple",
 
+    "ios:build:preview": "npx eas-cli build --profile preview --platform ios",
+    "ios:build:simulator": "npx eas-cli build --profile ios-simulator --platform ios",
+
     "web": "expo start --web",
     "generate:licenses": "license-checker --json --production --out ./src/generated/licenses.json",
     
