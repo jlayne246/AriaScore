@@ -88,10 +88,18 @@ export default ({ config }) => {
       bundleIdentifier:
         variantConfig.packageName,
 
+      infoPlist: {
+        ...config.ios?.infoPlist,
+
+        NSCameraUsageDescription:
+          "AriaScore uses the camera to detect facial gestures for hands-free page turning.",
+      },
+
       /*
        * Remove this if EAS remotely manages build numbers.
        */
       // buildNumber: iosBuildNumber,
+
     },
 
     android: {

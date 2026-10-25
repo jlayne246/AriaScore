@@ -430,21 +430,22 @@ export class MouthGestureRecognizer {
   horizontal: number;
   lift: number;
 } {
+  const minimumNoise =
+    0.000001;
+
   const horizontalSnr =
-    horizontalNoise > 0
-      ? horizontalAmplitude /
-        horizontalNoise
-      : horizontalAmplitude > 0
-        ? Number.POSITIVE_INFINITY
-        : 0;
+    horizontalAmplitude /
+    Math.max(
+      horizontalNoise,
+      minimumNoise,
+    );
 
   const liftSnr =
-    liftNoise > 0
-      ? liftAmplitude /
-        liftNoise
-      : liftAmplitude > 0
-        ? Number.POSITIVE_INFINITY
-        : 0;
+    liftAmplitude /
+    Math.max(
+      liftNoise,
+      minimumNoise,
+    );
 
   /*
    * A channel below this SNR isn't reliable enough

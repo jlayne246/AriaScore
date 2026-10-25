@@ -256,19 +256,20 @@ export class FaceGestureService {
     this.debouncer.reset();
 
     return new Promise<boolean>(
-      (resolve) => {
-        const timeout =
+      resolve => {
+        const session: CalibrationSession = {
+          phase,
+          samples: [],
+          resolve,
+          timeout: null,
+        };
+
+        session.timeout =
           setTimeout(
             () => {
               if (
-                !this.calibration
-              ) {
-                return;
-              }
-
-              if (
-                this.calibration
-                  .phase !== phase
+                this.calibration !==
+                session
               ) {
                 return;
               }
@@ -280,18 +281,16 @@ export class FaceGestureService {
               this.calibration =
                 null;
 
+              this.debouncer.reset();
+
               resolve(false);
             },
             FaceGestureService
               .CALIBRATION_TIMEOUT_MS,
           );
 
-        this.calibration = {
-          phase,
-          samples: [],
-          resolve,
-          timeout: null,
-        };
+        this.calibration =
+          session;
 
         console.log(
           `[FaceGestureService] Calibration phase started: ${phase}`,

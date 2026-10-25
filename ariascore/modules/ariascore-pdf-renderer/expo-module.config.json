@@ -1,7 +1,7 @@
 {
   "platforms": ["apple", "android", "web"],
   "apple": {
-    "modules": ["AriascorePdfRendererModule"]
+    "modules": ["AriaScorePdfRendererModule"]
   },
   "android": {
     "modules": ["expo.modules.ariascorepdfrenderer.AriaScorePdfRendererModule"]

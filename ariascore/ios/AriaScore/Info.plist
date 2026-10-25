@@ -81,5 +81,7 @@
     <string>Light</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
+    <key>NSCameraUsageDescription</key>
+    <string>AriaScore uses the camera to detect facial gestures for hands-free page turning.</string>
   </dict>
 </plist>
