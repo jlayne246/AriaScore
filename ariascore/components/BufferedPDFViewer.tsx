@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { runOnJS } from 'react-native-reanimated';
 import {
@@ -69,6 +69,12 @@ import {
   type ReaderPaginationOptions,
 } from "../utils/reader/readerPagination";
 import { saveMusicReaderSetting } from '../utils/settings/repository';
+
+import FaceGestureCamera from "./FaceGestureCamera";
+
+import {
+  faceGestureService,
+} from "../src/services/face_gesture";
 
 type ScoreNavigationCallback =
     () => Promise<void> | void;
@@ -494,6 +500,11 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const [performanceModeOverride, setPerformanceModeOverride] =
   useState<boolean | null>(null);
 
+  const [
+    faceGesturesRunning,
+    setFaceGesturesRunning,
+  ] = useState(false);
+
   const pendingAnchorPageRef =
   useRef<number | null>(null);
 
@@ -501,6 +512,48 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     performanceModeOverride ?? settings.performanceMode;
 
   const insets = useSafeAreaInsets();
+
+  const effectiveFacialGestures =
+    effectivePerformanceMode &&
+    settings.facialGestures;
+
+  const isFocused =
+    useIsFocused();
+
+  const shouldRunFaceGestures =
+    effectiveFacialGestures &&
+    isFocused;
+
+  useEffect(() => {
+  console.log(
+    "[Performance Face State]",
+    {
+      settingsPerformanceMode:
+        settings.performanceMode,
+
+      performanceModeOverride,
+
+      effectivePerformanceMode,
+
+      facialGesturesSetting:
+        settings.facialGestures,
+
+      effectiveFacialGestures,
+
+      isFocused,
+
+      shouldRunFaceGestures,
+    },
+  );
+}, [
+  settings.performanceMode,
+  performanceModeOverride,
+  effectivePerformanceMode,
+  settings.facialGestures,
+  effectiveFacialGestures,
+  isFocused,
+  shouldRunFaceGestures,
+]);
 
   // const effectiveAutoHideControls =
   // effectivePerformanceMode ? true : settings.autoHideControls;
@@ -511,6 +564,53 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   // const effectiveFacialGestures =
   //   effectivePerformanceMode ? settings.facialGestures : false;
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const startFaceGestures =
+      async () => {
+        if (!shouldRunFaceGestures) {
+          faceGestureService.stop();
+          setFaceGesturesRunning(false);
+
+          return;
+        }
+
+        const restored =
+          await faceGestureService
+            .loadSavedCalibration();
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!restored) {
+          console.warn(
+            "[Reader] Facial gestures enabled but no saved calibration is available.",
+          );
+
+          setFaceGesturesRunning(false);
+
+          return;
+        }
+
+        faceGestureService.start();
+
+        setFaceGesturesRunning(true);
+      };
+
+    void startFaceGestures();
+
+    return () => {
+      cancelled = true;
+
+      faceGestureService.stop();
+
+      setFaceGesturesRunning(false);
+    };
+  }, [
+    shouldRunFaceGestures,
+  ]);
 
   useEffect(() => {
     // console.log("[PAGE CACHE RESET] uri", {
@@ -1729,6 +1829,18 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   //   );
   // }, [displayMode]);
 
+  useEffect(() => {
+    console.log(
+      "[BufferedPDFViewer] MOUNT",
+    );
+
+    return () => {
+      console.log(
+        "[BufferedPDFViewer] UNMOUNT",
+      );
+    };
+  }, []);
+
   const showChromeTemporarily = useCallback(() => {
     setChromeVisible(true);
 
@@ -2127,6 +2239,63 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     void runPageTurn(goToPreviousPage);
   }, [runPageTurn, goToPreviousPage]);
   
+  useEffect(() => {
+    console.log(
+      "[Reader Face] Subscription effect:",
+      {
+        faceGesturesRunning,
+      },
+    );
+
+    if (!faceGesturesRunning) {
+      return;
+    }
+
+    console.log(
+      "[Reader Face] Subscribing to emitted gestures",
+    );
+
+    const unsubscribe =
+      faceGestureService.subscribe(
+        (event) => {
+          console.log(
+            "[Reader Face] EVENT:",
+            event.type,
+            event,
+          );
+
+          switch (event.type) {
+            case "mouth-left":
+              console.log(
+                "[Reader Face] PREVIOUS PAGE",
+              );
+
+              turnPreviousPage();
+              break;
+
+            case "mouth-right":
+              console.log(
+                "[Reader Face] NEXT PAGE",
+              );
+
+              turnNextPage();
+              break;
+          }
+        },
+      );
+
+    return () => {
+      console.log(
+        "[Reader Face] Unsubscribing",
+      );
+
+      unsubscribe();
+    };
+  }, [
+    faceGesturesRunning,
+    turnPreviousPage,
+    turnNextPage,
+  ]);
 
   // const toggleBookmark = useCallback(async () => {
   //   if (!musicId) return;
@@ -2607,12 +2776,34 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                       : "Performance Mode"
                   }
                   accent
+                  // onPress={() => {
+                  //   const nextValue = !effectivePerformanceMode;
+
+                  //   performanceModeClosingRef.current = nextValue;
+
+                  //   setPerformanceModeOverride(nextValue);
+                  //   setChromeVisible(false);
+                  // }}
                   onPress={() => {
-                    const nextValue = !effectivePerformanceMode;
+                    console.log(
+                      "[Performance Mode] Menu option selected",
+                    );
 
-                    performanceModeClosingRef.current = nextValue;
+                    const nextValue =
+                      !effectivePerformanceMode;
 
-                    setPerformanceModeOverride(nextValue);
+                    console.log(
+                      "[Performance Mode] Setting override:",
+                      nextValue,
+                    );
+
+                    performanceModeClosingRef.current =
+                      nextValue;
+
+                    setPerformanceModeOverride(
+                      nextValue,
+                    );
+
                     setChromeVisible(false);
                   }}
                 />
@@ -3665,6 +3856,29 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           </View>
         </View>
       )}
+
+      <FaceGestureCamera
+        enabled={
+          faceGesturesRunning
+        }
+        exposure={1}
+        onFaceDetectedChange={(
+          detected,
+        ) => {
+          console.log(
+            "[Reader Face] Face detected:",
+            detected,
+          );
+        }}
+        onError={(
+          error,
+        ) => {
+          console.error(
+            "[Reader Face] Camera error:",
+            error,
+          );
+        }}
+      />
 
       {labelOverlayVisible && (
         <View

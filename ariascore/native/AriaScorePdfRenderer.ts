@@ -1,13 +1,13 @@
-import { NativeModules, Platform } from "react-native";
+import { requireNativeModule } from "expo-modules-core";
 
-type RenderPageOptions = {
+export type RenderPageOptions = {
   pdfPath: string;
   page: number;
   width: number;
   height: number;
 };
 
-type RenderPageResult = {
+export type RenderPageResult = {
   uri: string;
   width: number;
   height: number;
@@ -17,34 +17,48 @@ type RenderPageResult = {
 };
 
 type AriaScorePdfRendererModule = {
-  getPageCount(pdfPath: string): Promise<number>;
-  renderPage(options: RenderPageOptions): Promise<RenderPageResult>;
-  clearDocumentCache(pdfPath: string): Promise<boolean>;
+  getPageCount(
+    pdfPath: string
+  ): Promise<number>;
+
+  renderPage(
+    options: RenderPageOptions
+  ): Promise<RenderPageResult>;
+
+  clearDocumentCache(
+    pdfPath: string
+  ): Promise<boolean>;
+
+  clearCache(): Promise<boolean>;
 };
 
-const getNativeModule = (): AriaScorePdfRendererModule => {
-  const nativeModule =
-    NativeModules.AriaScorePdfRenderer as AriaScorePdfRendererModule | undefined;
-
-  if (!["android", "ios"].includes(Platform.OS) || !nativeModule) {
-    throw new Error(
-      "AriaScorePdfRenderer is only available in the native Android/iOS build."
-    );
-  }
-
-  return nativeModule;
-};
+const nativeModule =
+  requireNativeModule<AriaScorePdfRendererModule>(
+    "AriaScorePdfRenderer"
+  );
 
 export default {
-  getPageCount(pdfPath: string): Promise<number> {
-    return getNativeModule().getPageCount(pdfPath);
+  getPageCount(
+    pdfPath: string
+  ): Promise<number> {
+    return nativeModule.getPageCount(pdfPath);
   },
 
-  renderPage(options: RenderPageOptions): Promise<RenderPageResult> {
-    return getNativeModule().renderPage(options);
+  renderPage(
+    options: RenderPageOptions
+  ): Promise<RenderPageResult> {
+    return nativeModule.renderPage(options);
   },
 
-  clearDocumentCache(pdfPath: string): Promise<boolean> {
-    return getNativeModule().clearDocumentCache(pdfPath);
+  clearDocumentCache(
+    pdfPath: string
+  ): Promise<boolean> {
+    return nativeModule.clearDocumentCache(
+      pdfPath
+    );
+  },
+
+  clearCache(): Promise<boolean> {
+    return nativeModule.clearCache();
   },
 };

@@ -88,10 +88,18 @@ export default ({ config }) => {
       bundleIdentifier:
         variantConfig.packageName,
 
+      infoPlist: {
+        ...config.ios?.infoPlist,
+
+        NSCameraUsageDescription:
+          "AriaScore uses the camera to detect facial gestures for hands-free page turning.",
+      },
+
       /*
        * Remove this if EAS remotely manages build numbers.
        */
       // buildNumber: iosBuildNumber,
+
     },
 
     android: {
@@ -142,6 +150,17 @@ export default ({ config }) => {
       ...(useDevClient
         ? ["expo-dev-client"]
         : []),
+
+      [
+        "expo-build-properties",
+        {
+          android: {
+            compileSdkVersion: 36,
+            targetSdkVersion: 36,
+            buildToolsVersion: "36.0.0",
+          },
+        },
+      ],
 
       "expo-font",
       "expo-share-intent",

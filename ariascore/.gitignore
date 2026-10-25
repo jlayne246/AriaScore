@@ -19,6 +19,12 @@ android/app/build
 android/app/.cxx
 android/local.properties
 
+modules/**/android/.gradle/
+modules/**/android/build/
+modules/**/android/.cxx/
+modules/**/android/local.properties
+modules/**/package/
+
 ios/build
 ios/Pods
 ios/DerivedData
@@ -64,3 +70,5 @@ Thumbs.db
 backups/
 exports/
 coverage/
+
+*-old/

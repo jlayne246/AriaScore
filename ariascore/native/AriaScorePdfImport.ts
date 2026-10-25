@@ -1,29 +1,23 @@
-import { NativeModules, Platform } from "react-native";
+import { requireNativeModule } from "expo-modules-core";
 
-type ImportedPdf = {
+export type ImportedPdf = {
   uri: string;
   originalFilename: string;
 };
 
-type AriaScorePdfImporterModule = {
-  importPdf(sourceUri: string): Promise<ImportedPdf>;
+type AriaScorePdfImportModule = {
+  importPdf(
+    sourceUri: string
+  ): Promise<ImportedPdf>;
 };
 
-const getNativeImporter = (): AriaScorePdfImporterModule => {
-  const nativeModule =
-    NativeModules.AriaScorePdfImporter as AriaScorePdfImporterModule | undefined;
-
-  if (!["android", "ios"].includes(Platform.OS) || !nativeModule) {
-    throw new Error(
-      "AriaScorePdfImporter is only available in the native Android/iOS build."
-    );
-  }
-
-  return nativeModule;
-};
+const nativeModule =
+  requireNativeModule<AriaScorePdfImportModule>(
+    "AriaScorePdfImport"
+  );
 
 export const importPdfNative = async (
   sourceUri: string
 ): Promise<ImportedPdf> => {
-  return getNativeImporter().importPdf(sourceUri);
+  return nativeModule.importPdf(sourceUri);
 };

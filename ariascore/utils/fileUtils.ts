@@ -7,7 +7,7 @@ import * as DocumentPicker from 'expo-document-picker';
  * Imports the Expo file system module which allows the app access to a device's local file system
  * @see {@link https://docs.expo.dev/versions/latest/sdk/filesystem/}
  * */ 
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 /**
  * This function facilitates the uploading of the PDF to the system.

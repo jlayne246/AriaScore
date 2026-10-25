@@ -24,6 +24,7 @@ import MetadataScreen from './screens/MetadataScreen';
 import AboutScreen from './screens/AboutScreen';
 import BackupsScreen from './screens/BackupsScreen';
 import OpenSourceLicensesScreen from './screens/LicensesScreen';
+import FaceGestureDebugScreen from './screens/debug/face-gestures';
 
 import DevToolsButton from "./components/DevToolsButton";
 import TestComponent from "./components/TestTailwind";
@@ -36,14 +37,13 @@ import { initDB } from './utils/database';
 import { importPdfFromUri } from './utils/fileUtils';
 import { importPdfNative } from "./native/AriaScorePdfImport";
 
-import { NativeModules } from "react-native";
-
-console.log(NativeModules);
-console.log(NativeModules.AriaScorePdfImportModule);
+// @ts-expect-error CSS side-effect import is provided by the bundler at build time.
+import "./global.css";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 import { createNavigationContainerRef } from "@react-navigation/native";
+import FaceGestureCalibrationScreen from './screens/FaceGestureCalibrationScreen';
 
 export const navigationRef =
   createNavigationContainerRef<RootStackParamList>();
@@ -216,6 +216,23 @@ export default function App() {
                     name="OpenSourceLicenses"
                     component={OpenSourceLicensesScreen}
                     options={{ title: "Open Source Licences" }}
+                  />
+
+                  <Stack.Screen
+                    name="FaceGestureCalibration"
+                    component={FaceGestureCalibrationScreen}
+                    options={{
+                      title: "Facial Gesture Calibration",
+                    }}
+                  />
+
+                  {/* DEBUG SCREENS */}
+                  <Stack.Screen
+                    name="FaceGestureDebug"
+                    component={FaceGestureDebugScreen}
+                    options={{
+                      title: "Face Gesture Debug",
+                    }}
                   />
                 </Stack.Navigator>
               </NavigationContainer>

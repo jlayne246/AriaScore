@@ -36,7 +36,7 @@ const featuredPackages = [
   "expo-asset",
   "expo-constants",
   "expo-document-picker",
-  "expo-file-system",
+  "expo-file-system/legacy",
   "expo-font",
   "expo-linking",
   "expo-share-intent",
