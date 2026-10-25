@@ -274,7 +274,7 @@ const styles =
   StyleSheet.create({
     preview: {
       width: "100%",
-      height: 280,
+      height: "100%",
 
       overflow:
         "hidden",
