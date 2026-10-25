@@ -52,10 +52,10 @@ export interface GestureDebouncerOptions {
 const DEFAULT_OPTIONS: GestureDebouncerOptions = {
   cooldownMs: 400,
 
-  weakRequiredSamples: 2,
-  strongRequiredSamples: 2,
+  weakRequiredSamples: 4, // next, 5
+  strongRequiredSamples: 3, // next, 4
 
-  strongStrengthThreshold: 0.65,
+  strongStrengthThreshold: 0.8,
 
   neutralToleranceSamples: 1,
   neutralReleaseSamples: 2,

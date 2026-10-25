@@ -41,7 +41,7 @@ export interface MouthGestureRecognizerOptions {
 
 const DEFAULT_OPTIONS:
   MouthGestureRecognizerOptions = {
-    triggerStrength: 0.5,
+    triggerStrength: 0.6,
 
     // horizontalSmoothingAlpha: 0.5,
     // liftSmoothingAlpha: 0.5,
@@ -296,10 +296,8 @@ export class MouthGestureRecognizer {
       this.combineDirectionalStrength(
         leftHorizontalStrength,
         leftLiftStrength,
-        calibration.left
-          .horizontalAmplitude,
-        calibration.left
-          .liftAmplitude,
+        calibration.left.horizontalAmplitude,
+        calibration.left.liftAmplitude,
         calibration,
       );
 
@@ -307,22 +305,36 @@ export class MouthGestureRecognizer {
       this.combineDirectionalStrength(
         rightHorizontalStrength,
         rightLiftStrength,
-        calibration.right
-          .horizontalAmplitude,
-        calibration.right
-          .liftAmplitude,
+        calibration.right.horizontalAmplitude,
+        calibration.right.liftAmplitude,
         calibration,
       );
 
+    const leftShapeValid =
+      this.matchesCalibratedShape(
+        leftHorizontalStrength,
+        leftLiftStrength,
+        calibration.left.horizontalAmplitude,
+        calibration.left.liftAmplitude,
+      );
+
+    const rightShapeValid =
+      this.matchesCalibratedShape(
+        rightHorizontalStrength,
+        rightLiftStrength,
+        calibration.right.horizontalAmplitude,
+        calibration.right.liftAmplitude,
+      );
+
     const leftTriggered =
+      leftShapeValid &&
       leftStrength >=
-      this.options
-        .triggerStrength;
+        this.options.triggerStrength;
 
     const rightTriggered =
+      rightShapeValid &&
       rightStrength >=
-      this.options
-        .triggerStrength;
+        this.options.triggerStrength;
 
     let direction:
       MouthGestureDirection =
@@ -761,6 +773,44 @@ private combineDirectionalStrength(
     return (
       alpha * current +
       (1 - alpha) * previous
+    );
+  }
+
+  private matchesCalibratedShape(
+    horizontalStrength: number,
+    liftStrength: number,
+    horizontalAmplitude: number,
+    liftAmplitude: number,
+  ): boolean {
+    const expectedTotal =
+      horizontalAmplitude +
+      liftAmplitude;
+
+    if (expectedTotal <= 0) {
+      return false;
+    }
+
+    const expectedHorizontalRatio =
+      horizontalAmplitude /
+      expectedTotal;
+
+    const liveTotal =
+      horizontalStrength +
+      liftStrength;
+
+    if (liveTotal <= 0) {
+      return false;
+    }
+
+    const liveHorizontalRatio =
+      horizontalStrength /
+      liveTotal;
+
+    return (
+      Math.abs(
+        liveHorizontalRatio -
+        expectedHorizontalRatio,
+      ) <= 0.25
     );
   }
 }
