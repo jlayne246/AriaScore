@@ -47,6 +47,19 @@
       }
     },
 
+    "ios-simulator": {
+      "developmentClient": false,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "APP_VARIANT": "preview",
+        "APP_VERSION": "1.1.2",
+        "USE_DEV_CLIENT": "false"
+      }
+    },
+
     "production-apk": {
       "developmentClient": false,
       "distribution": "internal",

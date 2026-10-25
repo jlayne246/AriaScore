@@ -162,6 +162,10 @@ export default ({ config }) => {
             targetSdkVersion: 36,
             buildToolsVersion: "36.0.0",
           },
+
+          ios: {
+            deploymentTarget: "15.5",
+          },
         },
       ],
 
