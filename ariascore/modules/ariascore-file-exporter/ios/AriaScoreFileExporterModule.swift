@@ -158,8 +158,8 @@ public class AriaScoreFileExporterModule: Module {
   }
 }
 
-public class FileExportException:
-  GenericException
+public final class FileExportException:
+  GenericException<String>
 {
   public init(
     _ message: String,
