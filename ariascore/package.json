@@ -6,11 +6,24 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
+
+    "ios:dev": "APP_VARIANT=development expo prebuild --platform ios",
+    "ios:preview": "APP_VARIANT=preview expo prebuild --platform ios",
+    "ios:prod": "APP_VARIANT=production expo prebuild --platform ios",
+
+    "ios:dev:clean": "APP_VARIANT=development expo prebuild --clean --platform ios",
+    "ios:preview:clean": "APP_VARIANT=preview expo prebuild --clean --platform ios",
+    "ios:prod:clean": "APP_VARIANT=production expo prebuild --clean --platform ios",
+
+    "ios:check": "expo-modules-autolinking resolve --platform apple",
+
     "web": "expo start --web",
     "generate:licenses": "license-checker --json --production --out ./src/generated/licenses.json",
+    
     "version:patch": "node scripts/bump-version.js patch",
     "version:minor": "node scripts/bump-version.js minor",
     "version:major": "node scripts/bump-version.js major",
+
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
