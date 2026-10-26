@@ -906,7 +906,7 @@ private combineDirectionalStrength(
     const alpha =
       Math.abs(current) >
       Math.abs(previous)
-        ? 0.5
+        ? 0.8
         : 0.2;
 
     return (
