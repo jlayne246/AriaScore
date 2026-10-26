@@ -53,9 +53,9 @@ const DEFAULT_OPTIONS: GestureDebouncerOptions = {
   cooldownMs: 400,
 
   weakRequiredSamples: 2, // next, 5
-  strongRequiredSamples: 2, // next, 4
+  strongRequiredSamples: 1, // next, 4
 
-  strongStrengthThreshold: 0.8,
+  strongStrengthThreshold: 0.9,
 
   neutralToleranceSamples: 1,
   neutralReleaseSamples: 2,

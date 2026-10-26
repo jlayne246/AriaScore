@@ -374,20 +374,20 @@ export class MouthGestureRecognizer {
         ),
       );
 
-    const cornerDominanceRatio =
-      1.08;
-
     const minimumCornerStrength =
       0.12;
 
+    const cornerDominanceRatio =
+      1.05;
+
     const leftCornerDominant =
-      leftCornerMagnitude >=
-      rightCornerMagnitude *
+      leftCornerStrength >=
+      rightCornerStrength *
         cornerDominanceRatio;
 
     const rightCornerDominant =
-      rightCornerMagnitude >=
-      leftCornerMagnitude *
+      rightCornerStrength >=
+      leftCornerStrength *
         cornerDominanceRatio;
 
     /*
