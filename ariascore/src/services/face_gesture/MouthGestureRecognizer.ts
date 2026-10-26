@@ -41,14 +41,17 @@ export interface MouthGestureRecognizerOptions {
 
 const DEFAULT_OPTIONS:
   MouthGestureRecognizerOptions = {
-    triggerStrength: 0.6,
+    triggerStrength: 0.55,
 
     // horizontalSmoothingAlpha: 0.5,
     // liftSmoothingAlpha: 0.5,
 
-    maxYawDelta: 10,
-    maxPitchDelta: 10,
-    maxRollDelta: 10,
+    // maxYawDelta: 4,
+    // maxPitchDelta: 10,
+    // maxRollDelta: 6,
+    maxYawDelta: 180,
+    maxPitchDelta: 180,
+    maxRollDelta: 180,
   };
 
 interface PoseResult {
@@ -74,6 +77,12 @@ export class MouthGestureRecognizer {
     number | null = null;
 
   private smoothedLift:
+    number | null = null;
+
+  private smoothedLeftCorner:
+    number | null = null;
+
+  private smoothedRightCorner:
     number | null = null;
 
   constructor(
@@ -165,7 +174,13 @@ export class MouthGestureRecognizer {
         calibration.neutralPose,
       );
 
-    if (!pose.valid) {
+    // const headMovingSideways =
+    //   yawMovement > 1.5;
+
+    if (
+      !pose.valid
+      // headMovingSideways
+    ) {
       /*
        * Don't keep old gesture momentum alive while
        * the face is outside its calibrated posture.
@@ -217,6 +232,42 @@ export class MouthGestureRecognizer {
       );
 
     this.smoothedHorizontal =
+    this.smoothSignal(
+      this.smoothedHorizontal,
+      rawSignals.horizontal,
+    );
+
+  this.smoothedLift =
+    this.smoothSignal(
+      this.smoothedLift,
+      rawSignals.lift,
+    );
+
+  this.smoothedLeftCorner =
+    this.smoothSignal(
+      this.smoothedLeftCorner,
+      rawSignals.leftCornerLift,
+    );
+
+  this.smoothedRightCorner =
+    this.smoothSignal(
+      this.smoothedRightCorner,
+      rawSignals.rightCornerLift,
+    );
+
+  const horizontal =
+    this.smoothedHorizontal;
+
+  const lift =
+    this.smoothedLift;
+
+  const leftCorner =
+    this.smoothedLeftCorner;
+
+  const rightCorner =
+    this.smoothedRightCorner;
+
+    this.smoothedHorizontal =
       this.smoothSignal(
         this.smoothedHorizontal,
         rawSignals.horizontal,
@@ -227,12 +278,6 @@ export class MouthGestureRecognizer {
         this.smoothedLift,
         rawSignals.lift,
       );
-
-    const horizontal =
-      this.smoothedHorizontal;
-
-    const lift =
-      this.smoothedLift;
 
     /*
      * Each direction is normalized independently
@@ -246,7 +291,10 @@ export class MouthGestureRecognizer {
               Math.abs(horizontal),
               calibration.neutralNoise.horizontal,
             ),
-            calibration.left.horizontalAmplitude,
+            this.removeNoiseFloor(
+              calibration.left.horizontalAmplitude,
+              calibration.neutralNoise.horizontal,
+            ),
           )
         : 0;
 
@@ -257,7 +305,10 @@ export class MouthGestureRecognizer {
               Math.abs(lift),
               calibration.neutralNoise.lift,
             ),
-            calibration.left.liftAmplitude,
+            this.removeNoiseFloor(
+              calibration.left.liftAmplitude,
+              calibration.neutralNoise.lift,
+            ),
           )
         : 0;
 
@@ -268,7 +319,10 @@ export class MouthGestureRecognizer {
               Math.abs(horizontal),
               calibration.neutralNoise.horizontal,
             ),
-            calibration.right.horizontalAmplitude,
+            this.removeNoiseFloor(
+              calibration.right.horizontalAmplitude,
+              calibration.neutralNoise.horizontal,
+            ),
           )
         : 0;
 
@@ -279,10 +333,62 @@ export class MouthGestureRecognizer {
               Math.abs(lift),
               calibration.neutralNoise.lift,
             ),
-            calibration.right
-              .liftAmplitude,
+            this.removeNoiseFloor(
+              calibration.right.liftAmplitude,
+              calibration.neutralNoise.lift,
+            ),
           )
         : 0;
+
+    const leftCornerMagnitude =
+      Math.abs(
+        leftCorner,
+      );
+
+    const rightCornerMagnitude =
+      Math.abs(
+        rightCorner,
+      );
+
+    const leftCornerStrength =
+      this.safeStrength(
+        this.removeNoiseFloor(
+          leftCornerMagnitude,
+          calibration.neutralNoise.lift,
+        ),
+        this.removeNoiseFloor(
+          calibration.left.cornerAmplitude,
+          calibration.neutralNoise.lift,
+        ),
+      );
+
+    const rightCornerStrength =
+      this.safeStrength(
+        this.removeNoiseFloor(
+          rightCornerMagnitude,
+          calibration.neutralNoise.lift,
+        ),
+        this.removeNoiseFloor(
+          calibration.right.cornerAmplitude,
+          calibration.neutralNoise.lift,
+        ),
+      );
+
+    const cornerDominanceRatio =
+      1.08;
+
+    const minimumCornerStrength =
+      0.12;
+
+    const leftCornerDominant =
+      leftCornerMagnitude >=
+      rightCornerMagnitude *
+        cornerDominanceRatio;
+
+    const rightCornerDominant =
+      rightCornerMagnitude >=
+      leftCornerMagnitude *
+        cornerDominanceRatio;
 
     /*
      * Either signal can represent a valid gesture.
@@ -292,23 +398,29 @@ export class MouthGestureRecognizer {
      * - a mostly-vertical cheek/corner raise
      * - a combination of both
      */
+    // const leftStrength =
+    //   this.combineDirectionalStrength(
+    //     leftHorizontalStrength,
+    //     leftLiftStrength,
+    //     calibration.left.horizontalAmplitude,
+    //     calibration.left.liftAmplitude,
+    //     calibration,
+    //   );
+
+    // const rightStrength =
+    //   this.combineDirectionalStrength(
+    //     rightHorizontalStrength,
+    //     rightLiftStrength,
+    //     calibration.right.horizontalAmplitude,
+    //     calibration.right.liftAmplitude,
+    //     calibration,
+    //   );
+
     const leftStrength =
-      this.combineDirectionalStrength(
-        leftHorizontalStrength,
-        leftLiftStrength,
-        calibration.left.horizontalAmplitude,
-        calibration.left.liftAmplitude,
-        calibration,
-      );
+      leftHorizontalStrength;
 
     const rightStrength =
-      this.combineDirectionalStrength(
-        rightHorizontalStrength,
-        rightLiftStrength,
-        calibration.right.horizontalAmplitude,
-        calibration.right.liftAmplitude,
-        calibration,
-      );
+      rightHorizontalStrength;
 
     const leftShapeValid =
       this.matchesCalibratedShape(
@@ -316,6 +428,7 @@ export class MouthGestureRecognizer {
         leftLiftStrength,
         calibration.left.horizontalAmplitude,
         calibration.left.liftAmplitude,
+        calibration,
       );
 
     const rightShapeValid =
@@ -324,17 +437,32 @@ export class MouthGestureRecognizer {
         rightLiftStrength,
         calibration.right.horizontalAmplitude,
         calibration.right.liftAmplitude,
+        calibration,
       );
 
+    const minimumLiftStrength = 0.2;
+
+    // const leftTriggered =
+    //   leftStrength >= this.options.triggerStrength &&
+    //   leftLiftStrength >= minimumLiftStrength;
+
+    // const rightTriggered =
+    //   rightStrength >= this.options.triggerStrength &&
+    //   rightLiftStrength >= minimumLiftStrength;
+
     const leftTriggered =
-      leftShapeValid &&
-      leftStrength >=
-        this.options.triggerStrength;
+      leftHorizontalStrength >=
+        this.options.triggerStrength &&
+      leftCornerStrength >=
+        minimumCornerStrength &&
+      leftCornerDominant;
 
     const rightTriggered =
-      rightShapeValid &&
-      rightStrength >=
-        this.options.triggerStrength;
+      rightHorizontalStrength >=
+        this.options.triggerStrength &&
+      rightCornerStrength >=
+        minimumCornerStrength &&
+      rightCornerDominant;
 
     let direction:
       MouthGestureDirection =
@@ -415,6 +543,11 @@ export class MouthGestureRecognizer {
 
       liftDisplacement:
         lift,
+
+      leftHorizontalStrength,
+      leftLiftStrength,
+      rightHorizontalStrength,
+      rightLiftStrength,
 
       poseValid:
         true,
@@ -740,6 +873,12 @@ private combineDirectionalStrength(
 
     this.smoothedLift =
       null;
+
+    this.smoothedLeftCorner =
+      null;
+
+    this.smoothedRightCorner =
+      null;
   }
 
   private clamp(
@@ -781,36 +920,69 @@ private combineDirectionalStrength(
     liftStrength: number,
     horizontalAmplitude: number,
     liftAmplitude: number,
+    calibration: FaceGestureCalibration,
   ): boolean {
-    const expectedTotal =
-      horizontalAmplitude +
-      liftAmplitude;
+    const weights =
+      this.calculateChannelWeights(
+        horizontalAmplitude,
+        liftAmplitude,
+        calibration.neutralNoise.horizontal,
+        calibration.neutralNoise.lift,
+      );
 
-    if (expectedTotal <= 0) {
+    const horizontalRequired =
+      weights.horizontal > 0;
+
+    const liftRequired =
+      weights.lift > 0;
+
+    if (
+      !horizontalRequired &&
+      !liftRequired
+    ) {
       return false;
     }
 
-    const expectedHorizontalRatio =
-      horizontalAmplitude /
-      expectedTotal;
-
-    const liveTotal =
-      horizontalStrength +
-      liftStrength;
-
-    if (liveTotal <= 0) {
-      return false;
+    if (
+      horizontalRequired &&
+      !liftRequired
+    ) {
+      return (
+        horizontalStrength >=
+        this.options.triggerStrength
+      );
     }
 
-    const liveHorizontalRatio =
-      horizontalStrength /
-      liveTotal;
+    if (
+      liftRequired &&
+      !horizontalRequired
+    ) {
+      return (
+        liftStrength >=
+        this.options.triggerStrength
+      );
+    }
+
+    const strongest =
+      Math.max(
+        horizontalStrength,
+        liftStrength,
+      );
+
+    const weakest =
+      Math.min(
+        horizontalStrength,
+        liftStrength,
+      );
+
+    if (strongest <= 0) {
+      return false;
+    }
 
     return (
-      Math.abs(
-        liveHorizontalRatio -
-        expectedHorizontalRatio,
-      ) <= 0.25
+      weakest /
+        strongest >=
+      0.25
     );
   }
 }

@@ -118,13 +118,13 @@ export function buildFaceGestureCalibration(
   const leftValid =
     leftProfile.horizontalAmplitude >
       config.minimumUsefulAmplitude ||
-    leftProfile.liftAmplitude >
+    leftProfile.cornerAmplitude >
       config.minimumUsefulAmplitude;
 
   const rightValid =
     rightProfile.horizontalAmplitude >
       config.minimumUsefulAmplitude ||
-    rightProfile.liftAmplitude >
+    rightProfile.cornerAmplitude >
       config.minimumUsefulAmplitude;
 
   if (!leftValid) {
@@ -186,7 +186,7 @@ export function buildFaceGestureCalibration(
   }
 
   return {
-    version: 2,
+    version: 3,
 
     createdAt: Date.now(),
 
@@ -222,16 +222,16 @@ function isGestureDistinctEnough(
       neutralNoise.horizontalNoise *
         options.minimumSignalToNoiseRatio;
 
-  const liftDistinct =
-    gesture.liftAmplitude >=
+  const cornerDistinct =
+    gesture.cornerAmplitude >=
       options.minimumGestureSeparation &&
-    gesture.liftAmplitude >=
+    gesture.cornerAmplitude >=
       neutralNoise.liftNoise *
         options.minimumSignalToNoiseRatio;
 
   return (
     horizontalDistinct ||
-    liftDistinct
+    cornerDistinct
   );
 }
 
@@ -390,23 +390,34 @@ export function extractMouthFeatures(
   };
 }
 
-/**
- * Calculate raw live gesture signals relative to the
- * neutral calibration.
- *
- * Convention:
- *
- * negative = user's left
- * positive = user's right
- */
+export interface GestureSignals {
+  horizontal: number;
+
+  /**
+   * Kept for the existing debug UI.
+   *
+   * Negative = user's left
+   * Positive = user's right
+   */
+  lift: number;
+
+  /**
+   * Individual corner movement in user-relative
+   * orientation.
+   *
+   * Positive/negative indicates vertical direction,
+   * but recognition uses magnitude because some users
+   * raise a corner while others mostly pull it.
+   */
+  leftCornerLift: number;
+  rightCornerLift: number;
+}
+
 export function calculateGestureSignals(
   features: MouthFeatures,
   neutral: NeutralMouthCalibration,
   mirrorHorizontal: boolean,
-): {
-  horizontal: number;
-  lift: number;
-} {
+): GestureSignals {
   const rawHorizontal =
     features.centerX -
     neutral.centerX;
@@ -419,32 +430,49 @@ export function calculateGestureSignals(
   /*
    * Face-local Y increases downward.
    *
-   * neutral - current > 0
-   * means the corner moved upward.
+   * neutral - current > 0 means the corner
+   * moved upward.
    */
-  const leftLift =
+  const detectorLeftLift =
     neutral.leftCornerY -
     features.leftCornerY;
 
-  const rightLift =
+  const detectorRightLift =
     neutral.rightCornerY -
     features.rightCornerY;
 
   /*
-   * Produce a directional asymmetric lift signal.
+   * Convert detector-side corner names into the same
+   * user-relative orientation used by horizontal.
+   *
+   * With a mirrored front-camera coordinate system,
+   * detector-right corresponds to the user's left.
    */
-  const rawLift =
-    rightLift -
-    leftLift;
-
-  const lift =
+  const leftCornerLift =
     mirrorHorizontal
-      ? -rawLift
-      : rawLift;
+      ? detectorRightLift
+      : detectorLeftLift;
+
+  const rightCornerLift =
+    mirrorHorizontal
+      ? detectorLeftLift
+      : detectorRightLift;
+
+  /*
+   * Preserve the old signed differential signal for
+   * the debug screen only.
+   *
+   * Recognition should no longer depend on this.
+   */
+  const lift =
+    rightCornerLift -
+    leftCornerLift;
 
   return {
     horizontal,
     lift,
+    leftCornerLift,
+    rightCornerLift,
   };
 }
 
@@ -607,6 +635,9 @@ function calculateGestureAmplitude(
   const liftValues: number[] =
     [];
 
+  const cornerValues: number[] =
+    [];
+
   for (const sample of samples) {
     const features =
       extractMouthFeatures(
@@ -620,13 +651,6 @@ function calculateGestureAmplitude(
         mirrorHorizontal,
       );
 
-    /*
-     * Only use samples moving in the expected
-     * direction.
-     *
-     * This prevents a few noisy opposite-direction
-     * frames from corrupting calibration.
-     */
     if (
       expectedDirection ===
       "left"
@@ -641,6 +665,20 @@ function calculateGestureAmplitude(
           ),
         );
       }
+
+      /*
+       * The intended left corner may move upward,
+       * downward or mostly sideways depending on the
+       * user's expression and landmark estimation.
+       *
+       * For calibration we care about how much that
+       * corner moves, not the sign of its Y movement.
+       */
+      cornerValues.push(
+        Math.abs(
+          signals.leftCornerLift,
+        ),
+      );
 
       if (
         signals.lift <
@@ -662,6 +700,12 @@ function calculateGestureAmplitude(
         );
       }
 
+      cornerValues.push(
+        Math.abs(
+          signals.rightCornerLift,
+        ),
+      );
+
       if (
         signals.lift >
         0
@@ -682,6 +726,17 @@ function calculateGestureAmplitude(
         minimumUsefulAmplitude,
       ),
 
+    cornerAmplitude:
+      Math.max(
+        robustGestureAmplitude(
+          cornerValues,
+        ),
+        minimumUsefulAmplitude,
+      ),
+
+    /*
+     * Legacy/debug value.
+     */
     liftAmplitude:
       Math.max(
         robustGestureAmplitude(

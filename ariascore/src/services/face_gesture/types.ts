@@ -67,6 +67,11 @@ export interface MouthGestureSample {
   yawDelta?: number;
   pitchDelta?: number;
   rollDelta?: number;
+
+  leftHorizontalStrength?: number;
+  leftLiftStrength?: number;
+  rightHorizontalStrength?: number;
+  rightLiftStrength?: number;
 }
 
 export type FaceGestureType =
@@ -90,16 +95,17 @@ export interface NeutralMouthCalibration {
 }
 
 export interface GestureAmplitudeCalibration {
-  /**
-   * Typical horizontal movement produced by this gesture.
-   * Always stored as a positive magnitude.
-   */
   horizontalAmplitude: number;
 
   /**
-   * Typical asymmetric corner-lift movement produced
-   * by this gesture.
-   * Always stored as a positive magnitude.
+   * Movement of the corner actually associated with
+   * this gesture.
+   */
+  cornerAmplitude: number;
+
+  /**
+   * Retained for compatibility/debugging while the
+   * new recognizer is being tested.
    */
   liftAmplitude: number;
 }
@@ -110,7 +116,7 @@ export interface GestureNoiseCalibration {
 }
 
 export interface FaceGestureCalibration {
-  version: 2;
+  version: 3;
 
   createdAt: number;
   mirrorHorizontal: boolean;

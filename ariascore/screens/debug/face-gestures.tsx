@@ -705,6 +705,46 @@ export default function FaceGestureDebugScreen() {
         )
       : "—";
 
+  const leftHorizontalStrengthLabel =
+  sample
+    ?.leftHorizontalStrength !==
+  undefined
+    ? `${Math.round(
+        sample.leftHorizontalStrength *
+          100,
+      )}%`
+    : "—";
+
+const leftLiftStrengthLabel =
+  sample
+    ?.leftLiftStrength !==
+  undefined
+    ? `${Math.round(
+        sample.leftLiftStrength *
+          100,
+      )}%`
+    : "—";
+
+const rightHorizontalStrengthLabel =
+  sample
+    ?.rightHorizontalStrength !==
+  undefined
+    ? `${Math.round(
+        sample.rightHorizontalStrength *
+          100,
+      )}%`
+    : "—";
+
+const rightLiftStrengthLabel =
+  sample
+    ?.rightLiftStrength !==
+  undefined
+    ? `${Math.round(
+        sample.rightLiftStrength *
+          100,
+      )}%`
+    : "—";
+
   const strengthLabel =
     sample
       ?.normalizedStrength !==
@@ -893,7 +933,7 @@ export default function FaceGestureDebugScreen() {
             value={
               directionLabel
             }
-          />DebugRow
+          />
 
           <DebugRow
             label="Horizontal"
@@ -908,6 +948,55 @@ export default function FaceGestureDebugScreen() {
               liftLabel
             }
           />
+
+          <DebugRow
+  label="Horizontal"
+  value={
+    horizontalLabel
+  }
+/>
+
+<DebugRow
+  label="Corner lift"
+  value={
+    liftLabel
+  }
+/>
+
+<DebugRow
+  label="Left H strength"
+  value={
+    leftHorizontalStrengthLabel
+  }
+/>
+
+<DebugRow
+  label="Left lift strength"
+  value={
+    leftLiftStrengthLabel
+  }
+/>
+
+<DebugRow
+  label="Right H strength"
+  value={
+    rightHorizontalStrengthLabel
+  }
+/>
+
+<DebugRow
+  label="Right lift strength"
+  value={
+    rightLiftStrengthLabel
+  }
+/>
+
+<DebugRow
+  label="Strength"
+  value={
+    strengthLabel
+  }
+/>
 
           <DebugRow
             label="Strength"
