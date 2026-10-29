@@ -42,7 +42,7 @@ export async function loadFaceGestureCalibration():
     );
 
     if (
-      parsed.version !== 2
+      parsed.version !== 3
     ) {
       console.warn(
         "[FaceGestureCalibrationStore] Unsupported calibration version:",
