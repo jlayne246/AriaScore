@@ -44,6 +44,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 import { createNavigationContainerRef } from "@react-navigation/native";
 import FaceGestureCalibrationScreen from './screens/FaceGestureCalibrationScreen';
+import AnnotationTestScreen from './screens/debug/AnnotationsTestScreen';
 
 export const navigationRef =
   createNavigationContainerRef<RootStackParamList>();
@@ -232,6 +233,14 @@ export default function App() {
                     component={FaceGestureDebugScreen}
                     options={{
                       title: "Face Gesture Debug",
+                    }}
+                  />
+
+                  <Stack.Screen
+                    name="AnnotationTest"
+                    component={AnnotationTestScreen}
+                    options={{
+                      title: "Annotation Test",
                     }}
                   />
                 </Stack.Navigator>

@@ -286,6 +286,18 @@ const DashboardScreen = ({}) => {
                     </Text>
                 </Pressable>
 
+                <Pressable
+                    onPress={() =>
+                        navigation.navigate(
+                            "AnnotationTest",
+                        )
+                    }
+                    >
+                    <Text>
+                        Open Annotation Test Screen
+                    </Text>
+                </Pressable>
+
                 <Text className="text-dodger text-xl mt-4">Recent Items</Text>
 
                 {recentMusicItems && (recentMusicItems.length > 0) ? (
