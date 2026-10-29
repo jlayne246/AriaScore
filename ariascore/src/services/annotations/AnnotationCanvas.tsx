@@ -24,6 +24,8 @@ interface Props {
   strokes: StrokeAnnotation[];
   settings: DrawingSettings;
 
+  readOnly?: boolean;
+
   onAddStroke: (stroke: StrokeAnnotation) => void;
   onEraseStroke: (id: string) => void;
 }
@@ -149,6 +151,7 @@ export function AnnotationCanvas({
   height,
   strokes,
   settings,
+  readOnly = false,
   onAddStroke,
   onEraseStroke,
 }: Props) {
@@ -163,6 +166,15 @@ export function AnnotationCanvas({
 
   // Set only while a stylus stroke is in progress.
   const stylusActiveRef = useRef(false);
+
+  React.useEffect(() => {
+  console.log("[Annotation DEBUG] Canvas received:", {
+    pageIndex,
+    readOnly,
+    strokeCount: strokes.length,
+    strokeIds: strokes.map((s) => s.id),
+  });
+}, [pageIndex, readOnly, strokes]);
 
   const toPoint = (
     x: number,
@@ -221,7 +233,19 @@ export function AnnotationCanvas({
     pointer: PointerType,
     pressure?: number
   ) => {
+    console.log("[Annotation] Touch started", {
+        x,
+        y,
+        pointer,
+        inputMode: settings.inputMode,
+    });
+
     acceptedRef.current = acceptsInput(pointer);
+
+    console.log(
+        "[Annotation] Input accepted:",
+        acceptedRef.current
+    );
 
     if (!acceptedRef.current) return;
 
@@ -324,30 +348,45 @@ export function AnnotationCanvas({
     ? [...strokes, draft]
     : strokes;
 
-  return (
-    <GestureDetector gesture={pan}>
-      <View style={{ width, height }}>
-        <Canvas style={StyleSheet.absoluteFill}>
-          {visible.map((stroke) => (
+    const canvasContent = (
+    <View
+        style={{ width, height }}
+        collapsable={false}
+        pointerEvents={readOnly ? "none" : "auto"}
+    >
+        <Canvas
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+        >
+        {visible.map((stroke) => (
             <Path
-              key={stroke.id}
-              path={buildPath(
+            key={stroke.id}
+            path={buildPath(
                 stroke.points,
                 width,
                 height
-              )}
-              color={stroke.color}
-              style="stroke"
-              strokeWidth={
+            )}
+            color={stroke.color}
+            style="stroke"
+            strokeWidth={
                 stroke.strokeWidth * width
-              }
-              strokeCap="round"
-              strokeJoin="round"
-              opacity={stroke.opacity}
+            }
+            strokeCap="round"
+            strokeJoin="round"
+            opacity={stroke.opacity}
             />
-          ))}
+        ))}
         </Canvas>
-      </View>
+    </View>
+    );
+
+    if (readOnly) {
+    return canvasContent;
+    }
+
+    return (
+    <GestureDetector gesture={pan}>
+        {canvasContent}
     </GestureDetector>
-  );
+    );
 }

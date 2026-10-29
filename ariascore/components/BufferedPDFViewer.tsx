@@ -75,6 +75,15 @@ import FaceGestureCamera from "./FaceGestureCamera";
 import {
   faceGestureService,
 } from "../src/services/face_gesture";
+import { AnnotationCanvas } from '../src/services/annotations/AnnotationCanvas';
+import { AnnotationToolbar }
+  from "../src/services/annotations/AnnotationToolbar";
+import { getContainedPageRect } from '../src/services/annotations/pageGeometry';
+import { DrawingSettings, StrokeAnnotation } from '../src/services/annotations/types';
+import {
+  loadAnnotations,
+  saveAnnotations,
+} from "../src/services/annotations/annotationRepository";
 
 type ScoreNavigationCallback =
     () => Promise<void> | void;
@@ -132,14 +141,42 @@ const getBuffer = (mode: ReaderDisplayMode) => {
   };
 };
 
+type RenderedPageProps = {
+  image?: PageImage;
+  pageNumber: number;
+
+  annotationMode: boolean;
+  strokes: StrokeAnnotation[];
+  drawingSettings: DrawingSettings;
+
+  onAddStroke: (stroke: StrokeAnnotation) => void;
+  onEraseStroke: (id: string) => void;
+};
+
 const RenderedPage = React.memo(
   function RenderedPage({
     image,
     pageNumber,
-  }: {
-    image?: PageImage;
-    pageNumber: number;
-  }) {
+    annotationMode,
+    strokes,
+    drawingSettings,
+    onAddStroke,
+    onEraseStroke,
+  }: RenderedPageProps) {
+    const [containerSize, setContainerSize] =
+      useState({ width: 0, height: 0 });
+
+    const pageRect = useMemo(() => {
+      if (!image) return null;
+
+      return getContainedPageRect(
+        containerSize.width,
+        containerSize.height,
+        image.width,
+        image.height
+      );
+    }, [image, containerSize]);
+
     return (
       <View
         style={{
@@ -148,27 +185,71 @@ const RenderedPage = React.memo(
           alignItems: "center",
           justifyContent: "center",
         }}
+        onLayout={(event) => {
+          const { width, height } =
+            event.nativeEvent.layout;
+
+          setContainerSize((previous) =>
+            previous.width === width &&
+            previous.height === height
+              ? previous
+              : { width, height }
+          );
+        }}
       >
-        {image ? (
+        {image && pageRect ? (
           <View
             style={{
-              width: "100%",
-              height: "100%",
-              alignItems: "center",
-              justifyContent: "center",
+              position: "absolute",
+              left: pageRect.x,
+              top: pageRect.y,
+              width: pageRect.width,
+              height: pageRect.height,
             }}
           >
             <ExpoImage
               source={{ uri: image.uri }}
-              contentFit="contain"
+              contentFit="fill"
               style={{
                 width: "100%",
                 height: "100%",
               }}
             />
+
+            <View
+              collapsable={false}
+              pointerEvents={
+                annotationMode ? "auto" : "none"
+              }
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 10,
+              }}
+            >
+              <AnnotationCanvas
+                pageIndex={pageNumber - 1}
+                width={pageRect.width}
+                height={pageRect.height}
+                strokes={strokes}
+                settings={drawingSettings}
+                readOnly={!annotationMode}
+                onAddStroke={onAddStroke}
+                onEraseStroke={onEraseStroke}
+              />
+            </View>
           </View>
         ) : (
-          <View style={{ alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <View
+            style={{
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
             <ActivityIndicator />
             <Text style={{ color: ACCENT_COLOR }}>
               Rendering page {pageNumber}…
@@ -445,6 +526,42 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+
+  // ANNOTATION STATE
+
+  const [annotationMode, setAnnotationMode] =
+    useState(false);
+
+  type AnnotationHistoryState = {
+    entries: StrokeAnnotation[][];
+    index: number;
+  };
+
+  const [annotationState, setAnnotationState] =
+    useState<AnnotationHistoryState>({
+      entries: [[]],
+      index: 0,
+    });
+
+  const annotations =
+    annotationState.entries[annotationState.index] ?? [];
+
+  const [loadedAnnotationMusicId, setLoadedAnnotationMusicId] =
+    useState<number | null>(null);
+
+  const annotationsReady =
+    loadedAnnotationMusicId === musicId;
+
+  const [drawingSettings, setDrawingSettings] =
+    useState<DrawingSettings>({
+      tool: "pen",
+      color: "#E04545",
+      width: 3,
+      opacity: 1,
+      inputMode: "auto",
+      palmRejectionEnabled: true,
+    });
 
   // const [pageImages, setPageImages] = useState<Record<number, string>>({});
   const [thumbnailImages, setThumbnailImages] =
@@ -1506,6 +1623,189 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     ],
   );
 
+  useEffect(() => {
+    let cancelled = false;
+
+    setLoadedAnnotationMusicId(null);
+    setAnnotationMode(false);
+    setAnnotationState({
+      entries: [[]],
+      index: 0,
+    });
+
+    const initialiseAnnotations = async () => {
+      try {
+        const saved = await loadAnnotations(musicId);
+
+        if (cancelled) return;
+
+       setAnnotationState({
+          entries: [saved],
+          index: 0,
+        });
+        setLoadedAnnotationMusicId(musicId);
+
+        console.log(
+          `[Annotations] Loaded ${saved.length} strokes for music ${musicId}`
+        );
+      } catch (error) {
+        if (cancelled) return;
+
+        console.error(
+          "[Annotations] Failed to load:",
+          error
+        );
+
+        // Leave annotationsReady false so we do
+        // not overwrite the existing database record.
+      }
+    };
+
+    void initialiseAnnotations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [musicId, uri]);
+
+  useEffect(() => {
+    if (!annotationMode) return;
+
+    setChromeVisible(true);
+
+    if (chromeHideTimer.current) {
+      clearTimeout(chromeHideTimer.current);
+      chromeHideTimer.current = null;
+    }
+  }, [annotationMode]);
+
+  useEffect(() => {
+    if (!annotationsReady) return;
+
+    void saveAnnotations(
+      musicId,
+      annotations
+    ).catch((error) => {
+      console.error(
+        "[Annotations] Failed to save:",
+        error
+      );
+    });
+  }, [
+    annotationsReady,
+    musicId,
+    annotationState,
+  ]);
+
+ useEffect(() => {
+  const { entries, index } = annotationState;
+
+  console.log("[Annotation DEBUG] History:", {
+    musicId,
+    historyIndex: index,
+    historyLength: entries.length,
+    strokeCount: annotations.length,
+    validIndex:
+      index >= 0 && index < entries.length,
+  });
+}, [musicId, annotationState]);
+
+  
+  const commitAnnotations = useCallback(
+    (
+      update: (
+        current: StrokeAnnotation[]
+      ) => StrokeAnnotation[]
+    ) => {
+      setAnnotationState((previous) => {
+        const current =
+          previous.entries[previous.index] ?? [];
+
+        const next = update(current);
+
+        if (next === current) {
+          return previous;
+        }
+
+        const entries = [
+          ...previous.entries.slice(
+            0,
+            previous.index + 1
+          ),
+          next,
+        ];
+
+        return {
+          entries,
+          index: entries.length - 1,
+        };
+      });
+    },
+    []
+  );
+
+  const handleAddStroke = useCallback(
+    (stroke: StrokeAnnotation) => {
+      console.log("[Annotation] Adding stroke:", {
+        id: stroke.id,
+        pageIndex: stroke.pageIndex,
+        points: stroke.points.length,
+      });
+
+      commitAnnotations((current) => {
+        if (current.some((s) => s.id === stroke.id)) {
+          return current;
+        }
+
+        return [...current, stroke];
+      });
+    },
+    [commitAnnotations]
+  );
+
+  const handleEraseStroke = useCallback(
+    (id: string) => {
+      commitAnnotations((current) => {
+        if (!current.some((s) => s.id === id)) {
+          return current;
+        }
+
+        return current.filter((s) => s.id !== id);
+      });
+    },
+    [commitAnnotations]
+  );
+
+  const handleUndoAnnotation = useCallback(() => {
+    setAnnotationState((previous) => {
+      if (previous.index <= 0) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        index: previous.index - 1,
+      };
+    });
+  }, []);
+
+  const handleRedoAnnotation = useCallback(() => {
+    setAnnotationState((previous) => {
+      if (
+        previous.index >=
+        previous.entries.length - 1
+      ) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        index: previous.index + 1,
+      };
+    });
+  }, []);
+
+
   // const singleTap = Gesture.Tap()
   // const doubleTap = Gesture.Tap().numberOfTaps(2)
   // const pinch = Gesture.Pinch()
@@ -1857,7 +2157,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     }
 
     chromeHideTimer.current = setTimeout(() => {
-      if (!overflowMenuOpen) {
+      if (!overflowMenuOpen && !annotationMode) {
         setChromeVisible(false);
       }
 
@@ -3029,6 +3329,20 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                       <RenderedPage
                         image={pageImages[pageNumber]}
                         pageNumber={pageNumber}
+                        annotationMode={
+                          annotationMode && annotationsReady
+                        }
+                        strokes={
+                          annotationsReady
+                            ? annotations.filter(
+                                stroke =>
+                                  stroke.pageIndex === pageNumber - 1
+                              )
+                            : []
+                        }
+                        drawingSettings={drawingSettings}
+                        onAddStroke={handleAddStroke}
+                        onEraseStroke={handleEraseStroke}
                       />
                     </View>
                   );
@@ -3062,6 +3376,20 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                       <RenderedPage
                         image={pageImages[leftPage]}
                         pageNumber={leftPage}
+                        annotationMode={
+                          annotationMode && annotationsReady
+                        }
+                        strokes={
+                          annotationsReady
+                            ? annotations.filter(
+                                stroke =>
+                                  stroke.pageIndex === leftPage - 1
+                              )
+                            : []
+                        }
+                        drawingSettings={drawingSettings}
+                        onAddStroke={handleAddStroke}
+                        onEraseStroke={handleEraseStroke}
                       />
                     </View>
                   );
@@ -3079,6 +3407,20 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                       <RenderedPage
                         image={pageImages[leftPage]}
                         pageNumber={leftPage}
+                        annotationMode={
+                          annotationMode && annotationsReady
+                        }
+                        strokes={
+                          annotationsReady
+                            ? annotations.filter(
+                                stroke =>
+                                  stroke.pageIndex === leftPage - 1
+                              )
+                            : []
+                        }
+                        drawingSettings={drawingSettings}
+                        onAddStroke={handleAddStroke}
+                        onEraseStroke={handleEraseStroke}
                       />
                     ) : (
                       <View
@@ -3093,6 +3435,20 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                       <RenderedPage
                         image={pageImages[rightPage]}
                         pageNumber={rightPage}
+                        annotationMode={
+                          annotationMode && annotationsReady
+                        }
+                        strokes={
+                          annotationsReady
+                            ? annotations.filter(
+                                stroke =>
+                                  stroke.pageIndex === rightPage - 1
+                              )
+                            : []
+                        }
+                        drawingSettings={drawingSettings}
+                        onAddStroke={handleAddStroke}
+                        onEraseStroke={handleEraseStroke}
                       />
                     ) : (
                       <View
@@ -3117,7 +3473,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         )}
       {/* </GestureDetector> */}
       
-      {chromeVisible && (
+      {chromeVisible && !annotationMode && (
         <View
           style={{
             position: "absolute",
@@ -3174,11 +3530,27 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={{ alignItems: 'center' }}
-            onPress={() => console.log('Annotate')}
+            style={{ alignItems: "center" }}
+            onPress={() => {
+              setAnnotationMode(previous => !previous);
+              setChromeVisible(true);
+            }}
+            disabled={!annotationsReady}
           >
-            <Ionicons name="create-outline" size={28} color={ACCENT_COLOR} />
-            <Text style={{ fontSize: 14, color: ACCENT_COLOR }}>Annotate</Text>
+            <Ionicons
+              name={annotationMode ? "checkmark-circle" : "create-outline"}
+              size={28}
+              color={ACCENT_COLOR}
+            />
+
+            <Text
+              style={{
+                fontSize: 14,
+                color: ACCENT_COLOR,
+              }}
+            >
+              {annotationMode ? "Done" : "Annotate"}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -3996,6 +4368,36 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         </View>
       )}
 
+      {annotationMode && (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1400,
+            elevation: 15,
+            backgroundColor: "#FFFFFF",
+            paddingBottom: insets.bottom,
+          }}
+        >
+          <AnnotationToolbar
+            position="bottom"
+            accentColor={ACCENT_COLOR}
+            settings={drawingSettings}
+            onChange={setDrawingSettings}
+            onUndo={handleUndoAnnotation}
+            onRedo={handleRedoAnnotation}
+            onDone={() => setAnnotationMode(false)}
+            canUndo={annotationState.index > 0}
+            canRedo={
+              annotationState.index <
+              annotationState.entries.length - 1
+            }
+          />
+        </View>
+      )}
+
       <ManageSetlistsModal
         visible={manageSetlistsVisible}
         musicId={musicId}
@@ -4009,7 +4411,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         }}
       />
 
-      {canUseReaderGestures && (
+      {canUseReaderGestures && !annotationMode && (
         <GestureDetector gesture={readerGesture}>
           <View
             collapsable={false}
@@ -4025,6 +4427,18 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           />
         </GestureDetector>
       )}
+
+      {/* {annotationMode && (
+        <AnnotationCanvas
+          pageIndex={pageIndex}
+          width={width}
+          height={height}
+          strokes={pageStrokes}
+          settings={drawingSettings}
+          onAddStroke={handleAddStroke}
+          onEraseStroke={handleEraseStroke}
+        />
+      )} */}
     </View>
   );
 };
