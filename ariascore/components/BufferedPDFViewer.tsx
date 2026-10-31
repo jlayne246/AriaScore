@@ -1233,10 +1233,10 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const TOAST_CHROME_GAP = 16;
 
   const toastBottom = chromeVisible
-    ? Math.max(insets.bottom, 12) +
+    ? insets.bottom +
       BOTTOM_CHROME_MIN_HEIGHT +
       TOAST_CHROME_GAP
-    : Math.max(insets.bottom, 24);
+    : insets.bottom + 24;
 
   const getRenderSize = (
     widthDp: number,
@@ -3654,7 +3654,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             position: "absolute",
             left: 0,
             right: 0,
-            bottom: 0,
+            bottom: insets.bottom,
             zIndex: 1300,
             backgroundColor: "rgba(255,255,255,0.96)",
             borderTopWidth: 1,
@@ -3664,7 +3664,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             justifyContent: "space-around",
             paddingHorizontal: 12,
             paddingTop: 12,
-            paddingBottom: Math.max(insets.bottom, 12),
+            paddingBottom: 12,
             minHeight: BOTTOM_CHROME_MIN_HEIGHT,
           }}
         >
@@ -4556,7 +4556,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         <View
           style={{
             position: "absolute",
-            bottom: 0,
+            bottom: insets.bottom,
             left: 0,
             right: 0,
             zIndex: 1400,
