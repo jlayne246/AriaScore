@@ -18,6 +18,7 @@ import type {
   FaceGestureCalibrationPhase,
   FaceGestureEvent,
   FaceLandmarks,
+  FaceGestureMode,
   MouthGestureSample,
 } from "./types";
 
@@ -51,6 +52,30 @@ interface CalibrationSamples {
 }
 
 export class FaceGestureService {
+  private mode: FaceGestureMode = "mouth";
+  private readonly winkRecognizer = new WinkGestureRecognizer();
+
+  getMode(): FaceGestureMode { return this.mode; }
+
+  async loadMode(): Promise<FaceGestureMode> {
+    try {
+      const saved = await AsyncStorage.getItem("ariascore:face-gesture-mode:v1");
+      this.mode = saved === "wink" ? "wink" : "mouth";
+      this.winkRecognizer.reset();
+      this.debouncer.reset();
+    } catch (error) {
+      console.warn("[FaceGestureService] Cannot restore gesture mode", error);
+    }
+    return this.mode;
+  }
+
+  async setMode(mode: FaceGestureMode): Promise<void> {
+    this.mode = mode;
+    this.winkRecognizer.reset();
+    this.debouncer.reset();
+    await AsyncStorage.setItem("ariascore:face-gesture-mode:v1", mode);
+  }
+
   private readonly recognizer =
     new MouthGestureRecognizer();
 
@@ -132,6 +157,7 @@ export class FaceGestureService {
     }
 
     this.running = true;
+    this.winkRecognizer.reset();
 
     this.debouncer.reset();
 
@@ -150,6 +176,7 @@ export class FaceGestureService {
     this.debouncer.reset();
 
     this.running = false;
+    this.winkRecognizer.reset();
 
     console.log(
       "[FaceGestureService] stopped",
@@ -178,6 +205,12 @@ export class FaceGestureService {
         landmarks,
       );
 
+      return;
+    }
+
+    if (this.mode === "wink") {
+      const event = this.winkRecognizer.process(landmarks);
+      if (event) this.emit(event);
       return;
     }
 
