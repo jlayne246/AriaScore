@@ -111,6 +111,7 @@ export default function FaceGestureCamera({
         exposure={exposure}
         isActive={enabled}
         runLandmarks
+        runClassifications
         performanceMode="accurate"
         minFaceSize={0.10}
         onFacesDetected={
@@ -221,6 +222,8 @@ function mapFaceToLandmarks(
       .rollAngle === "number";
 
   return {
+    leftEyeOpenProbability: typeof face.leftEyeOpenProbability === "number" ? face.leftEyeOpenProbability : undefined,
+    rightEyeOpenProbability: typeof face.rightEyeOpenProbability === "number" ? face.rightEyeOpenProbability : undefined,
     leftEye: {
       x: leftEye.x,
       y: leftEye.y,
