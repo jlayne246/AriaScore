@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
+  BackHandler,
 } from 'react-native';
 import { Image as ExpoImage } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -84,6 +85,8 @@ import {
   loadAnnotations,
   saveAnnotations,
 } from "../src/services/annotations/annotationRepository";
+import { ZoomablePage } from
+  "../src/services/reader/ZoomablePage";
 
 type ScoreNavigationCallback =
     () => Promise<void> | void;
@@ -113,6 +116,8 @@ interface BufferedPDFViewerProps {
 }
 
 const ACCENT_COLOR = '#2563EB';
+
+const EMPTY_PAGE_STROKES: StrokeAnnotation[] = [];
 
 const THUMB_COLUMNS = 4;
 const THUMB_ITEM_WIDTH = 120;
@@ -150,7 +155,7 @@ type RenderedPageProps = {
   drawingSettings: DrawingSettings;
 
   onAddStroke: (stroke: StrokeAnnotation) => void;
-  onEraseStroke: (id: string) => void;
+  onEraseStrokes: (ids: string[]) => void;
 };
 
 const RenderedPage = React.memo(
@@ -161,7 +166,7 @@ const RenderedPage = React.memo(
     strokes,
     drawingSettings,
     onAddStroke,
-    onEraseStroke,
+    onEraseStrokes,
   }: RenderedPageProps) {
     const [containerSize, setContainerSize] =
       useState({ width: 0, height: 0 });
@@ -198,14 +203,15 @@ const RenderedPage = React.memo(
         }}
       >
         {image && pageRect ? (
-          <View
-            style={{
-              position: "absolute",
-              left: pageRect.x,
-              top: pageRect.y,
-              width: pageRect.width,
-              height: pageRect.height,
-            }}
+          <ZoomablePage
+            viewportWidth={containerSize.width}
+            viewportHeight={containerSize.height}
+            pageWidth={pageRect.width}
+            pageHeight={pageRect.height}
+            maxScale={3}
+            resetKey={pageNumber}
+            annotationMode={annotationMode}
+            palmRejectionEnabled={drawingSettings.palmRejectionEnabled}
           >
             <ExpoImage
               source={{ uri: image.uri }}
@@ -238,10 +244,10 @@ const RenderedPage = React.memo(
                 settings={drawingSettings}
                 readOnly={!annotationMode}
                 onAddStroke={onAddStroke}
-                onEraseStroke={onEraseStroke}
+                onEraseStrokes={onEraseStrokes}
               />
             </View>
-          </View>
+          </ZoomablePage>
         ) : (
           <View
             style={{
@@ -544,6 +550,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       index: 0,
     });
 
+  const annotationSnapshotRef =
+    useRef<StrokeAnnotation[]>([]);
+
   const annotations =
     annotationState.entries[annotationState.index] ?? [];
 
@@ -552,6 +561,64 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   const annotationsReady =
     loadedAnnotationMusicId === musicId;
+
+  
+  const previousPageStrokesRef = useRef<
+    Map<number, StrokeAnnotation[]>
+  >(new Map());
+
+  const strokesByPage = useMemo(() => {
+    if (!annotationsReady) {
+      previousPageStrokesRef.current = new Map();
+      return new Map<number, StrokeAnnotation[]>();
+    }
+
+    const grouped = new Map<number, StrokeAnnotation[]>();
+
+    for (const stroke of annotations) {
+      const page = stroke.pageIndex;
+
+      const existing = grouped.get(page);
+
+      if (existing) {
+        existing.push(stroke);
+      } else {
+        grouped.set(page, [stroke]);
+      }
+    }
+
+    const previous = previousPageStrokesRef.current;
+    const result = new Map<number, StrokeAnnotation[]>();
+
+    for (const [page, strokes] of grouped) {
+      const oldStrokes = previous.get(page);
+
+      const unchanged =
+        oldStrokes !== undefined &&
+        oldStrokes.length === strokes.length &&
+        oldStrokes.every(
+          (stroke, index) =>
+            stroke === strokes[index]
+        );
+
+      result.set(
+        page,
+        unchanged ? oldStrokes : strokes
+      );
+    }
+
+    previousPageStrokesRef.current = result;
+
+    return result;
+  }, [annotations, annotationsReady]);
+
+  const getPageStrokes = useCallback(
+    (pageIndex: number) =>
+      strokesByPage.get(pageIndex) ??
+      EMPTY_PAGE_STROKES,
+    [strokesByPage]
+  );
+
 
   const [drawingSettings, setDrawingSettings] =
     useState<DrawingSettings>({
@@ -1628,6 +1695,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
     setLoadedAnnotationMusicId(null);
     setAnnotationMode(false);
+
+    annotationSnapshotRef.current = [];
+
     setAnnotationState({
       entries: [[]],
       index: 0,
@@ -1639,10 +1709,12 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
         if (cancelled) return;
 
-       setAnnotationState({
-          entries: [saved],
-          index: 0,
-        });
+        annotationSnapshotRef.current = saved;
+
+        setAnnotationState({
+            entries: [saved],
+            index: 0,
+          });
         setLoadedAnnotationMusicId(musicId);
 
         console.log(
@@ -1679,36 +1751,23 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     }
   }, [annotationMode]);
 
-  useEffect(() => {
-    if (!annotationsReady) return;
+  // useEffect(() => {
+  //   if (!annotationsReady) return;
 
-    void saveAnnotations(
-      musicId,
-      annotations
-    ).catch((error) => {
-      console.error(
-        "[Annotations] Failed to save:",
-        error
-      );
-    });
-  }, [
-    annotationsReady,
-    musicId,
-    annotationState,
-  ]);
-
- useEffect(() => {
-  const { entries, index } = annotationState;
-
-  console.log("[Annotation DEBUG] History:", {
-    musicId,
-    historyIndex: index,
-    historyLength: entries.length,
-    strokeCount: annotations.length,
-    validIndex:
-      index >= 0 && index < entries.length,
-  });
-}, [musicId, annotationState]);
+  //   void saveAnnotations(
+  //     musicId,
+  //     annotations
+  //   ).catch((error) => {
+  //     console.error(
+  //       "[Annotations] Failed to save:",
+  //       error
+  //     );
+  //   });
+  // }, [
+  //   annotationsReady,
+  //   musicId,
+  //   annotationState,
+  // ])
 
   
   const commitAnnotations = useCallback(
@@ -1763,14 +1822,22 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     [commitAnnotations]
   );
 
-  const handleEraseStroke = useCallback(
-    (id: string) => {
-      commitAnnotations((current) => {
-        if (!current.some((s) => s.id === id)) {
-          return current;
-        }
+  const handleEraseStrokes = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return;
 
-        return current.filter((s) => s.id !== id);
+      const removedIds = new Set(ids);
+
+      commitAnnotations((current) => {
+        const next = current.filter(
+          (stroke) => !removedIds.has(stroke.id)
+        );
+
+        // Avoid creating an empty history operation
+        // if none of these IDs exists anymore.
+        return next.length === current.length
+          ? current
+          : next;
       });
     },
     [commitAnnotations]
@@ -1805,6 +1872,77 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     });
   }, []);
 
+
+  
+  const enterAnnotationMode = () => {
+    if (!annotationsReady || annotationMode) return;
+
+    // Capture the saved state before editing.
+    annotationSnapshotRef.current = annotations;
+
+    // Start a fresh undo/redo history for this session.
+    setAnnotationState({
+      entries: [annotations],
+      index: 0,
+    });
+
+    setAnnotationMode(true);
+  };
+
+  const cancelAnnotationSession = () => {
+    if (!annotationMode) return;
+
+    // Restore the annotations from before this session.
+    setAnnotationState({
+      entries: [annotationSnapshotRef.current],
+      index: 0,
+    });
+
+    setAnnotationMode(false);
+  };
+
+  const commitAnnotationSession = async () => {
+    if (!annotationsReady || !annotationMode) return;
+
+    try {
+      // Persist only the final result of the session.
+      await saveAnnotations(musicId, annotations);
+
+      annotationSnapshotRef.current = annotations;
+
+      // Clear the undo/redo history after saving.
+      setAnnotationState({
+        entries: [annotations],
+        index: 0,
+      });
+
+      setAnnotationMode(false);
+    } catch (error) {
+      console.error(
+        "[Annotations] Failed to commit session:",
+        error
+      );
+
+      Alert.alert(
+        "Unable to save annotations",
+        "Your changes have not been saved. You can try again or cancel to discard them."
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (!annotationMode) return;
+
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        cancelAnnotationSession();
+        return true;
+      }
+    );
+
+    return () => subscription.remove();
+  }, [annotationMode]);
 
   // const singleTap = Gesture.Tap()
   // const doubleTap = Gesture.Tap().numberOfTaps(2)
@@ -2725,6 +2863,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     -SWIPE_VERTICAL_TOLERANCE,
     SWIPE_VERTICAL_TOLERANCE,
   ])
+  .maxPointers(1)
   .onEnd((event) => {
     const movedFarEnough =
       Math.abs(event.translationX) >=
@@ -2750,15 +2889,16 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   });
 
   const tapGesture = Gesture.Tap()
+  .enabled(canUseReaderGestures && !annotationMode)
   .maxDuration(220)
   .maxDistance(6)
   .onEnd((event, success) => {
     if (!success) return;
-
     runOnJS(handleTap)(event.x);
   });
 
   const doubleTapGesture = Gesture.Tap()
+  .enabled(canUseReaderGestures && !annotationMode)
   .numberOfTaps(2)
   .maxDuration(300)
   .maxDistance(12)
@@ -2981,7 +3121,16 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
               alignItems: 'center',
             }}
           >
-            <TouchableOpacity onPress={() => navigation.goBack()}>
+            <TouchableOpacity
+              onPress={() => {
+                if (annotationMode) {
+                  cancelAnnotationSession();
+                  return;
+                }
+
+                navigation.goBack();
+              }}
+            >
               <Ionicons name="chevron-back" size={28} color={ACCENT_COLOR} />
             </TouchableOpacity>
 
@@ -3206,263 +3355,237 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
       {/* <GestureDetector gesture={gesture}> */}
         {isCurrentDocumentReady ? (
-          <PagerView
-            // key={`${effectiveDisplayMode}-${coverOffset ? "cover" : "no-cover"}`}
-            ref={pagerRef}
-            style={{ flex: 1 }}
-            initialPage={initialPagerIndex}
-            offscreenPageLimit={5}
-            scrollEnabled={false}
-            onPageSelected={(event) => {
-              const spread = spreadIndexToVisiblePages(
-              event.nativeEvent.position,
-              paginationOptions,
-            );
+          <GestureDetector gesture={readerGesture}>
+            <PagerView
+              // key={`${effectiveDisplayMode}-${coverOffset ? "cover" : "no-cover"}`}
+              ref={pagerRef}
+              style={{ flex: 1 }}
+              initialPage={initialPagerIndex}
+              offscreenPageLimit={5}
+              scrollEnabled={false}
+              onPageSelected={(event) => {
+                const spread = spreadIndexToVisiblePages(
+                event.nativeEvent.position,
+                paginationOptions,
+              );
 
-            const logicalPages = spread.pages.filter(
-              page =>
-                page >= minimumPage &&
-                page <= maximumPage
-            );
+              const logicalPages = spread.pages.filter(
+                page =>
+                  page >= minimumPage &&
+                  page <= maximumPage
+              );
 
-            if (logicalPages.length === 0) {
-              return;
-            }
-
-            const pendingAnchor =
-              pendingAnchorPageRef.current;
-
-            const selectedPhysicalPage =
-              pendingAnchor !== null &&
-              logicalPages.includes(pendingAnchor)
-                ? pendingAnchor
-                : logicalPages[0];
-
-              pendingAnchorPageRef.current = null;
-
-              // console.log("Reader persist", {
-              //   pagerPosition: event.nativeEvent.position,
-              //   physicalPage: selectedPhysicalPage,
-              //   visiblePages: spread.pages,
-              //   pendingAnchor,
-              //   displayMode: effectiveDisplayMode,
-              // });
-
-              if (selectedPhysicalPage !== currentPage) {
-                setCurrentPage(selectedPhysicalPage);
+              if (logicalPages.length === 0) {
+                return;
               }
 
-              if (effectiveSettings.resumeLastPage) {
-                AsyncStorage.setItem(
-                  `pdf:lastPage:${uri}`,
-                  selectedPhysicalPage.toString(),
-                );
-              }
+              const pendingAnchor =
+                pendingAnchorPageRef.current;
 
-              logicalPages.forEach((page) => {
-                void renderPage(page, true);
-              });
-              // renderBufferAround(selectedPhysicalPage);
-            }}
-          >
-            {Array.from(
-              {
-                length:
-                  pagerPageCount,
-              },
-              (_, index) => {
-                const spread =
-                  spreadIndexToVisiblePages(
-                    index,
-                    paginationOptions
-                  );
+              const selectedPhysicalPage =
+                pendingAnchor !== null &&
+                logicalPages.includes(pendingAnchor)
+                  ? pendingAnchor
+                  : logicalPages[0];
 
-                if (spread.pages.length === 0) {
-                  return null;
+                pendingAnchorPageRef.current = null;
+
+                // console.log("Reader persist", {
+                //   pagerPosition: event.nativeEvent.position,
+                //   physicalPage: selectedPhysicalPage,
+                //   visiblePages: spread.pages,
+                //   pendingAnchor,
+                //   displayMode: effectiveDisplayMode,
+                // });
+
+                if (selectedPhysicalPage !== currentPage) {
+                  setCurrentPage(selectedPhysicalPage);
                 }
 
-                const [physicalLeftPage, physicalRightPage] =
-                  spread.pages;
-
-                const leftPage =
-                  physicalLeftPage != null &&
-                  physicalLeftPage >= minimumPage &&
-                  physicalLeftPage <= maximumPage
-                    ? physicalLeftPage
-                    : undefined;
-
-                const rightPage =
-                  physicalRightPage != null &&
-                  physicalRightPage >= minimumPage &&
-                  physicalRightPage <= maximumPage
-                    ? physicalRightPage
-                    : undefined;
-
-                if (
-                  leftPage === undefined &&
-                  rightPage === undefined
-                ) {
-                  return (
-                    <View
-                      key={`spread-${index}`}
-                      style={{
-                        flex: 1,
-                        backgroundColor: "white",
-                      }}
-                    />
+                if (effectiveSettings.resumeLastPage) {
+                  AsyncStorage.setItem(
+                    `pdf:lastPage:${uri}`,
+                    selectedPhysicalPage.toString(),
                   );
                 }
 
-                if (effectiveDisplayMode === "single") {
-                  const pageNumber =
-                    leftPage ?? rightPage;
+                logicalPages.forEach((page) => {
+                  void renderPage(page, true);
+                });
+                // renderBufferAround(selectedPhysicalPage);
+              }}
+            >
+              {Array.from(
+                {
+                  length:
+                    pagerPageCount,
+                },
+                (_, index) => {
+                  const spread =
+                    spreadIndexToVisiblePages(
+                      index,
+                      paginationOptions
+                    );
 
-                  if (pageNumber === undefined) {
+                  if (spread.pages.length === 0) {
                     return null;
                   }
 
-                  return (
-                    <View
-                      key={`single-${pageNumber}`}
-                      style={{ flex: 1 }}
-                    >
-                      <RenderedPage
-                        image={pageImages[pageNumber]}
-                        pageNumber={pageNumber}
-                        annotationMode={
-                          annotationMode && annotationsReady
-                        }
-                        strokes={
-                          annotationsReady
-                            ? annotations.filter(
-                                stroke =>
-                                  stroke.pageIndex === pageNumber - 1
-                              )
-                            : []
-                        }
-                        drawingSettings={drawingSettings}
-                        onAddStroke={handleAddStroke}
-                        onEraseStroke={handleEraseStroke}
+                  const [physicalLeftPage, physicalRightPage] =
+                    spread.pages;
+
+                  const leftPage =
+                    physicalLeftPage != null &&
+                    physicalLeftPage >= minimumPage &&
+                    physicalLeftPage <= maximumPage
+                      ? physicalLeftPage
+                      : undefined;
+
+                  const rightPage =
+                    physicalRightPage != null &&
+                    physicalRightPage >= minimumPage &&
+                    physicalRightPage <= maximumPage
+                      ? physicalRightPage
+                      : undefined;
+
+                  if (
+                    leftPage === undefined &&
+                    rightPage === undefined
+                  ) {
+                    return (
+                      <View
+                        key={`spread-${index}`}
+                        style={{
+                          flex: 1,
+                          backgroundColor: "white",
+                        }}
                       />
-                    </View>
-                  );
-                }
+                    );
+                  }
 
-                const isCoverSpread =
-                  coverOffset &&
-                  index === 0 &&
-                  spread.pages.length === 1;
+                  if (effectiveDisplayMode === "single") {
+                    const pageNumber =
+                      leftPage ?? rightPage;
 
-                if (
-                  isCoverSpread &&
-                  leftPage !== undefined
-                ) {
+                    if (pageNumber === undefined) {
+                      return null;
+                    }
+
+                    return (
+                      <View
+                        key={`single-${pageNumber}`}
+                        style={{ flex: 1 }}
+                      >
+                        <RenderedPage
+                          image={pageImages[pageNumber]}
+                          pageNumber={pageNumber}
+                          annotationMode={
+                            annotationMode && annotationsReady
+                          }
+                          strokes={getPageStrokes(pageNumber - 1)}
+                          drawingSettings={drawingSettings}
+                          onAddStroke={handleAddStroke}
+                          onEraseStrokes={handleEraseStrokes}
+                        />
+                      </View>
+                    );
+                  }
+
+                  const isCoverSpread =
+                    coverOffset &&
+                    index === 0 &&
+                    spread.pages.length === 1;
+
+                  if (
+                    isCoverSpread &&
+                    leftPage !== undefined
+                  ) {
+                    return (
+                      <View
+                        key="cover-spread"
+                        style={{
+                          flex: 1,
+                          flexDirection: "row",
+                          backgroundColor: "white",
+                        }}
+                      >
+                        <View
+                          style={{
+                            flex: 1,
+                            backgroundColor: "white",
+                          }}
+                        />
+
+                        <RenderedPage
+                          image={pageImages[leftPage]}
+                          pageNumber={leftPage}
+                          annotationMode={
+                            annotationMode && annotationsReady
+                          }
+                          strokes={getPageStrokes(leftPage - 1)}
+                          drawingSettings={drawingSettings}
+                          onAddStroke={handleAddStroke}
+                          onEraseStrokes={handleEraseStrokes}
+                        />
+                      </View>
+                    );
+                  }
                   return (
                     <View
-                      key="cover-spread"
+                      key={`spread-${index}`}
                       style={{
                         flex: 1,
                         flexDirection: "row",
                         backgroundColor: "white",
                       }}
                     >
-                      <View
-                        style={{
-                          flex: 1,
-                          backgroundColor: "white",
-                        }}
-                      />
+                      {leftPage !== undefined ? (
+                        <RenderedPage
+                          image={pageImages[leftPage]}
+                          pageNumber={leftPage}
+                          annotationMode={
+                            annotationMode && annotationsReady
+                          }
+                          strokes={getPageStrokes(leftPage - 1)}
+                          drawingSettings={drawingSettings}
+                          onAddStroke={handleAddStroke}
+                          onEraseStrokes={handleEraseStrokes}
+                        />
+                      ) : (
+                        <View
+                          style={{
+                            flex: 1,
+                            backgroundColor: "white",
+                          }}
+                        />
+                      )}
 
-                      <RenderedPage
-                        image={pageImages[leftPage]}
-                        pageNumber={leftPage}
-                        annotationMode={
-                          annotationMode && annotationsReady
-                        }
-                        strokes={
-                          annotationsReady
-                            ? annotations.filter(
-                                stroke =>
-                                  stroke.pageIndex === leftPage - 1
-                              )
-                            : []
-                        }
-                        drawingSettings={drawingSettings}
-                        onAddStroke={handleAddStroke}
-                        onEraseStroke={handleEraseStroke}
-                      />
+                      {rightPage !== undefined ? (
+                        <RenderedPage
+                          image={pageImages[rightPage]}
+                          pageNumber={rightPage}
+                          annotationMode={
+                            annotationMode && annotationsReady
+                          }
+                          strokes={getPageStrokes(rightPage - 1)}
+                          drawingSettings={drawingSettings}
+                          onAddStroke={handleAddStroke}
+                          onEraseStrokes={handleEraseStrokes}
+                        />
+                      ) : (
+                        <View
+                          style={{
+                            flex: 1,
+                            backgroundColor: "white",
+                          }}
+                        />
+                      )}
                     </View>
                   );
                 }
-                return (
-                  <View
-                    key={`spread-${index}`}
-                    style={{
-                      flex: 1,
-                      flexDirection: "row",
-                      backgroundColor: "white",
-                    }}
-                  >
-                    {leftPage !== undefined ? (
-                      <RenderedPage
-                        image={pageImages[leftPage]}
-                        pageNumber={leftPage}
-                        annotationMode={
-                          annotationMode && annotationsReady
-                        }
-                        strokes={
-                          annotationsReady
-                            ? annotations.filter(
-                                stroke =>
-                                  stroke.pageIndex === leftPage - 1
-                              )
-                            : []
-                        }
-                        drawingSettings={drawingSettings}
-                        onAddStroke={handleAddStroke}
-                        onEraseStroke={handleEraseStroke}
-                      />
-                    ) : (
-                      <View
-                        style={{
-                          flex: 1,
-                          backgroundColor: "white",
-                        }}
-                      />
-                    )}
-
-                    {rightPage !== undefined ? (
-                      <RenderedPage
-                        image={pageImages[rightPage]}
-                        pageNumber={rightPage}
-                        annotationMode={
-                          annotationMode && annotationsReady
-                        }
-                        strokes={
-                          annotationsReady
-                            ? annotations.filter(
-                                stroke =>
-                                  stroke.pageIndex === rightPage - 1
-                              )
-                            : []
-                        }
-                        drawingSettings={drawingSettings}
-                        onAddStroke={handleAddStroke}
-                        onEraseStroke={handleEraseStroke}
-                      />
-                    ) : (
-                      <View
-                        style={{
-                          flex: 1,
-                          backgroundColor: "white",
-                        }}
-                      />
-                    )}
-                  </View>
-                );
-              }
-            )}
-          </PagerView>
+              )}
+            </PagerView>
+          </GestureDetector>
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator />
@@ -3532,7 +3655,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           <TouchableOpacity
             style={{ alignItems: "center" }}
             onPress={() => {
-              setAnnotationMode(previous => !previous);
+              enterAnnotationMode();
               setChromeVisible(true);
             }}
             disabled={!annotationsReady}
@@ -4388,7 +4511,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             onChange={setDrawingSettings}
             onUndo={handleUndoAnnotation}
             onRedo={handleRedoAnnotation}
-            onDone={() => setAnnotationMode(false)}
+            onDone={commitAnnotationSession}
             canUndo={annotationState.index > 0}
             canRedo={
               annotationState.index <
@@ -4411,7 +4534,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         }}
       />
 
-      {canUseReaderGestures && !annotationMode && (
+      {/* {canUseReaderGestures && !annotationMode && ( // DEPRECATED
         <GestureDetector gesture={readerGesture}>
           <View
             collapsable={false}
@@ -4426,7 +4549,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             }}
           />
         </GestureDetector>
-      )}
+      )} */}
 
       {/* {annotationMode && (
         <AnnotationCanvas
@@ -4436,7 +4559,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           strokes={pageStrokes}
           settings={drawingSettings}
           onAddStroke={handleAddStroke}
-          onEraseStroke={handleEraseStroke}
+          onEraseStrokes={handleEraseStrokes}
         />
       )} */}
     </View>

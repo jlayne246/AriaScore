@@ -51,7 +51,8 @@ export const navigationRef =
 
 export default function App() {
     // The __DEV__ constant is true when in development mode
-    const showDevTools = __DEV__;
+    // const showDevTools = __DEV__;
+    const showDevTools = false;
 
     const [dbReady, setDbReady] = useState(false);
     const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
@@ -247,7 +248,7 @@ export default function App() {
               </NavigationContainer>
             </MenuProvider>
 
-            {__DEV__ && <DevToolsButton />}
+            {showDevTools && <DevToolsButton />}
           </View>
         </SafeAreaProvider>
       </GestureHandlerRootView>

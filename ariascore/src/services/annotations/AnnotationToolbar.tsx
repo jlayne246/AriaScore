@@ -1,40 +1,39 @@
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 
+import Slider from "@react-native-community/slider";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { AnnotationColorPicker } from "./AnnotationColourPicker";
 
 import type {
   DrawingSettings,
   DrawingTool,
-  InputMode,
 } from "./types";
 
 interface Props {
   settings: DrawingSettings;
   onChange: (settings: DrawingSettings) => void;
-
   onUndo: () => void;
   onRedo: () => void;
   onDone: () => void;
-
   canUndo: boolean;
   canRedo: boolean;
-
   accentColor: string;
   position?: "top" | "bottom";
 }
 
-type Panel = "tool" | "input" | null;
-
 type IconName =
   keyof typeof MaterialCommunityIcons.glyphMap;
+
+type Panel = "colors" | "opacity" | null;
 
 const COLORS = [
   "#D84343",
@@ -49,11 +48,7 @@ const TOOLS: {
   icon: IconName;
   label: string;
 }[] = [
-  {
-    id: "pen",
-    icon: "pen",
-    label: "Pen",
-  },
+  { id: "pen", icon: "pen", label: "Pen" },
   {
     id: "highlighter",
     icon: "marker",
@@ -77,9 +72,46 @@ export function AnnotationToolbar({
   accentColor,
   position = "bottom",
 }: Props) {
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+
   const [panel, setPanel] = useState<Panel>(null);
 
+  const [
+    customPickerOpen,
+    setCustomPickerOpen,
+  ] = useState(false);
+
+  const [recentColors, setRecentColors] =
+    useState<string[]>([]);
+
+  const [strokeWidth, setStrokeWidth] =
+    useState(settings.width);
+
+  const [isSlidingWidth, setIsSlidingWidth] =
+    useState(false);
+
+  const [opacity, setOpacity] =
+    useState(settings.opacity);
+
+  const [isSlidingOpacity, setIsSlidingOpacity] =
+    useState(false);
+
   const accentTint = `${accentColor}16`;
+
+  useEffect(() => {
+    if (!isSlidingWidth) {
+      setStrokeWidth(settings.width);
+    }
+  }, [settings.width, isSlidingWidth]);
+
+  useEffect(() => {
+    if (!isSlidingOpacity) {
+      setOpacity(settings.opacity);
+    }
+  }, [settings.opacity, isSlidingOpacity]);
+
+  // SETTINGS UPDATE
 
   const update = (
     patch: Partial<DrawingSettings>
@@ -90,26 +122,45 @@ export function AnnotationToolbar({
     });
   };
 
+  // COLOUR SELECTION
+
+  const chooseColor = (color: string) => {
+    const normalized = color.toUpperCase();
+
+    update({ color: normalized });
+
+    if (
+      !COLORS.some(
+        (preset) =>
+          preset.toUpperCase() === normalized
+      )
+    ) {
+      setRecentColors((previous) =>
+        [
+          normalized,
+          ...previous.filter(
+            (item) => item !== normalized
+          ),
+        ].slice(0, 6)
+      );
+    }
+  };
+
   // TOOL SELECTION
 
   const selectTool = (tool: DrawingTool) => {
-    if (settings.tool === tool) {
-      setPanel((current) =>
-        current === "tool" ? null : "tool"
-      );
-      return;
-    }
+    if (settings.tool === tool) return;
+
+    setPanel(null);
 
     update({
       tool,
-
       width:
         tool === "highlighter"
           ? 14
           : tool === "pen"
           ? 3
           : settings.width,
-
       opacity:
         tool === "highlighter"
           ? 0.35
@@ -117,32 +168,20 @@ export function AnnotationToolbar({
           ? 1
           : settings.opacity,
     });
-
-    setPanel(null);
   };
 
-  // STROKE SETTINGS
+  // PALM REJECTION
 
-  const changeWidth = (delta: number) => {
-    update({
-      width: Math.max(
-        1,
-        Math.min(24, settings.width + delta)
-      ),
-    });
-  };
+  const palmRejectionActive =
+    settings.inputMode === "stylus" ||
+    settings.palmRejectionEnabled;
 
-  const changeOpacity = (delta: number) => {
+  const togglePalmRejection = () => {
+    const enabled = !palmRejectionActive;
+
     update({
-      opacity: Math.max(
-        0.1,
-        Math.min(
-          1,
-          Math.round(
-            (settings.opacity + delta) * 10
-          ) / 10
-        )
-      ),
+      inputMode: enabled ? "stylus" : "auto",
+      palmRejectionEnabled: enabled,
     });
   };
 
@@ -184,331 +223,194 @@ export function AnnotationToolbar({
           color={
             disabled
               ? "#CBD5E1"
-              : options?.color
-              ? options.color
-              : active
-              ? accentColor
-              : "#475569"
+              : options?.color ??
+                (active
+                  ? accentColor
+                  : "#475569")
           }
         />
       </Pressable>
     );
   };
 
-  // MAIN TOOLBAR
+  // COLOUR SWATCH
 
-  const renderToolbar = () => (
-    <View style={styles.toolbarRow}>
-      <ScrollView
-        horizontal
-        style={styles.toolbarScroll}
-        showsHorizontalScrollIndicator={false}
-        keyboardShouldPersistTaps="always"
-        contentContainerStyle={styles.scrollContent}
+  const swatch = (color: string) => {
+    const active =
+      settings.color.toUpperCase() ===
+      color.toUpperCase();
+
+    return (
+      <Pressable
+        key={color}
+        accessibilityRole="button"
+        accessibilityLabel={`Choose colour ${color}`}
+        accessibilityState={{
+          selected: active,
+        }}
+        onPress={() => chooseColor(color)}
+        style={[
+          styles.swatchButton,
+          active && {
+            borderColor: accentColor,
+          },
+        ]}
       >
-        {/* PEN / HIGHLIGHTER / ERASER */}
-
-        {TOOLS.map((tool) => (
-          <React.Fragment key={tool.id}>
-            {renderIconButton(
-              tool.icon,
-              tool.label,
-              () => selectTool(tool.id),
-              {
-                active: settings.tool === tool.id,
-              }
-            )}
-          </React.Fragment>
-        ))}
-
-        <View style={styles.separator} />
-
-        {/* COLOUR PRESETS */}
-
-        {COLORS.map((color) => {
-          const selected = settings.color === color;
-
-          return (
-            <Pressable
-              key={color}
-              accessibilityRole="button"
-              accessibilityLabel={`Ink colour ${color}`}
-              accessibilityState={{ selected }}
-              onPress={() => update({ color })}
-              style={[
-                styles.colorButton,
-                selected && {
-                  borderColor: accentColor,
-                },
-              ]}
-            >
-              <View
-                style={[
-                  styles.colorSwatch,
-                  { backgroundColor: color },
-                ]}
-              />
-            </Pressable>
-          );
-        })}
-
-        <View style={styles.separator} />
-
-        {/* STROKE SETTINGS */}
-
-        {renderIconButton(
-          "circle-outline",
-          "Stroke settings",
-          () =>
-            setPanel((current) =>
-              current === "tool" ? null : "tool"
-            ),
-          {
-            active: panel === "tool",
-          }
-        )}
-
-        <View style={styles.separator} />
-
-        {/* UNDO / REDO */}
-
-        {renderIconButton(
-          "undo",
-          "Undo",
-          onUndo,
-          { disabled: !canUndo }
-        )}
-
-        {renderIconButton(
-          "redo",
-          "Redo",
-          onRedo,
-          { disabled: !canRedo }
-        )}
-
-        <View style={styles.separator} />
-
-        {/* INPUT SETTINGS */}
-
-        {renderIconButton(
-          "tune-variant",
-          "Drawing input settings",
-          () =>
-            setPanel((current) =>
-              current === "input" ? null : "input"
-            ),
-          {
-            active: panel === "input",
-          }
-        )}
-      </ScrollView>
-
-      {/* FIXED DONE BUTTON */}
-
-      <View style={styles.doneArea}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Finish annotating"
-          onPress={onDone}
+        <View
           style={[
-            styles.doneButton,
-            { backgroundColor: accentColor },
+            styles.swatch,
+            {
+              backgroundColor: color,
+            },
           ]}
-        >
-          <MaterialCommunityIcons
-            name="check"
-            size={24}
-            color="#FFFFFF"
-          />
-        </Pressable>
-      </View>
-    </View>
-  );
+        />
+      </Pressable>
+    );
+  };
 
-  // CONTEXTUAL SETTINGS PANEL
+  // EXPANDABLE COLOUR PANEL
 
-  const renderToolSettings = () => (
+  const colorsPanel = (
     <View style={styles.panel}>
       <View style={styles.panelHeader}>
         <Text style={styles.panelTitle}>
-          {settings.tool === "highlighter"
-            ? "Highlighter"
-            : settings.tool === "eraser"
-            ? "Eraser"
-            : "Pen"}{" "}
-          Settings
+          Ink colours
         </Text>
 
         {renderIconButton(
           "close",
-          "Close settings",
+          "Close colour picker",
           () => setPanel(null)
         )}
       </View>
 
-      <View style={styles.settingRow}>
-        <Text style={styles.settingLabel}>
-          Stroke Width
-        </Text>
+      <Text style={styles.sectionLabel}>
+        Presets
+      </Text>
 
-        <View style={styles.stepper}>
-          {renderIconButton(
-            "minus",
-            "Decrease stroke width",
-            () => changeWidth(-1),
-            { disabled: settings.width <= 1 }
-          )}
-
-          <Text style={styles.settingValue}>
-            {settings.width}
-          </Text>
-
-          {renderIconButton(
-            "plus",
-            "Increase stroke width",
-            () => changeWidth(1),
-            { disabled: settings.width >= 24 }
-          )}
-        </View>
+      <View style={styles.swatchRow}>
+        {COLORS.map(swatch)}
       </View>
 
-      {settings.tool !== "eraser" && (
-        <View style={styles.settingRow}>
-          <Text style={styles.settingLabel}>
-            Opacity
+      {recentColors.length > 0 && (
+        <>
+          <Text style={styles.sectionLabel}>
+            Recently used (this session)
           </Text>
 
-          <View style={styles.stepper}>
-            {renderIconButton(
-              "minus",
-              "Decrease opacity",
-              () => changeOpacity(-0.1),
-              { disabled: settings.opacity <= 0.1 }
-            )}
-
-            <Text style={styles.settingValue}>
-              {Math.round(settings.opacity * 100)}%
-            </Text>
-
-            {renderIconButton(
-              "plus",
-              "Increase opacity",
-              () => changeOpacity(0.1),
-              { disabled: settings.opacity >= 1 }
-            )}
+          <View style={styles.swatchRow}>
+            {recentColors.map(swatch)}
           </View>
-        </View>
+        </>
+      )}
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={
+          customPickerOpen
+            ? "Hide custom colour wheel"
+            : "Show custom colour wheel"
+        }
+        onPress={() =>
+          setCustomPickerOpen(
+            (previous) => !previous
+          )
+        }
+        style={styles.customToggle}
+      >
+        <MaterialCommunityIcons
+          name="palette"
+          size={20}
+          color={accentColor}
+        />
+
+        <Text
+          style={[
+            styles.customToggleLabel,
+            { color: accentColor },
+          ]}
+        >
+          Custom colour wheel
+        </Text>
+
+        <MaterialCommunityIcons
+          name={
+            customPickerOpen
+              ? "chevron-up"
+              : "chevron-down"
+          }
+          size={21}
+          color={accentColor}
+        />
+      </Pressable>
+
+      {customPickerOpen && (
+        <AnnotationColorPicker
+          color={settings.color}
+          onChange={chooseColor}
+          accentColor={accentColor}
+        />
       )}
     </View>
   );
 
-  // INPUT SETTINGS PANEL
+  // EXPANDABLE OPACITY PANEL
 
-  const renderInputSettings = () => (
-    <View style={styles.panel}>
-      <View style={styles.panelHeader}>
-        <Text style={styles.panelTitle}>
-          Drawing Input
-        </Text>
+  const opacityPanel = (
+    <View style={styles.opacityPanel}>
+      <Text style={styles.opacityLabel}>
+        Opacity
+      </Text>
 
-        {renderIconButton(
-          "close",
-          "Close settings",
-          () => setPanel(null)
-        )}
-      </View>
-
-      <View style={styles.inputModes}>
-        {(
-          ["auto", "stylus", "touch"] as InputMode[]
-        ).map((mode) => {
-          const active =
-            settings.inputMode === mode;
-
-          return (
-            <Pressable
-              key={mode}
-              accessibilityRole="button"
-              accessibilityState={{
-                selected: active,
-              }}
-              onPress={() =>
-                update({ inputMode: mode })
-              }
-              style={[
-                styles.modeButton,
-                active && {
-                  backgroundColor: accentTint,
-                  borderColor: accentColor,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.modeLabel,
-                  active && {
-                    color: accentColor,
-                  },
-                ]}
-              >
-                {mode === "auto"
-                  ? "Automatic"
-                  : mode === "stylus"
-                  ? "Stylus"
-                  : "Finger"}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityState={{
-          checked: settings.palmRejectionEnabled,
-        }}
-        onPress={() =>
-          update({
-            palmRejectionEnabled:
-              !settings.palmRejectionEnabled,
-          })
+      <Slider
+        style={styles.opacitySlider}
+        minimumValue={0.1}
+        maximumValue={1}
+        step={0.05}
+        value={opacity}
+        minimumTrackTintColor={accentColor}
+        maximumTrackTintColor="#CBD5E1"
+        thumbTintColor={accentColor}
+        onSlidingStart={() =>
+          setIsSlidingOpacity(true)
         }
-        style={styles.palmRow}
-      >
-        <MaterialCommunityIcons
-          name={
-            settings.palmRejectionEnabled
-              ? "checkbox-marked"
-              : "checkbox-blank-outline"
-          }
-          size={23}
-          color={
-            settings.palmRejectionEnabled
-              ? accentColor
-              : "#64748B"
-          }
-        />
+        onValueChange={(value) =>
+          setOpacity(
+            Math.round(value * 100) / 100
+          )
+        }
+        onSlidingComplete={(value) => {
+          const next =
+            Math.round(value * 100) / 100;
 
-        <Text style={styles.settingLabel}>
-          Palm Rejection
-        </Text>
-      </Pressable>
+          setOpacity(next);
+          update({ opacity: next });
+          setIsSlidingOpacity(false);
+        }}
+        accessibilityLabel="Stroke opacity"
+      />
+
+      <Text style={styles.opacityValue}>
+        {Math.round(opacity * 100)}%
+      </Text>
+
+      {renderIconButton(
+        "close",
+        "Close opacity slider",
+        () => setPanel(null)
+      )}
     </View>
   );
 
-  const renderPanel = () => {
-    if (panel === "tool") {
-      return renderToolSettings();
-    }
+  const expandedPanel =
+    panel === "colors"
+      ? colorsPanel
+      : panel === "opacity" &&
+        settings.tool !== "eraser"
+      ? opacityPanel
+      : null;
 
-    if (panel === "input") {
-      return renderInputSettings();
-    }
-
-    return null;
-  };
-
-  // RENDER
+  // MAIN TOOLBAR
 
   return (
     <View
@@ -518,13 +420,200 @@ export function AnnotationToolbar({
           styles.bottomContainer,
       ]}
     >
-      {/* Bottom: expand panels upward */}
-      {position === "bottom" && renderPanel()}
+      {position === "bottom" && expandedPanel}
 
-      {renderToolbar()}
+      <View style={styles.toolbarRow}>
+        {/* SCROLLABLE CONTROLS */}
 
-      {/* Top: expand panels downward */}
-      {position === "top" && renderPanel()}
+        <ScrollView
+          horizontal
+          style={styles.toolbarScroll}
+          contentContainerStyle={
+            styles.scrollContent
+          }
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="always"
+        >
+          {/* PEN / HIGHLIGHTER / ERASER */}
+
+          {TOOLS.map((tool) => (
+            <React.Fragment key={tool.id}>
+              {renderIconButton(
+                tool.icon,
+                tool.label,
+                () => selectTool(tool.id),
+                {
+                  active:
+                    settings.tool === tool.id,
+                }
+              )}
+            </React.Fragment>
+          ))}
+
+          <View style={styles.separator} />
+
+          {/* PALETTE */}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open ink colours"
+            accessibilityState={{
+              selected: panel === "colors",
+            }}
+            onPress={() =>
+              setPanel((current) =>
+                current === "colors"
+                  ? null
+                  : "colors"
+              )
+            }
+            style={[
+              styles.paletteButton,
+              panel === "colors" && {
+                backgroundColor: accentTint,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="palette"
+              size={23}
+              color={
+                panel === "colors"
+                  ? accentColor
+                  : "#475569"
+              }
+            />
+
+            <View
+              style={[
+                styles.paletteIndicator,
+                {
+                  backgroundColor: settings.color,
+                },
+              ]}
+            />
+          </Pressable>
+
+          {/* OPACITY */}
+
+          {settings.tool !== "eraser" &&
+            renderIconButton(
+              "opacity",
+              "Adjust opacity",
+              () =>
+                setPanel((current) =>
+                  current === "opacity"
+                    ? null
+                    : "opacity"
+                ),
+              {
+                active: panel === "opacity",
+              }
+            )}
+
+          <View style={styles.separator} />
+
+          {/* UNDO / REDO */}
+
+          {renderIconButton(
+            "undo",
+            "Undo",
+            onUndo,
+            {
+              disabled: !canUndo,
+            }
+          )}
+
+          {renderIconButton(
+            "redo",
+            "Redo",
+            onRedo,
+            {
+              disabled: !canRedo,
+            }
+          )}
+
+          <View style={styles.separator} />
+
+          {/* PALM REJECTION */}
+
+          {renderIconButton(
+            "hand-back-right",
+            palmRejectionActive
+              ? "Palm rejection on: stylus only"
+              : "Palm rejection off: stylus and finger",
+            togglePalmRejection,
+            {
+              active: palmRejectionActive,
+            }
+          )}
+        </ScrollView>
+
+        {/* FIXED STROKE WIDTH */}
+
+        <View style={styles.fixedWidthArea}>
+          <MaterialCommunityIcons
+            name="circle-outline"
+            size={18}
+            color="#475569"
+          />
+
+          <Slider
+            style={styles.widthSlider}
+            minimumValue={1}
+            maximumValue={24}
+            step={1}
+            value={strokeWidth}
+            minimumTrackTintColor={
+              accentColor
+            }
+            maximumTrackTintColor="#CBD5E1"
+            thumbTintColor={accentColor}
+            onSlidingStart={() =>
+              setIsSlidingWidth(true)
+            }
+            onValueChange={(value) =>
+              setStrokeWidth(Math.round(value))
+            }
+            onSlidingComplete={(value) => {
+              const next = Math.round(value);
+
+              setStrokeWidth(next);
+              update({ width: next });
+              setIsSlidingWidth(false);
+            }}
+            accessibilityLabel="Stroke width"
+          />
+
+          <Text style={styles.widthValue}>
+            {strokeWidth}
+          </Text>
+        </View>
+
+        {/* FIXED DONE BUTTON */}
+
+        <View style={styles.doneArea}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Finish annotating"
+            onPress={onDone}
+            style={[
+              styles.doneButton,
+              {
+                backgroundColor: accentColor,
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="check"
+              size={24}
+              color="#FFFFFF"
+            />
+          </Pressable>
+        </View>
+      </View>
+
+      {position === "top" && expandedPanel}
     </View>
   );
 }
@@ -551,7 +640,10 @@ const styles = StyleSheet.create({
   },
 
   toolbarScroll: {
-    flex: 1,
+    flexGrow: 0,
+    flexShrink: 1,
+    width: "auto",
+    maxWidth: "55%",
     minWidth: 0,
   },
 
@@ -577,20 +669,141 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
 
-  colorButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  paletteButton: {
+    width: 43,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+  },
+
+  paletteIndicator: {
+    position: "absolute",
+    bottom: 2,
+    width: 20,
+    height: 4,
+    borderRadius: 2,
+  },
+
+  fixedWidthArea: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 8,
+    borderLeftWidth: 1,
+    borderLeftColor: "#E2E8F0",
+  },
+
+  widthSlider: {
+    flex: 1,
+    minWidth: 0,
+    height: 40,
+  },
+
+  widthValue: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#334155",
+    minWidth: 22,
+    textAlign: "center",
+  },
+
+  panel: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 8,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+
+  panelHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  panelTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#334155",
+  },
+
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
+  },
+
+  swatchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    flexWrap: "wrap",
+  },
+
+  swatchButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 2,
     borderColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
 
-  colorSwatch: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+  swatch: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+
+  customToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 5,
+  },
+
+  customToggleLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    flex: 1,
+  },
+
+  opacityPanel: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+    gap: 8,
+  },
+
+  opacityLabel: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#475569",
+  },
+
+  opacitySlider: {
+    flex: 1,
+    height: 40,
+  },
+
+  opacityValue: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#334155",
+    width: 44,
+    textAlign: "right",
   },
 
   doneArea: {
@@ -606,79 +819,5 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
-  },
-
-  panel: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-    gap: 12,
-    backgroundColor: "#FFFFFF",
-  },
-
-  panelHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  panelTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#334155",
-  },
-
-  settingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  settingLabel: {
-    fontSize: 13,
-    color: "#475569",
-    fontWeight: "500",
-  },
-
-  settingValue: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#334155",
-    minWidth: 42,
-    textAlign: "center",
-  },
-
-  stepper: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-
-  inputModes: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-
-  modeButton: {
-    paddingHorizontal: 13,
-    paddingVertical: 9,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 8,
-  },
-
-  modeLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#475569",
-  },
-
-  palmRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 5,
   },
 });

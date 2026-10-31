@@ -17,6 +17,11 @@ import {
   StrokeAnnotation,
 } from "./types";
 
+import {
+  useZoomPinchGesture,
+  useZoomSinglePanGesture,
+} from "../reader/ZoomablePage";
+
 interface Props {
   pageIndex: number;
   width: number;
@@ -27,7 +32,7 @@ interface Props {
   readOnly?: boolean;
 
   onAddStroke: (stroke: StrokeAnnotation) => void;
-  onEraseStroke: (id: string) => void;
+  onEraseStrokes: (ids: string[]) => void;
 }
 
 const clamp = (value: number) =>
@@ -97,6 +102,47 @@ function distanceToSegment(
   );
 }
 
+function isStrokeHitAlongMovement(
+  stroke: StrokeAnnotation,
+  from: AnnotationPoint,
+  to: AnnotationPoint,
+  width: number,
+  height: number
+): boolean {
+  const distance = Math.hypot(
+    (to.x - from.x) * width,
+    (to.y - from.y) * height
+  );
+
+  // Test intermediate points so fast movements
+  // cannot jump over narrow strokes.
+  const steps = Math.max(
+    1,
+    Math.ceil(distance / 5)
+  );
+
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+
+    const x = from.x + (to.x - from.x) * t;
+    const y = from.y + (to.y - from.y) * t;
+
+    if (
+      isStrokeHit(
+        stroke,
+        x,
+        y,
+        width,
+        height
+      )
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function isStrokeHit(
   stroke: StrokeAnnotation,
   x: number,
@@ -153,7 +199,7 @@ export function AnnotationCanvas({
   settings,
   readOnly = false,
   onAddStroke,
-  onEraseStroke,
+  onEraseStrokes,
 }: Props) {
   const [draft, setDraft] =
     useState<StrokeAnnotation | null>(null);
@@ -167,14 +213,25 @@ export function AnnotationCanvas({
   // Set only while a stylus stroke is in progress.
   const stylusActiveRef = useRef(false);
 
+  const erasedIdsRef = useRef<Set<string>>(new Set());
+
+  const lastEraserPointRef =
+    useRef<AnnotationPoint | null>(null);
+
+  const [pendingErasedIds, setPendingErasedIds] =
+    useState<Set<string>>(() => new Set());
+
+  const zoomPinch = useZoomPinchGesture();
+  const zoomSinglePan = useZoomSinglePanGesture();
+
   React.useEffect(() => {
-  console.log("[Annotation DEBUG] Canvas received:", {
-    pageIndex,
-    readOnly,
-    strokeCount: strokes.length,
-    strokeIds: strokes.map((s) => s.id),
-  });
-}, [pageIndex, readOnly, strokes]);
+    console.log("[Annotation DEBUG] Canvas received:", {
+      pageIndex,
+      readOnly,
+      strokeCount: strokes.length,
+      strokeIds: strokes.map((s) => s.id),
+    });
+  }, [pageIndex, readOnly, strokes]);
 
   const toPoint = (
     x: number,
@@ -198,11 +255,7 @@ export function AnnotationCanvas({
       return touch;
     }
 
-    if (
-      settings.palmRejectionEnabled &&
-      stylusActiveRef.current &&
-      touch
-    ) {
+    if (settings.palmRejectionEnabled && touch) {
       return false;
     }
 
@@ -210,21 +263,40 @@ export function AnnotationCanvas({
     return stylus || touch;
   };
 
-  const eraseAt = (point: AnnotationPoint) => {
-    // Erase the topmost matching stroke.
-    const hit = [...strokes]
-      .reverse()
-      .find((stroke) =>
-        isStrokeHit(
+  const eraseAlongPath = (
+    point: AnnotationPoint
+  ) => {
+    const previous =
+      lastEraserPointRef.current ?? point;
+
+    const newlyErased: string[] = [];
+
+    for (const stroke of strokes) {
+      if (erasedIdsRef.current.has(stroke.id)) {
+        continue;
+      }
+
+      if (
+        isStrokeHitAlongMovement(
           stroke,
-          point.x,
-          point.y,
+          previous,
+          point,
           width,
           height
         )
-      );
+      ) {
+        erasedIdsRef.current.add(stroke.id);
+        newlyErased.push(stroke.id);
+      }
+    }
 
-    if (hit) onEraseStroke(hit.id);
+    lastEraserPointRef.current = point;
+
+    if (newlyErased.length > 0) {
+      setPendingErasedIds(
+        new Set(erasedIdsRef.current)
+      );
+    }
   };
 
   const start = (
@@ -255,7 +327,12 @@ export function AnnotationCanvas({
     const point = toPoint(x, y, pressure);
 
     if (settings.tool === "eraser") {
-      eraseAt(point);
+      erasedIdsRef.current = new Set();
+      lastEraserPointRef.current = point;
+
+      setPendingErasedIds(new Set());
+
+      eraseAlongPath(point);
       return;
     }
 
@@ -287,7 +364,8 @@ export function AnnotationCanvas({
     if (!acceptedRef.current) return;
 
     if (settings.tool === "eraser") {
-      // First prototype: eraser acts at contact.
+      const point = toPoint(x, y, pressure);
+      eraseAlongPath(point);
       return;
     }
 
@@ -307,13 +385,39 @@ export function AnnotationCanvas({
   };
 
   const finish = (commit: boolean) => {
-    if (commit && draftRef.current) {
+    if (settings.tool === "eraser") {
+      const ids = [...erasedIdsRef.current];
+
+      if (
+        commit &&
+        acceptedRef.current &&
+        ids.length > 0
+      ) {
+        console.log(
+          "[Annotation] Batch erasing:",
+          ids.length,
+          "strokes"
+        );
+
+        onEraseStrokes(ids);
+      }
+
+      erasedIdsRef.current = new Set();
+      lastEraserPointRef.current = null;
+      setPendingErasedIds(new Set());
+
+    } else if (
+      commit &&
+      acceptedRef.current &&
+      draftRef.current
+    ) {
       onAddStroke(draftRef.current);
     }
 
     draftRef.current = null;
     acceptedRef.current = false;
     stylusActiveRef.current = false;
+
     setDraft(null);
   };
 
@@ -344,9 +448,21 @@ export function AnnotationCanvas({
       finish(success);
     });
 
+  if (zoomPinch) {
+    pan.simultaneousWithExternalGesture(zoomPinch);
+  }
+
+  if (zoomSinglePan) {
+    pan.simultaneousWithExternalGesture(zoomSinglePan);
+  }
+
+  const remainingStrokes = strokes.filter(
+    (stroke) => !pendingErasedIds.has(stroke.id)
+  );
+
   const visible = draft
-    ? [...strokes, draft]
-    : strokes;
+    ? [...remainingStrokes, draft]
+    : remainingStrokes;
 
     const canvasContent = (
     <View
