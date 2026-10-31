@@ -3,13 +3,13 @@
 <plist version="1.0">
   <dict>
     <key>AppGroupIdentifier</key>
-    <string>group.com.jlayne246.ariascore</string>
+    <string>group.com.jlayne246.ariascore.preview</string>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>AriaScore</string>
+    <string>AriaScore Preview</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -30,7 +30,7 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>ariascore</string>
-          <string>com.jlayne246.ariascore</string>
+          <string>com.jlayne246.ariascore.preview</string>
         </array>
       </dict>
       <dict>

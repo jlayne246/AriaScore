@@ -10,7 +10,7 @@ import Social
 import UIKit
 
 class ShareViewController: UIViewController {
-  let hostAppGroupIdentifier = "group.com.jlayne246.ariascore"
+  let hostAppGroupIdentifier = "group.com.jlayne246.ariascore.preview"
   let shareProtocol = "ariascore"
   let sharedKey = "ariascoreShareKey"
   var sharedMedia: [SharedMediaFile] = []

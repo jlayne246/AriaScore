@@ -14,6 +14,9 @@
       "backgroundColor": "#0099FF",
       "imageWidth": 449
     },
+    "androidNavigationBar": {
+      "enforceContrast": false
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jlayne246.ariascore"

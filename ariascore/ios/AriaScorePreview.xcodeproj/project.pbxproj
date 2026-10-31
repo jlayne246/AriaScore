@@ -11,31 +11,31 @@
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		DB6FAFE2D05247599EB078AB /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2A4BDFF1B9448FB43EDB8E /* ShareViewController.swift */; };
-		0DAA50B28AD04CB785A6162F /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 69B73C020E554B6A96AD74BE /* MainInterface.storyboard */; };
-		AC152E5535B2411C99626FE2 /* ShareExtensionPreprocessor.js in Resources */ = {isa = PBXBuildFile; fileRef = 8312137C02464427A34CAD80 /* ShareExtensionPreprocessor.js */; };
-		D8C88A5DB91E43918DE20759 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 8EC5AA9F57954C45821F9A23 /* PrivacyInfo.xcprivacy */; };
-		3918296150204D75BED29CC0 /* ShareExtension-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 0316C0E6011B40F087AC734A /* ShareExtension-Info.plist */; };
-		66CFAEA7240E422D970BD0F4 /* ShareExtension.entitlements in Resources */ = {isa = PBXBuildFile; fileRef = B9110FBE7ADC400CA5F0A558 /* ShareExtension.entitlements */; };
-		CC11B9049A15417C8265DF16 /* ShareExtension.appex in Copy Files */ = {isa = PBXBuildFile; fileRef = 4E6B82A50DCD4CB6A278931C /* ShareExtension.appex */; };
+		9D3C8CFADD4D48A8B952A6EA /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83C5B66B972C4765B54D3997 /* ShareViewController.swift */; };
+		3D0AEAEE6DA249DCAB4C0AA0 /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 6F17673BD36B40ED97B7E258 /* MainInterface.storyboard */; };
+		7A2078B282D24D91A85950CF /* ShareExtensionPreprocessor.js in Resources */ = {isa = PBXBuildFile; fileRef = 3CD4DD15C3D34F55A7369CB9 /* ShareExtensionPreprocessor.js */; };
+		6E32F1F237484ED7BF335830 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A6A3283C47B341C3A6F0D2AF /* PrivacyInfo.xcprivacy */; };
+		12DEC9F87AED4EC48CD09604 /* ShareExtension-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = FE8F6C1C7EB946F0BCB5D2C4 /* ShareExtension-Info.plist */; };
+		5AE9F45DFCB54BF9A5190748 /* ShareExtension.entitlements in Resources */ = {isa = PBXBuildFile; fileRef = D5E30822ACD046E98DAAA7EC /* ShareExtension.entitlements */; };
+		4FE6BD0927284425BED57961 /* ShareExtension.appex in Copy Files */ = {isa = PBXBuildFile; fileRef = 94258FDD30B6495790FAF2B9 /* ShareExtension.appex */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		13B07F961A680F5B00A75B9A /* AriaScore.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AriaScore.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = AriaScore/Images.xcassets; sourceTree = "<group>"; };
-		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = AriaScore/Info.plist; sourceTree = "<group>"; };
-		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = AriaScore/SplashScreen.storyboard; sourceTree = "<group>"; };
+		13B07F961A680F5B00A75B9A /* AriaScorePreview.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AriaScorePreview.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = AriaScorePreview/Images.xcassets; sourceTree = "<group>"; };
+		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = AriaScorePreview/Info.plist; sourceTree = "<group>"; };
+		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = AriaScorePreview/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = AriaScore/AppDelegate.swift; sourceTree = "<group>"; };
-		F11748442D0722820044C1D9 /* AriaScore-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "AriaScore-Bridging-Header.h"; path = "AriaScore/AriaScore-Bridging-Header.h"; sourceTree = "<group>"; };
-		BB2A4BDFF1B9448FB43EDB8E /* ShareViewController.swift */ = {isa = PBXFileReference; name = "ShareViewController.swift"; path = "ShareViewController.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; explicitFileType = undefined; includeInIndex = 0; };
-		69B73C020E554B6A96AD74BE /* MainInterface.storyboard */ = {isa = PBXFileReference; name = "MainInterface.storyboard"; path = "MainInterface.storyboard"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		8312137C02464427A34CAD80 /* ShareExtensionPreprocessor.js */ = {isa = PBXFileReference; name = "ShareExtensionPreprocessor.js"; path = "ShareExtensionPreprocessor.js"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		8EC5AA9F57954C45821F9A23 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; name = "PrivacyInfo.xcprivacy"; path = "PrivacyInfo.xcprivacy"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		0316C0E6011B40F087AC734A /* ShareExtension-Info.plist */ = {isa = PBXFileReference; name = "ShareExtension-Info.plist"; path = "ShareExtension-Info.plist"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = text.plist.xml; explicitFileType = undefined; includeInIndex = 0; };
-		B9110FBE7ADC400CA5F0A558 /* ShareExtension.entitlements */ = {isa = PBXFileReference; name = "ShareExtension.entitlements"; path = "ShareExtension.entitlements"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		4E6B82A50DCD4CB6A278931C /* ShareExtension.appex */ = {isa = PBXFileReference; name = "ShareExtension.appex"; path = "ShareExtension.appex"; sourceTree = BUILT_PRODUCTS_DIR; fileEncoding = undefined; lastKnownFileType = undefined; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; };
+		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = AriaScorePreview/AppDelegate.swift; sourceTree = "<group>"; };
+		F11748442D0722820044C1D9 /* AriaScorePreview-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "AriaScorePreview-Bridging-Header.h"; path = "AriaScorePreview/AriaScorePreview-Bridging-Header.h"; sourceTree = "<group>"; };
+		83C5B66B972C4765B54D3997 /* ShareViewController.swift */ = {isa = PBXFileReference; name = "ShareViewController.swift"; path = "ShareViewController.swift"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = sourcecode.swift; explicitFileType = undefined; includeInIndex = 0; };
+		6F17673BD36B40ED97B7E258 /* MainInterface.storyboard */ = {isa = PBXFileReference; name = "MainInterface.storyboard"; path = "MainInterface.storyboard"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		3CD4DD15C3D34F55A7369CB9 /* ShareExtensionPreprocessor.js */ = {isa = PBXFileReference; name = "ShareExtensionPreprocessor.js"; path = "ShareExtensionPreprocessor.js"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		A6A3283C47B341C3A6F0D2AF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; name = "PrivacyInfo.xcprivacy"; path = "PrivacyInfo.xcprivacy"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		FE8F6C1C7EB946F0BCB5D2C4 /* ShareExtension-Info.plist */ = {isa = PBXFileReference; name = "ShareExtension-Info.plist"; path = "ShareExtension-Info.plist"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = text.plist.xml; explicitFileType = undefined; includeInIndex = 0; };
+		D5E30822ACD046E98DAAA7EC /* ShareExtension.entitlements */ = {isa = PBXFileReference; name = "ShareExtension.entitlements"; path = "ShareExtension.entitlements"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		94258FDD30B6495790FAF2B9 /* ShareExtension.appex */ = {isa = PBXFileReference; name = "ShareExtension.appex"; path = "ShareExtension.appex"; sourceTree = BUILT_PRODUCTS_DIR; fileEncoding = undefined; lastKnownFileType = undefined; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,7 +46,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		0CE44626541947088DFE4923 /* Frameworks */ = {
+		7D328DAC6AFF4AEBA4ABA06C /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -56,17 +56,17 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		13B07FAE1A68108700A75B9A /* AriaScore */ = {
+		13B07FAE1A68108700A75B9A /* AriaScorePreview */ = {
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
-				F11748442D0722820044C1D9 /* AriaScore-Bridging-Header.h */,
+				F11748442D0722820044C1D9 /* AriaScorePreview-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
 			);
-			name = AriaScore;
+			name = AriaScorePreview;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
@@ -87,11 +87,11 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				13B07FAE1A68108700A75B9A /* AriaScore */,
+				13B07FAE1A68108700A75B9A /* AriaScorePreview */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				D18699A5CC8241289C332657 /* ShareExtension */,
+				4FC98F60EFA0484E95495C58 /* ShareExtension */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -101,8 +101,8 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* AriaScore.app */,
-				4E6B82A50DCD4CB6A278931C /* ShareExtension.appex */,
+				13B07F961A680F5B00A75B9A /* AriaScorePreview.app */,
+				94258FDD30B6495790FAF2B9 /* ShareExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -113,18 +113,18 @@
 				BB2F792C24A3F905000567C9 /* Expo.plist */,
 			);
 			name = Supporting;
-			path = AriaScore/Supporting;
+			path = AriaScorePreview/Supporting;
 			sourceTree = "<group>";
 		};
-		D18699A5CC8241289C332657 /* ShareExtension */ = {
+		4FC98F60EFA0484E95495C58 /* ShareExtension */ = {
 			isa = PBXGroup;
 			children = (
-				BB2A4BDFF1B9448FB43EDB8E /* ShareViewController.swift */,
-				69B73C020E554B6A96AD74BE /* MainInterface.storyboard */,
-				8312137C02464427A34CAD80 /* ShareExtensionPreprocessor.js */,
-				8EC5AA9F57954C45821F9A23 /* PrivacyInfo.xcprivacy */,
-				0316C0E6011B40F087AC734A /* ShareExtension-Info.plist */,
-				B9110FBE7ADC400CA5F0A558 /* ShareExtension.entitlements */,
+				83C5B66B972C4765B54D3997 /* ShareViewController.swift */,
+				6F17673BD36B40ED97B7E258 /* MainInterface.storyboard */,
+				3CD4DD15C3D34F55A7369CB9 /* ShareExtensionPreprocessor.js */,
+				A6A3283C47B341C3A6F0D2AF /* PrivacyInfo.xcprivacy */,
+				FE8F6C1C7EB946F0BCB5D2C4 /* ShareExtension-Info.plist */,
+				D5E30822ACD046E98DAAA7EC /* ShareExtension.entitlements */,
 			);
 			name = ShareExtension;
 			path = ShareExtension;
@@ -133,9 +133,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		13B07F861A680F5B00A75B9A /* AriaScore */ = {
+		13B07F861A680F5B00A75B9A /* AriaScorePreview */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "AriaScore" */;
+			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "AriaScorePreview" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
 				13B07F871A680F5B00A75B9A /* Sources */,
@@ -143,29 +143,29 @@
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				171A0B0F3406427FB42191D6 /* Copy Files */,
+				670A6A60C75543799C762789 /* Copy Files */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				15365F562BB64047B41A5205 /* PBXTargetDependency */,
+				6FC16B048D1F4890B91445A8 /* PBXTargetDependency */,
 			);
-			name = AriaScore;
-			productName = AriaScore;
-			productReference = 13B07F961A680F5B00A75B9A /* AriaScore.app */;
+			name = AriaScorePreview;
+			productName = AriaScorePreview;
+			productReference = 13B07F961A680F5B00A75B9A /* AriaScorePreview.app */;
 			productType = "com.apple.product-type.application";
 		};
-		B101D17D82F54FBEB2CD7F95 /* "ShareExtension" */ = {
+		6EB59CBEDE3A41C7951302C5 /* "ShareExtension" */ = {
 			isa = PBXNativeTarget;
 			name = "ShareExtension";
 			productName = "ShareExtension";
-			productReference = 4E6B82A50DCD4CB6A278931C;
+			productReference = 94258FDD30B6495790FAF2B9;
 			productType = "com.apple.product-type.app-extension";
-			buildConfigurationList = BBC057A7F22C421DBD6F730E;
+			buildConfigurationList = 4831D72587F44C41ACC49581;
 			buildPhases = (
-				7DEF0E792FE446F5ADACDEF2 /* Sources */,
-				1303C3E4327940C4B8EDEBA1 /* Resources */,
-				0CE44626541947088DFE4923 /* Frameworks */,
+				CB6E316E12CB412C9EC6CCB2 /* Sources */,
+				FAB2BE9C3A5A4AECB91C733D /* Resources */,
+				7D328DAC6AFF4AEBA4ABA06C /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -185,7 +185,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "AriaScore" */;
+			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "AriaScorePreview" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -198,8 +198,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				13B07F861A680F5B00A75B9A /* AriaScore */,
-				B101D17D82F54FBEB2CD7F95 /* "ShareExtension" */,
+				13B07F861A680F5B00A75B9A /* AriaScorePreview */,
+				6EB59CBEDE3A41C7951302C5 /* "ShareExtension" */,
 			);
 		};
 /* End PBXProject section */
@@ -215,13 +215,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		1303C3E4327940C4B8EDEBA1 /* Resources */ = {
+		FAB2BE9C3A5A4AECB91C733D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0DAA50B28AD04CB785A6162F /* "MainInterface.storyboard" in Resources */,
-				AC152E5535B2411C99626FE2 /* "ShareExtensionPreprocessor.js" in Resources */,
-				D8C88A5DB91E43918DE20759 /* "PrivacyInfo.xcprivacy" in Resources */,
+				3D0AEAEE6DA249DCAB4C0AA0 /* "MainInterface.storyboard" in Resources */,
+				7A2078B282D24D91A85950CF /* "ShareExtensionPreprocessor.js" in Resources */,
+				6E32F1F237484ED7BF335830 /* "PrivacyInfo.xcprivacy" in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -235,6 +235,8 @@
 			files = (
 			);
 			inputPaths = (
+				"$(SRCROOT)/.xcode.env",
+				"$(SRCROOT)/.xcode.env.local",
 			);
 			name = "Bundle React Native code and images";
 			outputPaths = (
@@ -258,7 +260,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-AriaScore-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-AriaScorePreview-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -271,7 +273,7 @@
 			files = (
 			);
 			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-AriaScore/Pods-AriaScore-resources.sh",
+				"${PODS_ROOT}/Target Support Files/Pods-AriaScorePreview/Pods-AriaScorePreview-resources.sh",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXUpdates/EXUpdates.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/RCTI18nStrings.bundle",
@@ -284,7 +286,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-AriaScore/Pods-AriaScore-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-AriaScorePreview/Pods-AriaScorePreview-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -298,11 +300,11 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		7DEF0E792FE446F5ADACDEF2 /* Sources */ = {
+		CB6E316E12CB412C9EC6CCB2 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DB6FAFE2D05247599EB078AB /* "ShareViewController.swift" in Sources */,
+				9D3C8CFADD4D48A8B952A6EA /* "ShareViewController.swift" in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -320,8 +322,8 @@
 					"$(inherited)",
 					"FB_SONARKIT_ENABLED=1",
 				);
-				INFOPLIST_FILE = AriaScore/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				INFOPLIST_FILE = AriaScorePreview/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -332,14 +334,14 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.jlayne246.ariascore";
-				PRODUCT_NAME = "AriaScore";
-				SWIFT_OBJC_BRIDGING_HEADER = "AriaScore/AriaScore-Bridging-Header.h";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.jlayne246.ariascore.preview";
+				PRODUCT_NAME = "AriaScorePreview";
+				SWIFT_OBJC_BRIDGING_HEADER = "AriaScorePreview/AriaScorePreview-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 				TARGETED_DEVICE_FAMILY = "1,2";
-				CODE_SIGN_ENTITLEMENTS = AriaScore/AriaScore.entitlements;
+				CODE_SIGN_ENTITLEMENTS = AriaScorePreview/AriaScorePreview.entitlements;
 			};
 			name = Debug;
 		};
@@ -349,8 +351,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				INFOPLIST_FILE = AriaScore/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				INFOPLIST_FILE = AriaScorePreview/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -361,13 +363,13 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.jlayne246.ariascore";
-				PRODUCT_NAME = "AriaScore";
-				SWIFT_OBJC_BRIDGING_HEADER = "AriaScore/AriaScore-Bridging-Header.h";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.jlayne246.ariascore.preview";
+				PRODUCT_NAME = "AriaScorePreview";
+				SWIFT_OBJC_BRIDGING_HEADER = "AriaScorePreview/AriaScorePreview-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 				TARGETED_DEVICE_FAMILY = "1,2";
-				CODE_SIGN_ENTITLEMENTS = AriaScore/AriaScore.entitlements;
+				CODE_SIGN_ENTITLEMENTS = AriaScorePreview/AriaScorePreview.entitlements;
 			};
 			name = Release;
 		};
@@ -418,7 +420,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					/usr/lib/swift,
 					"$(inherited)",
@@ -470,7 +472,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					/usr/lib/swift,
 					"$(inherited)",
@@ -482,7 +484,7 @@
 			};
 			name = Release;
 		};
-		C1FEC76AD3E241A2BA6E6735 /* Debug */ = {
+		99609ED590F24C66819FA7C0 /* Debug */ = {
 			name = Debug;
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -500,13 +502,13 @@
 				CURRENT_PROJECT_VERSION = "1";
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = "1.0.4";
-				PRODUCT_BUNDLE_IDENTIFIER = "com.jlayne246.ariascore.share-extension";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.jlayne246.ariascore.preview.share-extension";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 		};
-		85429C860B2B4C379D801088 /* Release */ = {
+		8E51DE68CB4648F0BC1FBFCF /* Release */ = {
 			name = Release;
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -520,7 +522,7 @@
 				CURRENT_PROJECT_VERSION = "1";
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = "1.0.4";
-				PRODUCT_BUNDLE_IDENTIFIER = "com.jlayne246.ariascore.share-extension";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.jlayne246.ariascore.preview.share-extension";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -529,7 +531,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "AriaScore" */ = {
+		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "AriaScorePreview" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
@@ -538,7 +540,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "AriaScore" */ = {
+		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "AriaScorePreview" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
@@ -547,11 +549,11 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		BBC057A7F22C421DBD6F730E /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
+		4831D72587F44C41ACC49581 /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				C1FEC76AD3E241A2BA6E6735 /* Debug */,
-				85429C860B2B4C379D801088 /* Release */,
+				99609ED590F24C66819FA7C0 /* Debug */,
+				8E51DE68CB4648F0BC1FBFCF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -559,29 +561,29 @@
 /* End XCConfigurationList section */
 
 /* Begin PBXTargetDependency section */
-		15365F562BB64047B41A5205 /* PBXTargetDependency */ = {
+		6FC16B048D1F4890B91445A8 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = B101D17D82F54FBEB2CD7F95 /* "ShareExtension" */;
-			targetProxy = C92082C4404D485EA600107B /* PBXContainerItemProxy */;
+			target = 6EB59CBEDE3A41C7951302C5 /* "ShareExtension" */;
+			targetProxy = 4FE11BA43E7B4138967554F1 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin PBXContainerItemProxy section */
-		C92082C4404D485EA600107B /* PBXContainerItemProxy */ = {
+		4FE11BA43E7B4138967554F1 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = B101D17D82F54FBEB2CD7F95;
+			remoteGlobalIDString = 6EB59CBEDE3A41C7951302C5;
 			remoteInfo = "ShareExtension";
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		171A0B0F3406427FB42191D6 /* Copy Files */ = {
+		670A6A60C75543799C762789 /* Copy Files */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CC11B9049A15417C8265DF16 /* ShareExtension.appex in Copy Files */,
+				4FE6BD0927284425BED57961 /* ShareExtension.appex in Copy Files */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			name = "Copy Files";

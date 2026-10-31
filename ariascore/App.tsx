@@ -44,13 +44,15 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 import { createNavigationContainerRef } from "@react-navigation/native";
 import FaceGestureCalibrationScreen from './screens/FaceGestureCalibrationScreen';
+import AnnotationTestScreen from './screens/debug/AnnotationsTestScreen';
 
 export const navigationRef =
   createNavigationContainerRef<RootStackParamList>();
 
 export default function App() {
     // The __DEV__ constant is true when in development mode
-    const showDevTools = __DEV__;
+    // const showDevTools = __DEV__;
+    const showDevTools = false;
 
     const [dbReady, setDbReady] = useState(false);
     const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
@@ -234,11 +236,19 @@ export default function App() {
                       title: "Face Gesture Debug",
                     }}
                   />
+
+                  <Stack.Screen
+                    name="AnnotationTest"
+                    component={AnnotationTestScreen}
+                    options={{
+                      title: "Annotation Test",
+                    }}
+                  />
                 </Stack.Navigator>
               </NavigationContainer>
             </MenuProvider>
 
-            {__DEV__ && <DevToolsButton />}
+            {showDevTools && <DevToolsButton />}
           </View>
         </SafeAreaProvider>
       </GestureHandlerRootView>
