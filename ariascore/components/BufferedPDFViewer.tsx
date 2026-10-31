@@ -156,6 +156,8 @@ type RenderedPageProps = {
 
   onAddStroke: (stroke: StrokeAnnotation) => void;
   onEraseStrokes: (ids: string[]) => void;
+
+  annotationSaving: boolean;
 };
 
 const RenderedPage = React.memo(
@@ -167,6 +169,7 @@ const RenderedPage = React.memo(
     drawingSettings,
     onAddStroke,
     onEraseStrokes,
+    annotationSaving
   }: RenderedPageProps) {
     const [containerSize, setContainerSize] =
       useState({ width: 0, height: 0 });
@@ -242,7 +245,7 @@ const RenderedPage = React.memo(
                 height={pageRect.height}
                 strokes={strokes}
                 settings={drawingSettings}
-                readOnly={!annotationMode}
+                readOnly={!annotationMode || annotationSaving}
                 onAddStroke={onAddStroke}
                 onEraseStrokes={onEraseStrokes}
               />
@@ -538,6 +541,11 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   const [annotationMode, setAnnotationMode] =
     useState(false);
+
+  const [annotationSaving, setAnnotationSaving] =
+    useState(false);
+
+  const annotationSavingRef = useRef(false);
 
   type AnnotationHistoryState = {
     entries: StrokeAnnotation[][];
@@ -1776,15 +1784,19 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         current: StrokeAnnotation[]
       ) => StrokeAnnotation[]
     ) => {
+      if (annotationSavingRef.current) return;
+
       setAnnotationState((previous) => {
+        if (annotationSavingRef.current) {
+          return previous;
+        }
+
         const current =
           previous.entries[previous.index] ?? [];
 
         const next = update(current);
 
-        if (next === current) {
-          return previous;
-        }
+        if (next === current) return previous;
 
         const entries = [
           ...previous.entries.slice(
@@ -1802,6 +1814,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     },
     []
   );
+
 
   const handleAddStroke = useCallback(
     (stroke: StrokeAnnotation) => {
@@ -1844,10 +1857,11 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   );
 
   const handleUndoAnnotation = useCallback(() => {
+    if (annotationSavingRef.current) return;
+
     setAnnotationState((previous) => {
-      if (previous.index <= 0) {
-        return previous;
-      }
+      if (annotationSavingRef.current) return previous;
+      if (previous.index <= 0) return previous;
 
       return {
         ...previous,
@@ -1857,7 +1871,11 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   }, []);
 
   const handleRedoAnnotation = useCallback(() => {
+    if (annotationSavingRef.current) return;
+
     setAnnotationState((previous) => {
+      if (annotationSavingRef.current) return previous;
+
       if (
         previous.index >=
         previous.entries.length - 1
@@ -1871,7 +1889,6 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
       };
     });
   }, []);
-
 
   
   const enterAnnotationMode = () => {
@@ -1890,9 +1907,13 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   };
 
   const cancelAnnotationSession = () => {
-    if (!annotationMode) return;
+    if (
+      !annotationMode ||
+      annotationSavingRef.current
+    ) {
+      return;
+    }
 
-    // Restore the annotations from before this session.
     setAnnotationState({
       entries: [annotationSnapshotRef.current],
       index: 0,
@@ -1901,18 +1922,33 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     setAnnotationMode(false);
   };
 
+  
   const commitAnnotationSession = async () => {
-    if (!annotationsReady || !annotationMode) return;
+    if (
+      !annotationsReady ||
+      !annotationMode ||
+      annotationSavingRef.current
+    ) {
+      return;
+    }
+
+    annotationSavingRef.current = true;
+    setAnnotationSaving(true);
+
+    const savedSnapshot = annotations;
+    const savingMusicId = musicId;
 
     try {
-      // Persist only the final result of the session.
-      await saveAnnotations(musicId, annotations);
+      await saveAnnotations(
+        savingMusicId,
+        savedSnapshot
+      );
 
-      annotationSnapshotRef.current = annotations;
+      annotationSnapshotRef.current =
+        savedSnapshot;
 
-      // Clear the undo/redo history after saving.
       setAnnotationState({
-        entries: [annotations],
+        entries: [savedSnapshot],
         index: 0,
       });
 
@@ -1925,10 +1961,15 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
       Alert.alert(
         "Unable to save annotations",
-        "Your changes have not been saved. You can try again or cancel to discard them."
+        "Your changes have not been saved. " +
+          "You can retry or cancel the session."
       );
+    } finally {
+      annotationSavingRef.current = false;
+      setAnnotationSaving(false);
     }
   };
+
 
   useEffect(() => {
     if (!annotationMode) return;
@@ -1936,7 +1977,10 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
       () => {
-        cancelAnnotationSession();
+        if (!annotationSavingRef.current) {
+          cancelAnnotationSession();
+        }
+
         return true;
       }
     );
@@ -3123,6 +3167,10 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           >
             <TouchableOpacity
               onPress={() => {
+                if (annotationSavingRef.current) {
+                  return;
+                }
+
                 if (annotationMode) {
                   cancelAnnotationSession();
                   return;
@@ -3486,6 +3534,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                           drawingSettings={drawingSettings}
                           onAddStroke={handleAddStroke}
                           onEraseStrokes={handleEraseStrokes}
+                          annotationSaving={annotationSaving}
                         />
                       </View>
                     );
@@ -3526,6 +3575,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                           drawingSettings={drawingSettings}
                           onAddStroke={handleAddStroke}
                           onEraseStrokes={handleEraseStrokes}
+                          annotationSaving={annotationSaving}
                         />
                       </View>
                     );
@@ -3550,6 +3600,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                           drawingSettings={drawingSettings}
                           onAddStroke={handleAddStroke}
                           onEraseStrokes={handleEraseStrokes}
+                          annotationSaving={annotationSaving}
                         />
                       ) : (
                         <View
@@ -3571,6 +3622,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                           drawingSettings={drawingSettings}
                           onAddStroke={handleAddStroke}
                           onEraseStrokes={handleEraseStrokes}
+                          annotationSaving={annotationSaving}
                         />
                       ) : (
                         <View
@@ -3830,6 +3882,15 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                     // navigation.navigate('SetlistDetail', {
                     //   setlistId: context.setlistId,
                     // });
+                    if (annotationSavingRef.current) {
+                      return;
+                    }
+
+                    if (annotationMode) {
+                      cancelAnnotationSession();
+                      return;
+                    }
+
                     navigation.goBack();
                   }}
                 >
@@ -4504,20 +4565,42 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
             paddingBottom: insets.bottom,
           }}
         >
-          <AnnotationToolbar
-            position="bottom"
-            accentColor={ACCENT_COLOR}
-            settings={drawingSettings}
-            onChange={setDrawingSettings}
-            onUndo={handleUndoAnnotation}
-            onRedo={handleRedoAnnotation}
-            onDone={commitAnnotationSession}
-            canUndo={annotationState.index > 0}
-            canRedo={
-              annotationState.index <
-              annotationState.entries.length - 1
-            }
-          />
+          <View pointerEvents={annotationSaving ? "none" : "auto"}>
+            <AnnotationToolbar
+              settings={drawingSettings}
+              onChange={setDrawingSettings}
+              onUndo={handleUndoAnnotation}
+              onRedo={handleRedoAnnotation}
+              onDone={commitAnnotationSession}
+              canUndo={annotationState.index > 0}
+              canRedo={
+                annotationState.index <
+                annotationState.entries.length - 1
+              }
+              accentColor={ACCENT_COLOR}
+              position="bottom"
+            />
+          </View>
+
+          {annotationSaving && (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingVertical: 5,
+                backgroundColor: "#FFFFFF",
+              }}
+            >
+              <ActivityIndicator
+                size="small"
+                color={ACCENT_COLOR}
+              />
+              <Text style={{ marginLeft: 8 }}>
+                Saving annotations…
+              </Text>
+            </View>
+          )}
         </View>
       )}
 

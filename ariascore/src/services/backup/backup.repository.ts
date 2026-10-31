@@ -18,6 +18,7 @@ import type {
   RestoreBackupWarning,
   RestoredScoreFile,
 } from "./backup.types";
+import { clearAllAnnotations } from "../annotations/annotationRepository";
 
 interface UserVersionRow {
   user_version: number;
@@ -397,6 +398,10 @@ export class BackupRepository {
 
         await this.resetSequences();
     });
+
+    if (mode === "replace") {
+      await clearAllAnnotations();
+    }
 
     return {
         restoredScoreCount: restoredMusicIds.size,

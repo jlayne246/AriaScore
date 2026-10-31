@@ -129,3 +129,17 @@ export function saveAnnotations(
 
   return write;
 }
+
+
+export async function clearAllAnnotations(): Promise<void> {
+  // Let all queued annotation saves finish before deleting.
+  await Promise.allSettled([
+    ...pendingWrites.values(),
+  ]);
+
+  const db = await getDatabase();
+
+  await db.runAsync(
+    "DELETE FROM document_annotations"
+  );
+}
