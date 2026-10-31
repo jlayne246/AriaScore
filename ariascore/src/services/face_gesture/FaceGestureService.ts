@@ -1,4 +1,6 @@
 import { GestureDebouncer } from "./GestureDebouncer";
+import { WinkGestureRecognizer } from "./WinkGestureRecognizer";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MouthGestureRecognizer } from "./MouthGestureRecognizer";
 
 import {
