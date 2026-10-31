@@ -12,6 +12,8 @@ export interface FacePose {
 export interface FaceLandmarks {
   leftEye: Point;
   rightEye: Point;
+  leftEyeOpenProbability?: number;
+  rightEyeOpenProbability?: number;
 
   leftCheek?: Point;
   rightCheek?: Point;
@@ -74,9 +76,8 @@ export interface MouthGestureSample {
   rightLiftStrength?: number;
 }
 
-export type FaceGestureType =
-  | "mouth-left"
-  | "mouth-right";
+export type FaceGestureType = "mouth-left" | "mouth-right" | "wink-left" | "wink-right";
+export type FaceGestureMode = "mouth" | "wink";
 
 export interface FaceGestureEvent {
   type: FaceGestureType;
