@@ -38,6 +38,7 @@ import {
   faceGestureService,
   FaceGestureCalibrationPhase,
   FaceGestureEvent,
+  FaceGestureMode,
 } from "../src/services/face_gesture";
 
 import {
@@ -117,6 +118,8 @@ export default function FaceGestureCalibrationScreen() {
   } =
     useCameraPermission();
 
+  const [gestureMode, setGestureMode] = useState<FaceGestureMode>("mouth");
+
   const [loading, setLoading] =
     useState(true);
 
@@ -168,6 +171,9 @@ export default function FaceGestureCalibrationScreen() {
     const restore =
       async () => {
         try {
+          const mode = await faceGestureService.loadMode();
+          if (cancelled) return;
+          setGestureMode(mode);
           const restored =
             await faceGestureService
               .loadSavedCalibration();
@@ -579,10 +585,10 @@ export default function FaceGestureCalibrationScreen() {
 
   const testResultText =
     lastTestEvent?.type ===
-    "mouth-left"
+    "mouth-left" || lastTestEvent?.type === "wink-left"
       ? "Previous page"
       : lastTestEvent?.type ===
-          "mouth-right"
+          "mouth-right" || lastTestEvent?.type === "wink-right"
         ? "Next page"
         : null;
 
@@ -687,6 +693,19 @@ export default function FaceGestureCalibrationScreen() {
             rather than turning toward
             the camera.
           </Text>
+        </View>
+
+        <View style={styles.positionCard}>
+          <View style={{ flex: 1, gap: 8 }}>
+            <Text style={styles.stepTitle}>Page-turn gesture</Text>
+            <TouchableOpacity onPress={() => { void faceGestureService.setMode("mouth").then(() => setGestureMode("mouth")); }}>
+              <Text style={{ color: gestureMode === "mouth" ? ACCENT_COLOR : COLORS.secondaryText }}>◉ Mouth movements {gestureMode === "mouth" ? "(selected)" : ""}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { void faceGestureService.setMode("wink").then(() => setGestureMode("wink")); }}>
+              <Text style={{ color: gestureMode === "wink" ? ACCENT_COLOR : COLORS.secondaryText }}>◉ Left / right winks {gestureMode === "wink" ? "(selected)" : ""}</Text>
+            </TouchableOpacity>
+            {gestureMode === "wink" && <Text style={styles.positionText}>Winks work without mouth calibration. Left wink: previous page; right wink: next page. Test while facing the camera.</Text>}
+          </View>
         </View>
 
         {!hasPermission ? (
@@ -797,8 +816,8 @@ export default function FaceGestureCalibrationScreen() {
               </View>
             </View>
 
-            {step !==
-            "complete" ? (
+            {gestureMode === "mouth" && (step !==
+            "complete") ? (
               <View
                 style={
                   styles.calibrationCard
@@ -934,7 +953,7 @@ export default function FaceGestureCalibrationScreen() {
                     />
                   )}
               </View>
-            ) : (
+            ) : gestureMode === "mouth" ? (
               <View
                 style={
                   styles.successCard
