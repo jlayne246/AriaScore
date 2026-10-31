@@ -576,9 +576,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           return;
         }
 
-        const restored =
-          await faceGestureService
-            .loadSavedCalibration();
+        const mode = await faceGestureService.loadMode();
+        const restored = mode === "wink" || await faceGestureService.loadSavedCalibration();
 
         if (cancelled) {
           return;
@@ -2265,6 +2264,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           );
 
           switch (event.type) {
+            case "wink-left":
             case "mouth-left":
               console.log(
                 "[Reader Face] PREVIOUS PAGE",
@@ -2273,6 +2273,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
               turnPreviousPage();
               break;
 
+            case "wink-right":
             case "mouth-right":
               console.log(
                 "[Reader Face] NEXT PAGE",
