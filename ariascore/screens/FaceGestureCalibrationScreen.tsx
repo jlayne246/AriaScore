@@ -953,7 +953,7 @@ export default function FaceGestureCalibrationScreen() {
                     />
                   )}
               </View>
-            ) : gestureMode === "mouth" ? (
+            ) : (
               <View
                 style={
                   styles.successCard
@@ -976,7 +976,7 @@ export default function FaceGestureCalibrationScreen() {
                     styles.successTitle
                   }
                 >
-                  Calibration complete
+                  {gestureMode === "wink" ? "Wink gestures ready" : "Calibration complete"}
                 </Text>
 
                 <Text
@@ -984,10 +984,7 @@ export default function FaceGestureCalibrationScreen() {
                     styles.successText
                   }
                 >
-                  Your facial gestures
-                  are ready to use with
-                  hands-free page turning
-                  in Performance Mode.
+                  {gestureMode === "wink" ? "Wink mode is active. Left wink goes back; right wink advances. Keep the other eye open." : "Your facial gestures are ready to use with hands-free page turning in Performance Mode."}
                 </Text>
 
                 <View
