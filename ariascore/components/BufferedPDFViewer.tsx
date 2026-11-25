@@ -3216,14 +3216,10 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                 </Text>
               )}
 
-              {context?.setlistName && (
-                <Text style={{ fontSize: 13, color: '#888' }} numberOfLines={1}>
-                  {context.setlistName} · Score {context.currentIndex} of {context.totalItems}
-                </Text>
-              )}
-
-              <Text style={{ fontSize: 13, color: '#888' }}>
-                {currentPageLabel}
+              <Text style={{ fontSize: 13, color: '#888' }} numberOfLines={1}>
+                {context?.setlistName && 
+                  `${context.setlistName} · Score ${context.currentIndex} of ${context.totalItems} · `    
+                } {currentPageLabel}
               </Text>
             </TouchableOpacity>
 
