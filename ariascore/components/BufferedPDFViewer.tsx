@@ -89,6 +89,11 @@ import { ZoomablePage } from
   "../src/services/reader/ZoomablePage";
   import ReaderBottomBar from "./reader/ReaderBottomBar";
   import ReaderTopBar from "./reader/ReaderTopBar";
+  import ReaderLibraryMenu from "./reader/ReaderLibraryMenu";
+
+import type {
+  MusicItemWithAllData,
+} from "../types";
 
 type ScoreNavigationCallback =
     () => Promise<void> | void;
@@ -565,6 +570,11 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
 
   const annotations =
     annotationState.entries[annotationState.index] ?? [];
+
+  const [
+    annotationToolbarPosition,
+    setAnnotationToolbarPosition,
+  ] = useState<"top" | "bottom">("top");
 
   const [loadedAnnotationMusicId, setLoadedAnnotationMusicId] =
     useState<number | null>(null);
@@ -1120,6 +1130,33 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const handleSliderInteractionEnd = () => {
     showChromeTemporarily();
   };
+
+  const readerMenuOpenRef = useRef(false);
+
+  const handleReaderMenuOpen = () => {
+  readerMenuOpenRef.current = true;
+  setOverflowMenuOpen(true);
+
+  if (chromeHideTimer.current) {
+    clearTimeout(chromeHideTimer.current);
+    chromeHideTimer.current = null;
+  }
+};
+
+const handleReaderMenuClose = () => {
+  readerMenuOpenRef.current = false;
+  setOverflowMenuOpen(false);
+
+  if (!librarySwitchingRef.current) {
+    showChromeTemporarily();
+  }
+};
+
+const toggleAnnotationToolbarPosition = () => {
+  setAnnotationToolbarPosition((current) =>
+    current === "top" ? "bottom" : "top"
+  );
+};
 
 //   const renderDebugRef = useRef<{
 //     currentPage: number;
@@ -2434,12 +2471,15 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     }
 
     chromeHideTimer.current = setTimeout(() => {
-      if (!overflowMenuOpen && !annotationMode) {
+      if (
+        !readerMenuOpenRef.current &&
+        !annotationMode
+      ) {
         setChromeVisible(false);
       }
 
       chromeHideTimer.current = null;
-    }, 5000);
+    }, 5000); 
   }, [overflowMenuOpen, effectiveSettings.autoHideControls]);
 
   const initialReaderConfigRef = useRef({
@@ -3232,12 +3272,76 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   );
 
 
+const librarySwitchingRef = useRef(false);
+
+const handleOpenLibraryScore = async (
+  item: MusicItemWithAllData
+) => {
+  if (!item.id || !item.uri) {
+    return;
+  }
+
+  if (item.id === musicId) {
+    return;
+  }
+
+  if (
+    annotationMode ||
+    annotationSavingRef.current ||
+    librarySwitchingRef.current
+  ) {
+    return;
+  }
+
+  librarySwitchingRef.current = true;
+
+  try {
+    // Preserve progress if leaving a setlist.
+    await saveCurrentSetlistProgress();
+
+    if (effectiveSettings.resumeLastPage) {
+      await AsyncStorage.setItem(
+        `pdf:lastPage:${uri}`,
+        currentPage.toString()
+      );
+    }
+
+    if (chromeHideTimer.current) {
+      clearTimeout(chromeHideTimer.current);
+      chromeHideTimer.current = null;
+    }
+
+    setChromeVisible(false);
+
+    navigation.replace("Reader", {
+      uri: item.uri,
+      musicId: item.id,
+      origin: "library",
+    });
+  } catch (error) {
+    console.error(
+      "Failed to switch score:",
+      error
+    );
+
+    Alert.alert(
+      "Unable to open score",
+      "The selected score could not be opened."
+    );
+
+    showChromeTemporarily();
+  } finally {
+    librarySwitchingRef.current = false;
+  }
+};
+
+
   // console.log("thumbnailPages:", thumbnailPages.length, "totalPages:", totalPages);
 
   return (
     <View style={{ flex: 1, backgroundColor: 'white' }}>
       
-      {chromeVisible && (
+      {(chromeVisible || annotationMode) && (
         <ReaderTopBar
           title={score.title}
           pageLabel={currentPageLabel}
@@ -3253,7 +3357,24 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           annotationsReady={annotationsReady && !annotationMode}
 
           onBack={handleReaderBack}
-          onJump={handleOpenJump}
+          
+          libraryMenu={
+            <ReaderLibraryMenu
+              currentMusicId={musicId}
+              accentColor={ACCENT_COLOR}
+
+              disabled={
+                annotationMode ||
+                annotationSaving
+              }
+
+              onOpen={handleReaderMenuOpen}
+              onClose={handleReaderMenuClose}
+
+              onSelectScore={handleOpenLibraryScore}
+            />
+          }
+
           onOpenLibrary={handleOpenLibrary}
           onBookmarks={handleOpenBookmarks}
           onScoreInfo={handleOpenScoreInfo}
@@ -3672,8 +3793,6 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
           bookmarks={bookmarks}
 
           onRequestThumbnail={renderThumbnail}
-
-          bookmarks={bookmarks}
 
           onPageChange={(page) => {
             goToPage(page, {
@@ -4474,13 +4593,21 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
         <View
           style={{
             position: "absolute",
-            bottom: insets.bottom,
+
+            ...(annotationToolbarPosition === "top"
+              ? {
+                  top: insets.top + TOP_CHROME_HEIGHT,
+                }
+              : {
+                  bottom: insets.bottom,
+                }),
+
             left: 0,
             right: 0,
+
             zIndex: 1400,
             elevation: 15,
             backgroundColor: "#FFFFFF",
-            paddingBottom: insets.bottom,
           }}
         >
           <View pointerEvents={annotationSaving ? "none" : "auto"}>
@@ -4496,7 +4623,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
                 annotationState.entries.length - 1
               }
               accentColor={ACCENT_COLOR}
-              position="bottom"
+
+              position={annotationToolbarPosition}
+              onTogglePosition={toggleAnnotationToolbarPosition}
             />
           </View>
 

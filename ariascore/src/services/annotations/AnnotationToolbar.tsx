@@ -28,6 +28,7 @@ interface Props {
   canRedo: boolean;
   accentColor: string;
   position?: "top" | "bottom";
+  onTogglePosition?: () => void;
 }
 
 type IconName =
@@ -70,7 +71,8 @@ export function AnnotationToolbar({
   canUndo,
   canRedo,
   accentColor,
-  position = "bottom",
+  position = "top",
+  onTogglePosition,
 }: Props) {
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
@@ -98,6 +100,9 @@ export function AnnotationToolbar({
     useState(false);
 
   const accentTint = `${accentColor}16`;
+
+  const popoverPlacement =
+  position === "bottom" ? "top" : "bottom";
 
   useEffect(() => {
     if (!isSlidingWidth) {
@@ -590,6 +595,31 @@ export function AnnotationToolbar({
           </Text>
         </View>
 
+        {/* RELOCATE TOOLBAR */}
+
+        {onTogglePosition && (
+          <View style={styles.relocateArea}>
+            {renderIconButton(
+              position === "top"
+                ? "arrow-collapse-down"
+                : "arrow-collapse-up",
+
+              position === "top"
+                ? "Move toolbar to bottom"
+                : "Move toolbar to top",
+
+              () => {
+                setPanel(null);
+                onTogglePosition();
+              },
+
+              {
+                color: accentColor,
+              }
+            )}
+          </View>
+        )}
+
         {/* FIXED DONE BUTTON */}
 
         <View style={styles.doneArea}>
@@ -819,5 +849,12 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  relocateArea: {
+    paddingHorizontal: 4,
+    borderLeftWidth: 1,
+    borderLeftColor: "#E2E8F0",
+    backgroundColor: "#FFFFFF",
   },
 });

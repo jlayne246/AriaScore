@@ -17,14 +17,14 @@ import Slider from "@react-native-community/slider";
 import type { Bookmark } from "../../types";
 import { Ionicons } from "@expo/vector-icons";
 
-interface ReaderPageSliderProps {
+export interface ReaderPageSliderProps {
   currentPage: number;
   totalPages: number;
 
   minimumPage?: number;
   maximumPage?: number;
 
-//   bottomInset: number;
+  bottomInset: number;
   accentColor: string;
 
   thumbnails: Record<number, string>;

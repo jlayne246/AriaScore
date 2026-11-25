@@ -20,7 +20,7 @@ interface ReaderTopBarProps {
   annotationsReady: boolean;
 
   onBack: () => void;
-  onJump: () => void;
+  libraryMenu: ReactNode;
   onOpenLibrary: () => void;
   onBookmarks: () => void;
   onSetlists?: () => void;
@@ -89,7 +89,7 @@ const ReaderTopBar = ({
   performanceMode,
   annotationsReady,
   onBack,
-  onJump,
+  libraryMenu,
   onOpenLibrary,
   onBookmarks,
   onSetlists,
@@ -114,14 +114,16 @@ const ReaderTopBar = ({
           onPress={onBack}
         />
 
-        {!compact && (
+        {/* {!compact && (
           <ToolbarButton
             icon="musical-note-outline"
             label="Library"
             accentColor={accentColor}
             onPress={onOpenLibrary}
           />
-        )}
+        )} */}
+
+        {libraryMenu}
 
         <ToolbarButton
           icon="bookmarks-outline"

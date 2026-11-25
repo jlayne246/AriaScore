@@ -1,9 +1,8 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 
-import ReaderPageSlider, {
-  ReaderPageSliderProps,
-} from "./ReaderPageSlider";
+import ReaderPageSlider from "./ReaderPageSlider";
+import type { ReaderPageSliderProps } from "./ReaderPageSlider";
 
 interface ReaderBottomBarProps
   extends ReaderPageSliderProps {
@@ -23,7 +22,7 @@ const ReaderBottomBar = ({
             },
         ]}
     >
-        <ReaderPageSlider {...sliderProps} />
+        <ReaderPageSlider bottomInset={bottomInset} {...sliderProps} />
     </View>
   );
 };
