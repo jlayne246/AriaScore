@@ -24,7 +24,6 @@ export interface ReaderPageSliderProps {
   minimumPage?: number;
   maximumPage?: number;
 
-  bottomInset: number;
   accentColor: string;
 
   thumbnails: Record<number, string>;
@@ -51,7 +50,6 @@ const ReaderPageSlider = ({
   minimumPage = 1,
   maximumPage = totalPages,
 
-  bottomInset,
   accentColor,
 
   bookmarks = [],
@@ -233,10 +231,7 @@ const ReaderPageSlider = ({
 
   return (
     <View
-      style={[
-        styles.container,
-        { bottom: bottomInset },
-      ]}
+      style={styles.container}
     >
       <View
         style={styles.trackContainer}

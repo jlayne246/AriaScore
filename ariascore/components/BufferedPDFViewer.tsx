@@ -95,6 +95,10 @@ import type {
   MusicItemWithAllData,
 } from "../types";
 
+import ReaderSetlistMenu, {
+  type SetlistSelection,
+} from "./reader/ReaderSetlistMenu";
+
 type ScoreNavigationCallback =
     () => Promise<void> | void;
 
@@ -1147,7 +1151,7 @@ const handleReaderMenuClose = () => {
   readerMenuOpenRef.current = false;
   setOverflowMenuOpen(false);
 
-  if (!librarySwitchingRef.current) {
+  if (!scoreSwitchingRef.current) {
     showChromeTemporarily();
   }
 };
@@ -3272,7 +3276,7 @@ const toggleAnnotationToolbarPosition = () => {
   );
 
 
-const librarySwitchingRef = useRef(false);
+const scoreSwitchingRef = useRef(false);
 
 const handleOpenLibraryScore = async (
   item: MusicItemWithAllData
@@ -3288,12 +3292,12 @@ const handleOpenLibraryScore = async (
   if (
     annotationMode ||
     annotationSavingRef.current ||
-    librarySwitchingRef.current
+    scoreSwitchingRef.current
   ) {
     return;
   }
 
-  librarySwitchingRef.current = true;
+  scoreSwitchingRef.current = true;
 
   try {
     // Preserve progress if leaving a setlist.
@@ -3331,7 +3335,99 @@ const handleOpenLibraryScore = async (
 
     showChromeTemporarily();
   } finally {
-    librarySwitchingRef.current = false;
+    scoreSwitchingRef.current = false;
+  }
+};
+
+
+const handleOpenSetlistEntry = async ({
+  setlist,
+  entries,
+  index,
+}: SetlistSelection) => {
+  const entry = entries[index];
+
+  if (!entry?.music?.uri) {
+    return;
+  }
+
+  const currentEntry =
+    context?.entries?.[
+      context.currentIndex - 1
+    ];
+
+  const isCurrentEntry =
+    context?.setlistId === setlist.id &&
+    currentEntry?.id === entry.id;
+
+  if (isCurrentEntry) {
+    return;
+  }
+
+  if (
+    annotationMode ||
+    annotationSavingRef.current ||
+    scoreSwitchingRef.current
+  ) {
+    return;
+  }
+
+  scoreSwitchingRef.current = true;
+
+  try {
+    await saveCurrentSetlistProgress();
+
+    if (effectiveSettings.resumeLastPage) {
+      await AsyncStorage.setItem(
+        `pdf:lastPage:${uri}`,
+        currentPage.toString()
+      );
+    }
+
+    if (chromeHideTimer.current) {
+      clearTimeout(chromeHideTimer.current);
+      chromeHideTimer.current = null;
+    }
+
+    setChromeVisible(false);
+
+    navigation.replace("Reader", {
+      uri: entry.music.uri,
+      musicId: entry.music_id,
+
+      startPage: entry.start_page ?? 1,
+
+      origin: "setlist",
+
+      context: {
+        setlistId: setlist.id,
+        setlistName: setlist.name,
+
+        setlistDescription:
+          setlist.description ?? undefined,
+
+        currentIndex: index + 1,
+        totalItems: entries.length,
+
+        entries: entries.map(
+          ({ music, ...entry }) => entry
+        ),
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Failed to open setlist entry:",
+      error
+    );
+
+    Alert.alert(
+      "Unable to open score",
+      "The selected setlist entry could not be opened."
+    );
+
+    showChromeTemporarily();
+  } finally {
+    scoreSwitchingRef.current = false;
   }
 };
 
@@ -3374,6 +3470,34 @@ const handleOpenLibraryScore = async (
               onSelectScore={handleOpenLibraryScore}
             />
           }
+
+          setlistMenu={
+            <ReaderSetlistMenu
+              context={context}
+
+              currentMusicId={musicId}
+              currentScoreTitle={score.title}
+
+              accentColor={ACCENT_COLOR}
+
+              disabled={
+                annotationMode ||
+                annotationSaving
+              }
+
+              onOpen={handleReaderMenuOpen}
+              onClose={handleReaderMenuClose}
+
+              onSelectEntry={
+                handleOpenSetlistEntry
+              }
+
+              onManageSetlists={() => {
+                setManageSetlistsVisible(true);
+              }}
+            />
+          }
+
 
           onOpenLibrary={handleOpenLibrary}
           onBookmarks={handleOpenBookmarks}

@@ -22,7 +22,7 @@ const ReaderBottomBar = ({
             },
         ]}
     >
-        <ReaderPageSlider bottomInset={bottomInset} {...sliderProps} />
+        <ReaderPageSlider {...sliderProps} />
     </View>
   );
 };

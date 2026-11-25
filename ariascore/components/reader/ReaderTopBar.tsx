@@ -23,7 +23,7 @@ interface ReaderTopBarProps {
   libraryMenu: ReactNode;
   onOpenLibrary: () => void;
   onBookmarks: () => void;
-  onSetlists?: () => void;
+  setlistMenu?: ReactNode;
   onScoreInfo: () => void;
 
   onTogglePerformanceMode: () => void;
@@ -92,7 +92,7 @@ const ReaderTopBar = ({
   libraryMenu,
   onOpenLibrary,
   onBookmarks,
-  onSetlists,
+  setlistMenu,
   onScoreInfo,
   onTogglePerformanceMode,
   onAnnotate,
@@ -132,14 +132,7 @@ const ReaderTopBar = ({
           onPress={onBookmarks}
         />
 
-        {!compact && onSetlists && (
-          <ToolbarButton
-            icon="list-outline"
-            label="Setlists"
-            accentColor={accentColor}
-            onPress={onSetlists}
-          />
-        )}
+        {setlistMenu}
       </View>
 
       {/* Centre: Score information */}
