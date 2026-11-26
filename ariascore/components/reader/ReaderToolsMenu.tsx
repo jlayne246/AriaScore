@@ -34,7 +34,6 @@ type IconName = keyof typeof Ionicons.glyphMap;
 
 export type ReaderToolAction =
   | "jump"
-  | "score-info"
   | "score-settings"
   | "setlist-settings"
   | "global-settings"
@@ -367,14 +366,6 @@ const ReaderToolsMenu = ({
                         color="#94A3B8"
                     />
                     </TouchableOpacity>
-
-
-                    <ToolItem
-                        icon="information-circle-outline"
-                        label="Score Information"
-                        action="score-info"
-                        accentColor={accentColor}
-                    />
 
                     <ToolItem
                         icon="star-outline"
