@@ -43,6 +43,7 @@ import {
   removeBookmark,
   isBookmarked,
   getBookmarksForScore,
+  updateBookmarkLabel,
 } from '../utils/database';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -99,6 +100,12 @@ import ReaderSetlistMenu, {
   type SetlistSelection,
 } from "./reader/ReaderSetlistMenu";
 
+import ReaderToolsMenu, {
+  type ReaderToolAction,
+} from "./reader/ReaderToolsMenu";
+
+import ReaderBookmarksMenu from "./reader/ReaderBookmarksMenu";
+
 type ScoreNavigationCallback =
     () => Promise<void> | void;
 
@@ -124,6 +131,10 @@ interface BufferedPDFViewerProps {
 
   toastVisible?: boolean;
   toastMessage?: string;
+
+  onSetlistChanged?: (
+    setlistId: number
+  ) => void | Promise<void>;
 }
 
 const ACCENT_COLOR = '#2563EB';
@@ -367,67 +378,6 @@ function ActionRow({
   );
 }
 
-function OverflowMenuItem({
-  icon,
-  label,
-  sublabel,
-  onPress,
-  accent = false,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  sublabel?: string;
-  onPress: () => void;
-  accent?: boolean;
-}) {
-  return (
-    <MenuOption onSelect={onPress}>
-      <View style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 16,
-        paddingVertical: sublabel ? 10 : 12,
-      }}>
-        <Ionicons
-          name={icon}
-          size={20}
-          color={accent ? ACCENT_COLOR : "#374151"}
-          style={{ width: 28 }}
-        />
-
-        <View style={{ marginLeft: 10, flex: 1 }}>
-          <Text style={{
-            fontSize: 16,
-            color: accent ? ACCENT_COLOR : "#111827",
-            fontWeight: accent ? "700" : "400",
-          }}>
-            {label}
-          </Text>
-
-          {sublabel && (
-            <Text style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>
-              {sublabel}
-            </Text>
-          )}
-        </View>
-      </View>
-    </MenuOption>
-  );
-}
-
-function OverflowMenuDivider() {
-  return (
-    <View
-      style={{
-        height: 1,
-        backgroundColor: "#E5E7EB",
-        marginVertical: 4,
-        marginHorizontal: 14,
-      }}
-    />
-  );
-}
-
 type ThumbnailItemProps = {
   pageNumber: number;
   uri?: string;
@@ -525,7 +475,7 @@ const ThumbnailItem = React.memo(
   },
 );
 
-const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings, toastVisible, toastMessage, onNextScore, onPreviousScore, onNextScoreFromPageTurn, onPreviousScoreFromPageTurn }: BufferedPDFViewerProps) => {
+const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings, toastVisible, toastMessage, onNextScore, onPreviousScore, onNextScoreFromPageTurn, onPreviousScoreFromPageTurn, onSetlistChanged }: BufferedPDFViewerProps) => {
   const pagerRef = useRef<PagerView>(null);
   // const renderingPages = useRef<Set<number>>(new Set());
 
@@ -673,16 +623,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const [initialPagerIndex, setInitialPagerIndex] = useState(0);
   // const [bookmarked, setBookmarked] = useState(false);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
-  const [bookmarksOverlayVisible, setBookmarksOverlayVisible] = useState(false);
-  const [bookmarkLabel, setBookmarkLabel] =
-    useState('');
-
-  const [labelOverlayVisible, setLabelOverlayVisible] =
-    useState(false);
   const [scoreInfoVisible, setScoreInfoVisible] = useState(false);
   const [manageSetlistsVisible, setManageSetlistsVisible] = useState(false);
-
-  const [displayOptionsVisible, setDisplayOptionsVisible] = useState(false);
 
   const pageTurnInProgressRef = useRef(false);
 
@@ -1082,15 +1024,6 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     setJumpOverlayVisible(true);
   };
 
-  const handleOpenBookmarks = () => {
-    loadBookmarks();
-    setBookmarksOverlayVisible(true);
-  };
-
-  const handleOpenLibrary = () => {
-    console.log("Opening Library Pop-up")
-  }
-
   const handleOpenAnnotations = () => {
     enterAnnotationMode();
     setChromeVisible(true);
@@ -1351,11 +1284,9 @@ const toggleAnnotationToolbarPosition = () => {
   const canUseReaderGestures =
     readerReady &&
     !jumpOverlayVisible &&
-    !bookmarksOverlayVisible &&
-    !labelOverlayVisible &&
     !scoreInfoVisible &&
     !manageSetlistsVisible &&
-    !displayOptionsVisible;
+    !overflowMenuOpen;
 
   const PAGE_ASPECT_RATIO = 1.414;
 
@@ -3432,6 +3363,97 @@ const handleOpenSetlistEntry = async ({
 };
 
 
+const handleReaderToolAction = (
+  action: ReaderToolAction
+) => {
+  switch (action) {
+    case "jump":
+      handleOpenJump();
+      break;
+
+    case "score-info":
+      handleOpenScoreInfo();
+      break;
+
+    case "score-settings":
+      navigation.navigate("MusicSettings", {
+        musicId,
+        setlistId: context?.setlistId,
+      });
+      break;
+
+    case "setlist-settings":
+      if (context?.setlistId) {
+        navigation.navigate("SetlistSettings", {
+          setlistId: context.setlistId,
+        });
+      }
+      break;
+
+    case "global-settings":
+      navigation.navigate("Settings");
+      break;
+
+    case "favorite":
+      // Reserved for favourites implementation.
+      break;
+
+    case "export":
+      // Reserved for score export implementation.
+      break;
+  }
+};
+
+
+const handleSelectBookmark = (
+  bookmark: Bookmark
+) => {
+  if (
+    bookmark.page_number < minimumPage ||
+    bookmark.page_number > maximumPage
+  ) {
+    return;
+  }
+
+  goToPage(bookmark.page_number);
+
+  showChromeTemporarily();
+};
+
+const handleAddBookmark = async (
+  page: number,
+  label: string
+) => {
+  await addBookmark(
+    musicId,
+    page,
+    label
+  );
+
+  await loadBookmarks();
+};
+
+const handleRenameBookmark = async (
+  bookmarkId: number,
+  label: string
+) => {
+  await updateBookmarkLabel(
+    bookmarkId,
+    label
+  );
+
+  await loadBookmarks();
+};
+
+const handleDeleteBookmark = async (
+  bookmarkId: number
+) => {
+  await removeBookmark(bookmarkId);
+
+  await loadBookmarks();
+};
+
+
   // console.log("thumbnailPages:", thumbnailPages.length, "totalPages:", totalPages);
 
   return (
@@ -3495,12 +3517,50 @@ const handleOpenSetlistEntry = async ({
               onManageSetlists={() => {
                 setManageSetlistsVisible(true);
               }}
+
+              currentPage={currentPage}
+              totalPages={totalPages}
+
+              onSetlistChanged={onSetlistChanged}
+            />
+          }
+          
+          bookmarksMenu={
+            <ReaderBookmarksMenu
+              accentColor={ACCENT_COLOR}
+
+              currentPage={currentPage}
+              minimumPage={minimumPage}
+              maximumPage={maximumPage}
+
+              bookmarks={bookmarks}
+
+              disabled={
+                annotationMode ||
+                annotationSaving
+              }
+
+              onOpen={handleReaderMenuOpen}
+              onClose={handleReaderMenuClose}
+
+              onSelectBookmark={
+                handleSelectBookmark
+              }
+
+              onAddBookmark={
+                handleAddBookmark
+              }
+
+              onRenameBookmark={
+                handleRenameBookmark
+              }
+
+              onDeleteBookmark={
+                handleDeleteBookmark
+              }
             />
           }
 
-
-          onOpenLibrary={handleOpenLibrary}
-          onBookmarks={handleOpenBookmarks}
           onScoreInfo={handleOpenScoreInfo}
 
           onTogglePerformanceMode={
@@ -3508,145 +3568,41 @@ const handleOpenSetlistEntry = async ({
           }
 
           onAnnotate={handleOpenAnnotations}
-
+          
           toolsMenu={
-            <Menu
-              onOpen={() => {
-                setOverflowMenuOpen(true);
+            <ReaderToolsMenu
+              accentColor={ACCENT_COLOR}
 
-                if (chromeHideTimer.current) {
-                  clearTimeout(chromeHideTimer.current);
-                  chromeHideTimer.current = null;
-                }
-              }}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              minimumPage={minimumPage}
+              maximumPage={maximumPage}
 
-              onClose={() => {
-                setOverflowMenuOpen(false);
+              hasSetlist={Boolean(context?.setlistId)}
+
+              disabled={
+                annotationMode ||
+                annotationSaving
+              }
+
+              onOpen={handleReaderMenuOpen}
+              onClose={handleReaderMenuClose}
+
+              onSelectAction={handleReaderToolAction}
+
+              onJumpToPage={(page) => {
+                goToPage(page);
                 showChromeTemporarily();
               }}
-            >
-              <MenuTrigger
-                customStyles={{
-                  triggerWrapper: {
-                    width: 44,
-                    height: 44,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  },
-                }}
-              >
-                <Ionicons
-                  name="briefcase-outline"
-                  size={24}
-                  color={ACCENT_COLOR}
-                />
-              </MenuTrigger>
 
-              <MenuOptions
-                customStyles={{
-                  optionsContainer: {
-                    width: 260,
-                    borderRadius: 14,
-                    paddingVertical: 6,
-                    backgroundColor: "white",
-                    elevation: 10,
-                  },
-                }}
-              >
-                <OverflowMenuItem
-                  icon="grid-outline"
-                  label="Jump to Page"
-                  onPress={handleOpenJump}
-                />
+              displayMode={displayMode}
+              coverOffset={coverOffset}
+              orientationLock={orientationLock}
 
-                <OverflowMenuItem
-                  icon="information-circle-outline"
-                  label="Score Information"
-                  onPress={handleOpenScoreInfo}
-                />
-
-                <OverflowMenuItem
-                  icon="albums-outline"
-                  label="Display Options"
-                  onPress={() => {
-                    setDisplayOptionsVisible(true);
-                    setChromeVisible(true);
-                  }}
-                />
-
-                <OverflowMenuDivider />
-
-                <OverflowMenuItem
-                  icon="bookmark-outline"
-                  label="Add Bookmark"
-                  sublabel={`Page ${currentPage}`}
-                  onPress={() => {
-                    setBookmarkLabel("");
-                    setLabelOverlayVisible(true);
-                    setChromeVisible(true);
-                  }}
-                />
-
-                <OverflowMenuItem
-                  icon="list-outline"
-                  label="Manage Setlists"
-                  onPress={() => {
-                    setManageSetlistsVisible(true);
-                  }}
-                />
-
-                <OverflowMenuDivider />
-
-                <OverflowMenuItem
-                  icon="document-text-outline"
-                  label="Score Settings"
-                  onPress={() => {
-                    navigation.navigate("MusicSettings", {
-                      musicId,
-                      setlistId: context?.setlistId,
-                    });
-                  }}
-                />
-
-                {context?.setlistId && (
-                  <OverflowMenuItem
-                    icon="list-outline"
-                    label="Setlist Settings"
-                    onPress={() => {
-                      navigation.navigate("SetlistSettings", {
-                        setlistId: context.setlistId,
-                      });
-                    }}
-                  />
-                )}
-
-                <OverflowMenuItem
-                  icon="settings-outline"
-                  label="Global Settings"
-                  onPress={() => {
-                    navigation.navigate("Settings");
-                  }}
-                />
-
-                <OverflowMenuDivider />
-
-                <OverflowMenuItem
-                  icon="star-outline"
-                  label="Add to Favorites"
-                  onPress={() => {
-                    console.log("Add to favorites");
-                  }}
-                />
-
-                <OverflowMenuItem
-                  icon="share-outline"
-                  label="Export Score"
-                  onPress={() => {
-                    console.log("Export score");
-                  }}
-                />
-              </MenuOptions>
-            </Menu>
+              onDisplayModeChange={applyDisplayMode}
+              onCoverOffsetChange={applyCoverOffset}
+              onOrientationChange={applyOrientationLock}
+            />
           }
         />
       )}
@@ -4163,7 +4119,7 @@ const handleOpenSetlistEntry = async ({
               marginBottom: 16, }} 
             > 
               <Text style={{ fontSize: 22, fontWeight: '700', color: ACCENT_COLOR }}>
-                Jump to Page
+                Browse Pages
               </Text>
               
               <TouchableOpacity onPress={() => { 
@@ -4301,120 +4257,6 @@ const handleOpenSetlistEntry = async ({
         </View>
       )}
 
-      {displayOptionsVisible && (
-        <View style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: 2200,
-          backgroundColor: "rgba(0,0,0,0.35)",
-          alignItems: "center",
-          justifyContent: "center",
-        }}>
-          <View style={{
-            width: 420,
-            backgroundColor: "white",
-            borderRadius: 16,
-            padding: 20,
-          }}>
-            <Text
-              style={{
-                fontSize: 22,
-                fontWeight: "700",
-                marginBottom: 16,
-              }}
-            >
-              Display
-            </Text>
-
-            <ActionRow
-              icon={
-                displayMode === "single"
-                  ? "radio-button-on"
-                  : "radio-button-off"
-              }
-              label="Single page"
-              onPress={() => applyDisplayMode("single")}
-            />
-
-            <ActionRow
-              icon={
-                displayMode === "double"
-                  ? "radio-button-on"
-                  : "radio-button-off"
-              }
-              label="Two pages"
-              onPress={() => applyDisplayMode("double")}
-            />
-
-            {displayMode === "double" && (
-              <InfoSection title="Two-Page Layout">
-                <ActionRow
-                  icon={
-                    coverOffset
-                      ? "checkbox"
-                      : "square-outline"
-                  }
-                  label="Treat first page as cover"
-                  onPress={() => applyCoverOffset(!coverOffset)}
-                />
-
-                <Text
-                  style={{
-                    color: "#6B7280",
-                    fontSize: 13,
-                    marginTop: 4,
-                    marginLeft: 38,
-                  }}
-                >
-                  Starts the score with a single cover page before
-                  showing page spreads.
-                </Text>
-              </InfoSection>
-            )}
-
-            <InfoSection title="Orientation">
-              <ActionRow
-                icon={orientationLock === "auto" ? "radio-button-on" : "radio-button-off"}
-                label="Auto rotate"
-                onPress={() => applyOrientationLock("auto")}
-              />
-
-              <ActionRow
-                icon={orientationLock === "portrait" ? "radio-button-on" : "radio-button-off"}
-                label="Portrait"
-                onPress={() => applyOrientationLock("portrait")}
-              />
-
-              <ActionRow
-                icon={orientationLock === "landscape" ? "radio-button-on" : "radio-button-off"}
-                label="Landscape"
-                onPress={() => applyOrientationLock("landscape")}
-              />
-            </InfoSection>
-
-            <TouchableOpacity
-              onPress={() => {
-                setDisplayOptionsVisible(false);
-                showChromeTemporarily();
-              }}
-              style={{
-                marginTop: 18,
-                alignSelf: "flex-end",
-                backgroundColor: ACCENT_COLOR,
-                paddingHorizontal: 18,
-                paddingVertical: 10,
-                borderRadius: 8,
-              }}
-            >
-              <Text style={{ color: "white", fontWeight: "700" }}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
       {toastVisible && toastMessage && toastMessage.length > 0 && (
         <View
           pointerEvents="none"
@@ -4451,129 +4293,6 @@ const handleOpenSetlistEntry = async ({
         </View>
       )}
 
-      {bookmarksOverlayVisible && (
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
-            zIndex: 2000,
-            backgroundColor: 'rgba(0,0,0,0.35)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <View
-            style={{
-              width: 420,
-              maxHeight: '70%',
-              backgroundColor: 'white',
-              borderRadius: 16,
-              padding: 20,
-            }}
-          >
-            <Text style={{ fontSize: 22, fontWeight: '700', marginBottom: 12 }}>
-              Bookmarks
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => {
-                setBookmarkLabel("");
-                setLabelOverlayVisible(true);
-              }}
-              style={{
-                padding: 12,
-                backgroundColor: "#f5f5f5",
-                borderRadius: 8,
-                marginBottom: 16,
-              }}
-            >
-              <Text style={{ fontSize: 16, color: "#2563EB", fontWeight: "600" }}>
-                Add bookmark on page {currentPage}
-              </Text>
-            </TouchableOpacity>
-
-            <ScrollView style={{ maxHeight: 360 }}>
-              {bookmarks.length === 0 ? (
-                <Text style={{ color: '#666', textAlign: 'center', padding: 16 }}>
-                  No bookmarks yet
-                </Text>
-              ) : (
-                bookmarks.map((bookmark) => (
-                  <TouchableOpacity
-                    key={bookmark.id}
-                    onPress={() => {
-                      goToPage(bookmark.page_number);
-                      setBookmarksOverlayVisible(false);
-                      showChromeTemporarily();
-                    }}
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      paddingVertical: 12,
-                      borderBottomWidth: 1,
-                      borderBottomColor: '#eee',
-                    }}
-                  >
-                    <View>
-                      {bookmark.label ? (
-                        <Text style={{ fontSize: 16, fontWeight: '600' }}>
-                          {bookmark.label}
-                        </Text>
-                      ) : (
-                        <Text style={{ fontSize: 16, fontWeight: '600'  }}>
-                          No label
-                        </Text>
-                      )}
-
-                      <Text style={{ color: '#666', marginTop: 2  }}>
-                        Page {bookmark.page_number}
-                      </Text>
-                    </View>
-
-                    {/* <Ionicons name="bookmark" size={22} color="#2563EB" /> */}
-                    <TouchableOpacity
-                      onPress={async () => {
-                        await removeBookmark(bookmark.id);
-                        await loadBookmarks();
-                      }}
-                    >
-                      <Ionicons name="trash-outline" size={22} color="#DC2626" />
-                    </TouchableOpacity>
-                  </TouchableOpacity>
-                  
-                ))
-              )}
-            </ScrollView>
-
-            <View
-              style={{
-                marginTop: 16,
-                flexDirection: 'row',
-                justifyContent: 'flex-end',
-              }}
-            >
-              <TouchableOpacity
-                onPress={() => setBookmarksOverlayVisible(false)}
-                style={{
-                  padding: 10,
-                  paddingHorizontal: 18,
-                  backgroundColor: '#2563EB',
-                  borderRadius: 8,
-                }}
-              >
-                <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>
-                  Close
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
-
       <FaceGestureCamera
         enabled={
           faceGesturesRunning
@@ -4596,122 +4315,6 @@ const handleOpenSetlistEntry = async ({
           );
         }}
       />
-
-      {labelOverlayVisible && (
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
-            zIndex: 2100,
-            backgroundColor: 'rgba(0,0,0,0.35)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <View
-            style={{
-              width: 400,
-              backgroundColor: 'white',
-              borderRadius: 16,
-              padding: 20,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 22,
-                fontWeight: '700',
-                marginBottom: 12,
-              }}
-            >
-              Add Bookmark
-            </Text>
-
-            <Text
-              style={{
-                color: '#666',
-                marginBottom: 16,
-              }}
-            >
-              Page {currentPage}
-            </Text>
-
-            <TextInput
-              value={bookmarkLabel}
-              onChangeText={setBookmarkLabel}
-              placeholder="Label (optional)"
-              autoFocus
-              style={{
-                borderWidth: 1,
-                borderColor: '#ccc',
-                borderRadius: 8,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                fontSize: 16,
-              }}
-            />
-
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'flex-end',
-                gap: 12,
-                marginTop: 20,
-              }}
-            >
-              <TouchableOpacity
-                onPress={() =>
-                  setLabelOverlayVisible(false)
-                }
-                style={{
-                  padding: 10,
-                  paddingHorizontal: 18,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 16,
-                  }}
-                >
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={async () => {
-                  if (!musicId) return;
-
-                  await addBookmark(musicId, currentPage, bookmarkLabel.trim());
-
-                  await loadBookmarks();
-
-                  setLabelOverlayVisible(false);
-                  setBookmarksOverlayVisible(true);
-
-                  showChromeTemporarily();
-                }}
-                style={{
-                  backgroundColor: '#2563EB',
-                  paddingHorizontal: 18,
-                  paddingVertical: 10,
-                  borderRadius: 8,
-                }}
-              >
-                <Text
-                  style={{
-                    color: 'white',
-                    fontWeight: '700',
-                  }}
-                >
-                  Save
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
 
       {annotationMode && (
         <View

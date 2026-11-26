@@ -5,7 +5,12 @@ import { useFocusEffect } from "@react-navigation/native";
 import BufferedPDFViewer from '../components/BufferedPDFViewer';
 
 import { RootStackParamList } from '../types';
-import { getMusicWithAllData, getMusicWithMetadata, markMusicAsOpened } from '../utils/database';
+import {
+  getMusicWithAllData,
+  getMusicWithMetadata,
+  markMusicAsOpened,
+  getSetlistEntries,
+} from "../utils/database";
 import AriaScorePdfRenderer from '../native/AriaScorePdfRenderer';
 import { getResolvedReaderSettings } from '../utils/settings/resolver';
 import { ReaderSettings } from '../utils/settings/types';
@@ -108,6 +113,79 @@ const ReaderScreen = ({
             toastTimeoutRef.current = null;
         }, 3000); // 3 seconds
     }, []);
+
+
+    const handleSetlistChanged = useCallback(
+        async (setlistId: number) => {
+            // Only refresh the currently active setlist.
+            if (
+            !context ||
+            context.setlistId !== setlistId
+            ) {
+            return;
+            }
+
+            // Identify the current entry by its unique ID.
+            const activeEntry =
+            context.entries[
+                context.currentIndex - 1
+            ];
+
+            if (!activeEntry) {
+            return;
+            }
+
+            try {
+            const updatedEntries =
+                await getSetlistEntries(setlistId);
+
+            const orderedEntries = [
+                ...updatedEntries,
+            ].sort(
+                (a, b) => a.position - b.position
+            );
+
+            const newIndex =
+                orderedEntries.findIndex(
+                (entry) =>
+                    entry.id === activeEntry.id
+                );
+
+            if (newIndex === -1) {
+                showToast(
+                "Current setlist entry is no longer available"
+                );
+
+                return;
+            }
+
+            navigation.setParams({
+                context: {
+                ...context,
+
+                entries: orderedEntries,
+                currentIndex: newIndex + 1,
+                totalItems: orderedEntries.length,
+                },
+            });
+            } catch (error) {
+            console.error(
+                "Failed to refresh reader setlist:",
+                error
+            );
+
+            showToast(
+                "Unable to refresh setlist navigation"
+            );
+            }
+        },
+        [
+            context,
+            navigation,
+            showToast,
+        ]
+    );
+
 
     const openSetlistScore = useCallback(
         async (
@@ -258,6 +336,7 @@ const ReaderScreen = ({
                 settings={settings}
                 toastVisible = {toastVisible}
                 toastMessage = {toastMessage}
+                onSetlistChanged={handleSetlistChanged}
             />
         </SafeAreaView>
     );

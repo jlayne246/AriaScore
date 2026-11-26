@@ -21,8 +21,7 @@ interface ReaderTopBarProps {
 
   onBack: () => void;
   libraryMenu: ReactNode;
-  onOpenLibrary: () => void;
-  onBookmarks: () => void;
+  bookmarksMenu: ReactNode;
   setlistMenu?: ReactNode;
   onScoreInfo: () => void;
 
@@ -90,8 +89,7 @@ const ReaderTopBar = ({
   annotationsReady,
   onBack,
   libraryMenu,
-  onOpenLibrary,
-  onBookmarks,
+  bookmarksMenu,
   setlistMenu,
   onScoreInfo,
   onTogglePerformanceMode,
@@ -125,12 +123,7 @@ const ReaderTopBar = ({
 
         {libraryMenu}
 
-        <ToolbarButton
-          icon="bookmarks-outline"
-          label="Bookmarks"
-          accentColor={accentColor}
-          onPress={onBookmarks}
-        />
+        {bookmarksMenu}
 
         {setlistMenu}
       </View>
