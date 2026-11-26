@@ -246,7 +246,7 @@ const DashboardScreen = ({}) => {
                 {/* Library */}
                 <View className="flex-1 justify-center items-center">
                     <TouchableOpacity className="p-2 m-1 rounded justify-center items-center w-full" onPress={() => navigation.navigate('Library', {})}>
-                        <MaterialIcons name="library-music" size={48} color="dodgerblue" />
+                        <Ionicons name="library" size={48} color="dodgerblue" />
                         <Text className="text-[16px] text-dodger p-1">Library</Text>
                     </TouchableOpacity>
                 </View>
@@ -256,7 +256,7 @@ const DashboardScreen = ({}) => {
                 {/* Sets */}
                 <View className="flex-1 justify-center items-center">
                     <TouchableOpacity className="p-2 m-1 rounded justify-center items-center w-full" onPress={() => navigation.navigate('Setlists')}>
-                        <Ionicons name="folder-open" size={48} color="dodgerblue" />
+                        <Ionicons name="list" size={48} color="dodgerblue" />
                         <Text className="text-[16px] text-dodger p-1">Sets</Text>
                     </TouchableOpacity>
                 </View>

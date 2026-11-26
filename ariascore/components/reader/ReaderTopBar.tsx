@@ -150,12 +150,13 @@ const ReaderTopBar = ({
           disabled={!annotationsReady}
         />
 
-        {!compact && onAudioUtilities && (
+        {!compact && (
           <ToolbarButton
             icon="musical-notes-outline"
-            label="Audio utilities"
+            label="Music Utilities — Coming Soon"
             accentColor={accentColor}
             onPress={onAudioUtilities}
+            disabled={!onAudioUtilities}
           />
         )}
 

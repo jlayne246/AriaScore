@@ -204,7 +204,7 @@ const ReaderLibraryMenu = ({
         }}
       >
         <Ionicons
-          name="musical-note-outline"
+          name="library-outline"
           size={24}
           color={accentColor}
           accessibilityLabel="Library"
