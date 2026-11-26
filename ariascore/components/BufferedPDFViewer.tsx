@@ -110,6 +110,8 @@ import ReaderScoreInfo from "./reader/ReaderScoreInfo";
 
 import ReaderPageBrowser from "./reader/ReaderPageBrowser";
 
+import ReaderMusicUtilitiesMenu from "./reader/ReaderMusicUtilitiesMenu";
+
 type ScoreNavigationCallback =
     () => Promise<void> | void;
 
@@ -3454,6 +3456,20 @@ const handleDeleteBookmark = async (
               onEditMetadata={
                 handleEditScoreMetadata
               }
+            />
+          }
+
+          musicUtilitiesMenu={
+            <ReaderMusicUtilitiesMenu
+              accentColor={ACCENT_COLOR}
+
+              disabled={
+                annotationMode ||
+                annotationSaving
+              }
+
+              onOpen={handleReaderMenuOpen}
+              onClose={handleReaderMenuClose}
             />
           }
 

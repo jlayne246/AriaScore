@@ -23,7 +23,7 @@ interface ReaderTopBarProps {
 
   onTogglePerformanceMode: () => void;
   onAnnotate: () => void;
-  onAudioUtilities?: () => void;
+  musicUtilitiesMenu?: ReactNode;
 
   toolsMenu: ReactNode;
 }
@@ -87,7 +87,7 @@ const ReaderTopBar = ({
   scoreInfoMenu,
   onTogglePerformanceMode,
   onAnnotate,
-  onAudioUtilities,
+  musicUtilitiesMenu,
   toolsMenu,
 }: ReaderTopBarProps) => {
   const { width } = useWindowDimensions();
@@ -150,15 +150,7 @@ const ReaderTopBar = ({
           disabled={!annotationsReady}
         />
 
-        {!compact && (
-          <ToolbarButton
-            icon="musical-notes-outline"
-            label="Music Utilities — Coming Soon"
-            accentColor={accentColor}
-            onPress={onAudioUtilities}
-            disabled={!onAudioUtilities}
-          />
-        )}
+        {!compact && musicUtilitiesMenu}
 
         {toolsMenu}
       </View>
