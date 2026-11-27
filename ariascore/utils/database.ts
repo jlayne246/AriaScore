@@ -3,7 +3,7 @@
  * @see {@link https://docs.expo.dev/versions/latest/sdk/sqlite/}
 */
 import * as SQLite from 'expo-sqlite';
-import { Asset } from "expo-asset";
+//import { Asset } from "expo-asset";
 /** 
  * Imports the Expo file system module which allows the app access to a device's local file system
  * @see {@link https://docs.expo.dev/versions/latest/sdk/filesystem/}
@@ -91,7 +91,9 @@ export const initDB = async (): Promise<void> => {
           original_filename TEXT NOT NULL,
           created_at TEXT DEFAULT (datetime('now')),
           updated_at TEXT DEFAULT (datetime('now')),
-          last_opened_at TEXT DEFAULT (datetime('now'))
+          last_opened_at TEXT DEFAULT (datetime('now')),
+
+          is_favourite INTEGER NOT NULL DEFAULT 0
         );
       `);
 
@@ -131,6 +133,17 @@ export const initDB = async (): Promise<void> => {
       `);
 
       await migrateMusicSetlists(db);
+
+      await ensureColumn(
+        db,
+        "music",
+        "is_favourite",
+        `
+          ALTER TABLE music
+          ADD COLUMN is_favourite
+          INTEGER NOT NULL DEFAULT 0;
+        `
+      );
 
       await ensureColumn(
         db,
@@ -595,6 +608,109 @@ export const markMusicAsOpened = async (musicId: number): Promise<void> => {
     `,
     [new Date().toISOString(), musicId]
   );
+};
+
+
+export const setMusicFavourite = async (
+  musicId: number,
+  isFavourite: boolean
+): Promise<void> => {
+  const db = await openDatabase();
+
+  const result = await db.runAsync(
+    `
+      UPDATE music
+      SET is_favourite = ?
+      WHERE id = ?
+    `,
+    [
+      isFavourite ? 1 : 0,
+      musicId,
+    ]
+  );
+
+  if (result.changes === 0) {
+    throw new Error(
+      "Music item not found."
+    );
+  }
+};
+
+
+export const isMusicFavourite = async (
+  musicId: number
+): Promise<boolean> => {
+  const db = await openDatabase();
+
+  const result = await db.getFirstAsync<{
+    is_favourite: number;
+  }>(
+    `
+      SELECT is_favourite
+      FROM music
+      WHERE id = ?
+    `,
+    [musicId]
+  );
+
+  return result?.is_favourite === 1;
+};
+
+
+export const getFavouriteMusic = async (
+  limit?: number
+): Promise<MusicItemWithAllData[]> => {
+  const allMusic =
+    await getMusicWithAllData();
+
+  const favourites = allMusic
+    .filter(
+      (item) => item.is_favourite === 1
+    )
+    .sort((a, b) => {
+      const titleA =
+        a.metadata?.title || a.title;
+
+      const titleB =
+        b.metadata?.title || b.title;
+
+      return titleA.localeCompare(titleB);
+    });
+
+  return limit === undefined
+    ? favourites
+    : favourites.slice(0, limit);
+};
+
+
+export const toggleMusicFavourite = async (
+  musicId: number
+): Promise<boolean> => {
+  const db = await openDatabase();
+
+  const result = await db.getFirstAsync<{
+    is_favourite: number;
+  }>(
+    `
+      UPDATE music
+      SET is_favourite =
+        CASE
+          WHEN is_favourite = 1 THEN 0
+          ELSE 1
+        END
+      WHERE id = ?
+      RETURNING is_favourite
+    `,
+    [musicId]
+  );
+
+  if (!result) {
+    throw new Error(
+      "Music item not found."
+    );
+  }
+
+  return result.is_favourite === 1;
 };
 
 /**

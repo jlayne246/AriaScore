@@ -4,6 +4,8 @@ export type RootStackParamList = {
       uri: string;
       originalFilename: string;
     };
+
+    initialFilter?: LibraryFilter;
   };
   Reader: {
     uri: string;
@@ -48,6 +50,7 @@ export interface MusicItem {
   original_filename: string;
   created_at: string;
   last_opened_at?: string;
+  is_favourite: 0 | 1;
 }
 
 // Define types for music item metadata
@@ -157,6 +160,11 @@ export type ReaderContext = {
 
   entries: SetlistEntry[];
 };
+
+export type LibraryFilter =
+  | "all"
+  | "favourites"
+  | "recent";
 
 export const ACCENT_COLOR = '#2563EB';
 
