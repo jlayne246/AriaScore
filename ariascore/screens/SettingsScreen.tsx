@@ -10,13 +10,23 @@ import SettingsToggleRow from "../components/settings/SettingsToggleRow";
 import SettingsSegmentedRow from "../components/settings/SettingsSegmentedRow";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { ACCENT_COLOR } from "../types";
+
+import { Alert } from "react-native";
+
+import { useAppTheme } from "../utils/theme/useAppTheme";
+import { ThemePreference } from "../utils/theme/types";
 
 const SettingsScreen = () => {
   const [settings, setSettings] = useState<ReaderSettings>();
 
   const navigation =
       useNavigation();
+
+  const {
+    colors,
+    preference,
+    setPreference,
+  } = useAppTheme();
 
   const updateGlobalSetting = async <K extends keyof ReaderSettings>(
     key: K,
@@ -48,9 +58,9 @@ const SettingsScreen = () => {
         <View
             style={{
             height: 92,
-            backgroundColor: 'white',
+            backgroundColor: colors.elevated,
             borderBottomWidth: 1,
-            borderBottomColor: '#E5E7EB',
+            borderBottomColor: colors.border,
             justifyContent: 'flex-end',
             paddingHorizontal: 20,
             paddingBottom: 12,
@@ -77,14 +87,14 @@ const SettingsScreen = () => {
                       <Ionicons
                           name="chevron-back"
                           size={28}
-                          color={ACCENT_COLOR}
+                          color={colors.accent}
                       />
                       </TouchableOpacity>
                   <Text
                       style={{
                       fontSize: 24,
                       // fontWeight: '700',
-                      color: '#464950',
+                      color: colors.text,
                       fontWeight: '400',
                       }}
                   >
@@ -95,24 +105,56 @@ const SettingsScreen = () => {
         </View>
         ),
     });
-    }, [navigation]);
+    }, [navigation, colors]);
 
   if (!settings) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.accent} />
       </View>
     );
   }
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#ffffff" }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{
         padding: 20,
         paddingBottom: 40,
       }}
     >
+
+      <SettingsSection title="Appearance">
+        <SettingsSegmentedRow<ThemePreference>
+          title="Application Theme"
+          subtitle="Choose how AriaScore appears."
+          icon="color-palette-outline"
+          value={preference}
+          options={[
+            {
+              label: "System",
+              value: "system",
+            },
+            {
+              label: "Light",
+              value: "light",
+            },
+            {
+              label: "Dark",
+              value: "dark",
+            },
+          ]}
+          onValueChange={value => {
+            void setPreference(value).catch(() => {
+              Alert.alert(
+                "Appearance",
+                "The theme changed, but the preference could not be saved."
+              );
+            });
+          }}
+        />
+      </SettingsSection>
+
       <SettingsSection title="Reading">
         <SettingsToggleRow
           title="Keep Screen Awake"
@@ -259,7 +301,7 @@ const SettingsScreen = () => {
               alignItems: "center",
               paddingVertical: 14,
               borderTopWidth: 1,
-              borderTopColor: "#E5E7EB",
+              borderTopColor: colors.separator,
             }}
           >
             <View
@@ -271,7 +313,7 @@ const SettingsScreen = () => {
               <Ionicons
                 name="scan-outline"
                 size={21}
-                color={ACCENT_COLOR}
+                color={colors.accent}
               />
             </View>
 
@@ -284,7 +326,7 @@ const SettingsScreen = () => {
               <Text
                 style={{
                   fontSize: 16,
-                  color: "#111827",
+                  color: colors.text,
                   fontWeight: "500",
                 }}
               >
@@ -295,7 +337,7 @@ const SettingsScreen = () => {
                 style={{
                   marginTop: 2,
                   fontSize: 13,
-                  color: "#6B7280",
+                  color: colors.secondaryText,
                 }}
               >
                 Set up or recalibrate hands-free page turning.
@@ -305,7 +347,7 @@ const SettingsScreen = () => {
             <Ionicons
               name="chevron-forward"
               size={20}
-              color="#9CA3AF"
+              color={colors.tertiaryText}
             />
           </TouchableOpacity>
         )}

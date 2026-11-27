@@ -1,4 +1,5 @@
 import { View, Text } from "react-native";
+import { useAppTheme } from "../../utils/theme/useAppTheme";
 
 type Props = {
     title: string;
@@ -10,6 +11,8 @@ export default function SettingsSection({
     children,
 }: Props) {
 
+    const { colors } = useAppTheme();
+
     return (
         <View style={{ marginBottom: 24 }}>
             <Text
@@ -17,6 +20,7 @@ export default function SettingsSection({
                     fontSize: 18,
                     fontWeight: "700",
                     marginBottom: 12,
+                    color: colors.text,
                 }}
             >
                 {title}
@@ -24,7 +28,7 @@ export default function SettingsSection({
 
             <View
                 style={{
-                    backgroundColor: "white",
+                    backgroundColor: colors.surface,
                     borderRadius: 12,
                     overflow: "hidden",
                 }}

@@ -2,7 +2,12 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 
 // Imports the navigation capabilitiies
-import { NavigationContainer } from "@react-navigation/native";
+import {
+  NavigationContainer,
+  DefaultTheme,
+  DarkTheme,
+  Theme,
+} from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -32,10 +37,14 @@ import TestComponent from "./components/TestTailwind";
 import { MenuProvider } from 'react-native-popup-menu';
 
 import { RootStackParamList } from './types';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { initDB } from './utils/database';
 import { importPdfFromUri } from './utils/fileUtils';
 import { importPdfNative } from "./native/AriaScorePdfImport";
+
+import ThemeProvider from "./utils/theme/ThemeProvider";
+import { useAppTheme } from "./utils/theme/useAppTheme";
+import * as SystemUI from "expo-system-ui";
 
 // @ts-expect-error CSS side-effect import is provided by the bundler at build time.
 import "./global.css";
@@ -49,10 +58,41 @@ import AnnotationTestScreen from './screens/debug/AnnotationsTestScreen';
 export const navigationRef =
   createNavigationContainerRef<RootStackParamList>();
 
-export default function App() {
+function AppContent(){
     // The __DEV__ constant is true when in development mode
     // const showDevTools = __DEV__;
     const showDevTools = false;
+
+    const {
+      colors,
+      isDark,
+      themeReady,
+    } = useAppTheme();
+
+
+    const navigationTheme = useMemo<Theme>(() => {
+      const baseTheme = isDark
+        ? DarkTheme
+        : DefaultTheme;
+
+      return {
+        ...baseTheme,
+
+        dark: isDark,
+
+        colors: {
+          ...baseTheme.colors,
+
+          primary: colors.accent,
+          background: colors.background,
+          card: colors.elevated,
+          text: colors.text,
+          border: colors.border,
+          notification: colors.danger,
+        },
+      };
+    }, [colors, isDark]);
+
 
     const [dbReady, setDbReady] = useState(false);
     const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
@@ -168,25 +208,73 @@ export default function App() {
       return () => subscription.remove();
     }, [dbReady]);
 
-    if (!dbReady) {
-      return (
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", width: "100%" }}>
-          <ActivityIndicator />
-        </View>
-      );
-    }
+    useEffect(() => {
+      void SystemUI
+        .setBackgroundColorAsync(colors.background)
+        .catch(error => {
+          console.error(
+            "Unable to set root background:",
+            error
+          );
+        });
+    }, [colors.background]);
+
+   if (!dbReady || !themeReady) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          width: "100%",
+          backgroundColor: colors.background,
+        }}
+      >
+        <StatusBar
+          style={isDark ? "light" : "dark"}
+        />
+
+        <ActivityIndicator
+          color={colors.accent}
+        />
+      </View>
+    );
+  }
 
     console.log(showDevTools)
 
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
-          <View style={{ flex: 1, backgroundColor: 'black', width: '100%' }}>
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: colors.background,
+              width: "100%",
+            }}
+          >
+            <StatusBar
+              style={isDark ? "light" : "dark"}
+            />
 
           {/* <View className="flex-1 bg-black"> */}
             <MenuProvider>
-              <NavigationContainer ref={navigationRef}>
-                <Stack.Navigator initialRouteName="Dashboard">
+              <NavigationContainer ref={navigationRef} theme={navigationTheme}>
+                <Stack.Navigator
+                  initialRouteName="Dashboard"
+                  screenOptions={{
+                    contentStyle: {
+                      backgroundColor: colors.background,
+                    },
+                    headerStyle: {
+                      backgroundColor: colors.elevated,
+                    },
+                    headerTintColor: colors.accent,
+                    headerTitleStyle: {
+                      color: colors.text,
+                    },
+                  }}
+                >
                   <Stack.Screen name="Dashboard" component={DashboardScreen} />
                   <Stack.Screen name="Library" component={LibraryScreen} />
                   <Stack.Screen
@@ -253,6 +341,14 @@ export default function App() {
         </SafeAreaProvider>
       </GestureHandlerRootView>
     );  
+  }
+
+  export default function App() {
+    return (
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    );
   }
 
   const styles = StyleSheet.create({

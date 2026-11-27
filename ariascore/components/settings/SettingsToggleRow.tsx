@@ -1,6 +1,7 @@
 import { Switch, View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ACCENT_COLOR } from "../../types";
+import { useAppTheme } from "../../utils/theme/useAppTheme";
 
 type Props = {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -17,6 +18,8 @@ export default function SettingsToggleRow({
   value,
   onValueChange,
 }: Props) {
+  const { colors } = useAppTheme();
+
   return (
     <TouchableOpacity
       activeOpacity={0.75}
@@ -32,18 +35,18 @@ export default function SettingsToggleRow({
         <Ionicons
           name={icon}
           size={22}
-          color={ACCENT_COLOR}
+          color={colors.accent}
           style={{ width: 26 }}
         />
       )}
 
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 16, fontWeight: "600", color: "#111827" }}>
+        <Text style={{ fontSize: 16, fontWeight: "600", color: colors.text }}>
           {title}
         </Text>
 
         {subtitle && (
-          <Text style={{ color: "#6B7280", marginTop: 2 }}>
+          <Text style={{ color: colors.secondaryText, marginTop: 2 }}>
             {subtitle}
           </Text>
         )}
@@ -52,10 +55,10 @@ export default function SettingsToggleRow({
       <Switch
         value={value}
         onValueChange={onValueChange}
-        thumbColor={ACCENT_COLOR}
+        thumbColor={colors.accent}
         trackColor={{
-          false: "#D1D5DB",
-          true: "#93C5FD",
+          false: colors.trackInactive,
+          true: colors.trackActive,
         }}
       />
     </TouchableOpacity>

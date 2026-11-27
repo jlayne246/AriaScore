@@ -76,7 +76,7 @@ export default ({ config }) => {
 
     orientation: "default",
     icon: "./assets/adaptive-icon.png",
-    userInterfaceStyle: "light",
+    userInterfaceStyle: "automatic",
     newArchEnabled: true,
 
     splash: {

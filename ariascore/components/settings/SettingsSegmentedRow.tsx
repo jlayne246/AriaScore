@@ -2,7 +2,7 @@
 
 import { Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { ACCENT_COLOR } from "../../types";
+import { useAppTheme } from "../../utils/theme/useAppTheme";
 
 type Option<T extends string> = {
   label: string;
@@ -26,6 +26,7 @@ const SettingsSegmentedRow = <T extends string>({
   options,
   onValueChange,
 }: Props<T>) => {
+  const { colors } = useAppTheme();
   return (
     <View style={{ padding: 16 }}>
       <View
@@ -40,18 +41,18 @@ const SettingsSegmentedRow = <T extends string>({
           <Ionicons
             name={icon}
             size={22}
-            color={ACCENT_COLOR}
+            color={colors.accent}
             style={{ width: 26, marginTop: 1 }}
           />
         )}
 
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 16, fontWeight: "600", color: "#111827" }}>
+          <Text style={{ fontSize: 16, fontWeight: "600", color: colors.text }}>
             {title}
           </Text>
 
           {subtitle && (
-            <Text style={{ color: "#6B7280", marginTop: 2 }}>
+            <Text style={{ color: colors.secondaryText, marginTop: 2 }}>
               {subtitle}
             </Text>
           )}
@@ -61,7 +62,7 @@ const SettingsSegmentedRow = <T extends string>({
       <View
         style={{
           flexDirection: "row",
-          backgroundColor: "#E5E7EB",
+          backgroundColor: colors.surfaceSecondary,
           borderRadius: 10,
           padding: 3,
         }}
@@ -77,14 +78,14 @@ const SettingsSegmentedRow = <T extends string>({
                 flex: 1,
                 paddingVertical: 9,
                 borderRadius: 8,
-                backgroundColor: selected ? "white" : "transparent",
+                backgroundColor: selected ? colors.elevated : "transparent",
                 alignItems: "center",
               }}
             >
               <Text
                 style={{
                   fontWeight: "700",
-                  color: selected ? ACCENT_COLOR : "#6B7280",
+                  color: selected ? colors.accent : colors.secondaryText,
                 }}
               >
                 {option.label}
