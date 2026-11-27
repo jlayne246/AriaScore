@@ -1,3 +1,4 @@
+import { useAppTheme } from "../utils/theme/useAppTheme";
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Text, SafeAreaView } from 'react-native';
 
@@ -29,6 +30,7 @@ const ReaderScreen = ({
   route,
   navigation,
 }: ReaderScreenProps) => {
+  const { colors } = useAppTheme();
   const {
     uri,
     musicId,
@@ -266,23 +268,23 @@ const ReaderScreen = ({
     }, [musicId]);
 
     if (!uri) {
-        return <Text>No PDF selected.</Text>;
+        return <Text style={{ color: colors.text }}>No PDF selected.</Text>;
     }
 
     if (!musicId) {
-        return <Text>No PDF selected.</Text>;
+        return <Text style={{ color: colors.text }}>No PDF selected.</Text>;
     }
 
     if (!settings || !music) {
         return (
-            <SafeAreaView style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <Text>Opening score...</Text>
+            <SafeAreaView style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.readerBackground }}>
+            <Text style={{ color: colors.text }}>Opening score...</Text>
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView style={{ flex: 1 }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.readerBackground }}>
             <BufferedPDFViewer 
                 uri={uri} 
                 musicId={musicId}

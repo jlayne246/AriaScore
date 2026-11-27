@@ -19,6 +19,8 @@ import {
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
+import { useAppTheme } from "../../utils/theme/useAppTheme";
+import { ThemeColors } from "../../utils/theme/types";
 
 const THUMB_WIDTH = 100;
 const THUMB_HEIGHT = 140;
@@ -27,7 +29,6 @@ const ROW_HEIGHT = 184;
 const COLUMN_GAP = 12;
 
 interface ReaderPageBrowserProps {
-  accentColor: string;
 
   currentPage: number;
   totalPages: number;
@@ -54,7 +55,6 @@ interface ThumbnailItemProps {
   isCurrentPage: boolean;
   isBookmarked: boolean;
 
-  accentColor: string;
 
   onPress: (page: number) => void;
 }
@@ -65,9 +65,14 @@ const ThumbnailItem = React.memo(
     uri,
     isCurrentPage,
     isBookmarked,
-    accentColor,
     onPress,
   }: ThumbnailItemProps) {
+    const {colors} = useAppTheme();
+    const styles = useMemo(
+      () => createStyles(colors),
+      [colors]
+    );
+
     return (
       <TouchableOpacity
         activeOpacity={0.75}
@@ -85,8 +90,9 @@ const ThumbnailItem = React.memo(
         <View
           style={[
             styles.thumbnailFrame,
+            uri && styles.thumbnailPaper,
             isCurrentPage && {
-              borderColor: accentColor,
+              borderColor: colors.accent,
               borderWidth: 3,
             },
           ]}
@@ -100,7 +106,7 @@ const ThumbnailItem = React.memo(
           ) : (
             <ActivityIndicator
               size="small"
-              color={accentColor}
+              color={colors.accent}
             />
           )}
 
@@ -109,7 +115,7 @@ const ThumbnailItem = React.memo(
               <Ionicons
                 name="bookmark"
                 size={22}
-                color="#D97706"
+                color={uri ? colors.bookmarkOnPaper : colors.bookmark}
               />
             </View>
           )}
@@ -119,7 +125,7 @@ const ThumbnailItem = React.memo(
           style={[
             styles.pageLabel,
             isCurrentPage && {
-              color: accentColor,
+              color: colors.accent,
               fontWeight: "700",
             },
           ]}
@@ -132,7 +138,6 @@ const ThumbnailItem = React.memo(
 );
 
 const ReaderPageBrowser = ({
-  accentColor,
 
   currentPage,
   totalPages,
@@ -149,6 +154,12 @@ const ReaderPageBrowser = ({
 }: ReaderPageBrowserProps) => {
   const { width, height } =
     useWindowDimensions();
+
+  const {colors} = useAppTheme();
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
 
   const [pageInput, setPageInput] =
     useState(String(currentPage));
@@ -268,7 +279,6 @@ const ReaderPageBrowser = ({
           bookmarkedPages.has(page)
         }
 
-        accentColor={accentColor}
         onPress={onSelectPage}
       />
     ),
@@ -276,7 +286,6 @@ const ReaderPageBrowser = ({
       thumbnailImages,
       currentPage,
       bookmarkedPages,
-      accentColor,
       onSelectPage,
     ]
   );
@@ -306,12 +315,7 @@ const ReaderPageBrowser = ({
 
         <View style={styles.header}>
           <View style={styles.headerDetails}>
-            <Text
-              style={[
-                styles.heading,
-                { color: accentColor },
-              ]}
-            >
+            <Text style={styles.heading}>
               Browse Pages
             </Text>
 
@@ -330,7 +334,7 @@ const ReaderPageBrowser = ({
             <Ionicons
               name="close"
               size={28}
-              color={accentColor}
+              color={colors.accent}
             />
           </TouchableOpacity>
         </View>
@@ -344,6 +348,9 @@ const ReaderPageBrowser = ({
 
           <View style={styles.inputGroup}>
             <TextInput
+              cursorColor={colors.accent}
+              selectionColor={colors.accent}
+              placeholderTextColor={colors.tertiaryText}
               style={[
                 styles.pageInput,
                 pageInput.length > 0 &&
@@ -373,11 +380,8 @@ const ReaderPageBrowser = ({
               style={[
                 styles.goButton,
                 {
-                  backgroundColor:
-                    accentColor,
-
-                  opacity:
-                    validPage ? 1 : 0.45,
+                  backgroundColor: colors.accent,
+                  opacity: validPage ? 1 : 0.45,
                 },
               ]}
             >
@@ -455,7 +459,7 @@ const ReaderPageBrowser = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   overlay: {
     position: "absolute",
 
@@ -467,14 +471,14 @@ const styles = StyleSheet.create({
     zIndex: 2200,
 
     backgroundColor:
-      "rgba(0,0,0,0.25)",
+      colors.readerOverlay,
 
     alignItems: "center",
     justifyContent: "center",
   },
 
   dialog: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.elevated,
     borderRadius: 18,
 
     padding: 18,
@@ -497,13 +501,14 @@ const styles = StyleSheet.create({
   },
 
   heading: {
+    color: colors.text,
     fontSize: 21,
     fontWeight: "700",
   },
 
   subtitle: {
     fontSize: 13,
-    color: "#64748B",
+    color: colors.secondaryText,
     marginTop: 3,
   },
 
@@ -527,7 +532,7 @@ const styles = StyleSheet.create({
 
   currentPage: {
     fontSize: 13,
-    color: "#64748B",
+    color: colors.secondaryText,
   },
 
   inputGroup: {
@@ -541,27 +546,27 @@ const styles = StyleSheet.create({
     height: 42,
 
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.border,
     borderRadius: 8,
 
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.surface,
 
     paddingHorizontal: 10,
 
     fontSize: 17,
     fontWeight: "500",
-    color: "#222",
+    color: colors.text,
 
     fontVariant: ["tabular-nums"],
   },
 
   invalidInput: {
-    borderColor: "#DC2626",
+    borderColor: colors.danger,
   },
 
   totalPages: {
     fontSize: 14,
-    color: "#64748B",
+    color: colors.secondaryText,
   },
 
   goButton: {
@@ -577,12 +582,12 @@ const styles = StyleSheet.create({
   goLabel: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: colors.onAccent,
   },
 
   divider: {
     height: 1,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.separator,
     marginBottom: 12,
   },
 
@@ -607,15 +612,19 @@ const styles = StyleSheet.create({
     height: THUMB_HEIGHT,
 
     borderWidth: 1,
-    borderColor: "#CBD5E1",
+    borderColor: colors.border,
     borderRadius: 3,
 
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.surface,
 
     alignItems: "center",
     justifyContent: "center",
 
     overflow: "hidden",
+  },
+
+  thumbnailPaper: {
+    backgroundColor: "#F8FAFC",
   },
 
   thumbnailImage: {
@@ -632,13 +641,13 @@ const styles = StyleSheet.create({
   pageLabel: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#64748B",
+    color: colors.secondaryText,
     marginTop: 8,
   },
 
   error: {
     fontSize: 12,
-    color: "#DC2626",
+    color: colors.danger,
     marginBottom: 8,
   },
 });

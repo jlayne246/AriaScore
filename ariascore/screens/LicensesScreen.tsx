@@ -11,6 +11,8 @@ import {
 
 import licenses from "../src/generated/licenses.json";
 
+import { useAppTheme } from "../utils/theme/useAppTheme";
+
 type LicenseEntry = {
   licenses?: string | string[];
   repository?: string;
@@ -205,6 +207,8 @@ export default function OpenSourceLicensesScreen() {
   const [search, setSearch] = useState("");
   const [showFullInventory, setShowFullInventory] = useState(false);
 
+  const { colors } = useAppTheme();
+
   const entries = useMemo<NormalizedEntry[]>(() => {
     return Object.entries(licenses as LicensesJson)
       .map(([rawName, info]) => {
@@ -274,7 +278,7 @@ export default function OpenSourceLicensesScreen() {
     <SectionList
       style={{
         flex: 1,
-        backgroundColor: "#f6f7f9",
+        backgroundColor: colors.background,
       }}
       contentContainerStyle={{
         padding: 24,
@@ -286,7 +290,7 @@ export default function OpenSourceLicensesScreen() {
         <>
           <View
             style={{
-              backgroundColor: "#fff",
+              backgroundColor: colors.surface,
               borderRadius: 24,
               padding: 28,
               marginBottom: 20,
@@ -297,7 +301,7 @@ export default function OpenSourceLicensesScreen() {
               style={{
                 fontSize: 30,
                 fontWeight: "800",
-                color: "#111",
+                color: colors.text,
               }}
             >
               Open Source Licences
@@ -307,7 +311,7 @@ export default function OpenSourceLicensesScreen() {
               style={{
                 fontSize: 16,
                 lineHeight: 24,
-                color: "#555",
+                color: colors.secondaryText,
                 marginTop: 12,
               }}
             >
@@ -319,7 +323,7 @@ export default function OpenSourceLicensesScreen() {
 
           <View
             style={{
-              backgroundColor: "#fff",
+              backgroundColor: colors.surface,
               borderRadius: 20,
               padding: 22,
               marginBottom: 20,
@@ -330,7 +334,7 @@ export default function OpenSourceLicensesScreen() {
               style={{
                 fontSize: 21,
                 fontWeight: "700",
-                color: "#111",
+                color: colors.text,
               }}
             >
               Primary Technologies
@@ -340,7 +344,7 @@ export default function OpenSourceLicensesScreen() {
               style={{
                 fontSize: 15,
                 lineHeight: 22,
-                color: "#555",
+                color: colors.secondaryText,
                 marginTop: 8,
                 marginBottom: 16,
               }}
@@ -355,7 +359,7 @@ export default function OpenSourceLicensesScreen() {
 
           <View
             style={{
-              backgroundColor: "#fff",
+              backgroundColor: colors.surface,
               borderRadius: 20,
               padding: 22,
               marginBottom: 20,
@@ -366,7 +370,7 @@ export default function OpenSourceLicensesScreen() {
               style={{
                 fontSize: 21,
                 fontWeight: "700",
-                color: "#111",
+                color: colors.text,
               }}
             >
               Full Licence Inventory
@@ -376,7 +380,7 @@ export default function OpenSourceLicensesScreen() {
               style={{
                 fontSize: 15,
                 lineHeight: 22,
-                color: "#555",
+                color: colors.secondaryText,
                 marginTop: 8,
                 marginBottom: 16,
               }}
@@ -388,7 +392,7 @@ export default function OpenSourceLicensesScreen() {
             <Pressable
               onPress={() => setShowFullInventory((value) => !value)}
               style={{
-                backgroundColor: "#1976d2",
+                backgroundColor: colors.accent,
                 borderRadius: 14,
                 paddingVertical: 13,
                 paddingHorizontal: 16,
@@ -397,7 +401,7 @@ export default function OpenSourceLicensesScreen() {
             >
               <Text
                 style={{
-                  color: "#fff",
+                  color: colors.onAccent,
                   fontSize: 15,
                   fontWeight: "700",
                 }}
@@ -411,11 +415,14 @@ export default function OpenSourceLicensesScreen() {
 
           {showFullInventory && (
             <TextInput
+              cursorColor={colors.accent}
+              selectionColor={colors.accent}
+              placeholderTextColor={colors.tertiaryText}
               value={search}
               onChangeText={setSearch}
               placeholder="Search packages, categories, or licences..."
-              style={{
-                backgroundColor: "#fff",
+              style={{ color: colors.text,
+                backgroundColor: colors.surface,
                 borderRadius: 16,
                 paddingHorizontal: 18,
                 paddingVertical: 14,
@@ -432,7 +439,7 @@ export default function OpenSourceLicensesScreen() {
           style={{
             fontSize: 21,
             fontWeight: "800",
-            color: "#111",
+            color: colors.text,
             marginBottom: 12,
             marginTop: 8,
           }}
@@ -445,7 +452,7 @@ export default function OpenSourceLicensesScreen() {
         <Text
           style={{
             textAlign: "center",
-            color: "#888",
+            color: colors.secondaryText,
             fontSize: 13,
             lineHeight: 20,
             marginTop: 8,
@@ -465,10 +472,11 @@ export default function OpenSourceLicensesScreen() {
 }
 
 function LicenceRow({ entry }: { entry: NormalizedEntry }) {
+  const { colors } = useAppTheme();
   return (
     <View
       style={{
-        backgroundColor: "#f8f9fa",
+        backgroundColor: colors.surface,
         borderRadius: 16,
         padding: 16,
         marginBottom: 10,
@@ -478,7 +486,7 @@ function LicenceRow({ entry }: { entry: NormalizedEntry }) {
         style={{
           fontSize: 16,
           fontWeight: "700",
-          color: "#111",
+          color: colors.text,
           marginBottom: 4,
         }}
       >
@@ -488,7 +496,7 @@ function LicenceRow({ entry }: { entry: NormalizedEntry }) {
       <Text
         style={{
           fontSize: 13,
-          color: "#777",
+          color: colors.secondaryText,
           marginBottom: 6,
         }}
       >
@@ -498,7 +506,7 @@ function LicenceRow({ entry }: { entry: NormalizedEntry }) {
       <Text
         style={{
           fontSize: 14,
-          color: "#555",
+          color: colors.secondaryText,
         }}
       >
         {entry.licence}
@@ -512,7 +520,7 @@ function LicenceRow({ entry }: { entry: NormalizedEntry }) {
           <Text
             style={{
               fontSize: 14,
-              color: "#1976d2",
+              color: colors.accent,
               fontWeight: "700",
             }}
           >

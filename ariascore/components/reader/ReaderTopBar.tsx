@@ -1,17 +1,19 @@
 
-import React, { ReactNode } from "react";
+import React, { ReactNode, useMemo } from "react";
 import {
   View,
   Text,
+  Platform,
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
+import { useAppTheme } from "../../utils/theme/useAppTheme";
+import { ThemeColors } from "../../utils/theme/types";
 
 interface ReaderTopBarProps {
-  accentColor: string;
   performanceMode: boolean;
   annotationsReady: boolean;
 
@@ -31,7 +33,6 @@ interface ReaderTopBarProps {
 interface ToolbarButtonProps {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
-  accentColor: string;
   onPress?: () => void;
   active?: boolean;
   disabled?: boolean;
@@ -40,12 +41,18 @@ interface ToolbarButtonProps {
 const ToolbarButton = ({
   icon,
   label,
-  accentColor,
   onPress,
   active = false,
   disabled = false,
 }: ToolbarButtonProps) => {
   const isDisabled = disabled || !onPress;
+
+  const { colors } = useAppTheme();
+
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
 
   return (
     <TouchableOpacity
@@ -60,7 +67,7 @@ const ToolbarButton = ({
       style={[
         styles.button,
         active && {
-          backgroundColor: `${accentColor}20`,
+          backgroundColor: colors.selectedBackground,
         },
         isDisabled && {
           opacity: 0.35,
@@ -70,14 +77,13 @@ const ToolbarButton = ({
       <Ionicons
         name={icon}
         size={24}
-        color={accentColor}
+        color={colors.accent}
       />
     </TouchableOpacity>
   );
 };
 
 const ReaderTopBar = ({
-  accentColor,
   performanceMode,
   annotationsReady,
   onBack,
@@ -93,15 +99,30 @@ const ReaderTopBar = ({
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const compact = width < 600;
+  const { colors } = useAppTheme();
+  const scoreUsesSafeArea = Platform.OS === "ios";
+
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
 
   return (
-    <View style={[styles.container, {paddingTop: insets.top + 6}]}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop: insets.top + 6,
+          paddingLeft: 8 + (scoreUsesSafeArea ? insets.left : 0),
+          paddingRight: 8 + (scoreUsesSafeArea ? insets.right : 0),
+        },
+      ]}
+    >
       {/* Left: Navigation */}
       <View style={styles.group}>
         <ToolbarButton
           icon="chevron-back"
           label="Back"
-          accentColor={accentColor}
           onPress={onBack}
         />
 
@@ -109,7 +130,6 @@ const ReaderTopBar = ({
           <ToolbarButton
             icon="musical-note-outline"
             label="Library"
-            accentColor={accentColor}
             onPress={onOpenLibrary}
           />
         )} */}
@@ -137,7 +157,6 @@ const ReaderTopBar = ({
               ? "Leave Performance Mode"
               : "Performance Mode"
           }
-          accentColor={accentColor}
           active={performanceMode}
           onPress={onTogglePerformanceMode}
         />
@@ -145,7 +164,6 @@ const ReaderTopBar = ({
         <ToolbarButton
           icon="create-outline"
           label="Annotate"
-          accentColor={accentColor}
           onPress={onAnnotate}
           disabled={!annotationsReady}
         />
@@ -158,24 +176,16 @@ const ReaderTopBar = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-
-    zIndex: 1300,
-
     flexDirection: "row",
     alignItems: "center",
 
-    backgroundColor: "rgba(255,255,255,0.96)",
+    backgroundColor: colors.readerChrome,
 
     borderBottomWidth: 1,
-    borderBottomColor: "#ddd",
+    borderBottomColor: colors.separator,
 
-    paddingHorizontal: 8,
     paddingVertical: 6,
 
     minHeight: 60,
@@ -201,7 +211,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
 
-    backgroundColor: "#f0f0f0",
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 8,
 
     paddingHorizontal: 8,
@@ -214,12 +224,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#222",
+    color: colors.text,
   },
 
   subtitle: {
     fontSize: 12,
-    color: "#666",
+    color: colors.secondaryText,
   },
 });
 

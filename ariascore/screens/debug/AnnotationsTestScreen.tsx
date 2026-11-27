@@ -53,8 +53,8 @@ export default function AnnotationTestScreen() {
     commit([...strokes, stroke]);
   };
 
-  const eraseStroke = (id: string) => {
-    commit(strokes.filter((s) => s.id !== id));
+  const eraseStrokes = (ids: string[]) => {
+    commit(strokes.filter((s) => !ids.includes(s.id)));
   };
 
   return (
@@ -77,6 +77,7 @@ export default function AnnotationTestScreen() {
             Math.min(history.length - 1, i + 1)
           )
         }
+        onDone={() => setSettings((current) => ({ ...current, tool: "pen" }))}
         canUndo={cursor > 0}
         canRedo={cursor < history.length - 1}
       />
@@ -97,7 +98,7 @@ export default function AnnotationTestScreen() {
           strokes={strokes}
           settings={settings}
           onAddStroke={addStroke}
-          onEraseStroke={eraseStroke}
+          onEraseStrokes={eraseStrokes}
         />
       </View>
     </ScrollView>

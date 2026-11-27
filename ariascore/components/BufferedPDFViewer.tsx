@@ -1,3 +1,4 @@
+import { useAppTheme } from "../utils/theme/useAppTheme";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,6 +9,7 @@ import {
   Button,
   FlatList,
   PixelRatio,
+  Platform,
   Image,
   Pressable,
   ScrollView,
@@ -143,13 +145,11 @@ interface BufferedPDFViewerProps {
   ) => void | Promise<void>;
 }
 
-const ACCENT_COLOR = '#2563EB';
 
 const EMPTY_PAGE_STROKES: StrokeAnnotation[] = [];
 
 const THUMB_COLUMNS = 4;
 
-const TOP_CHROME_HEIGHT = 60;
 
 type PageImage = {
   uri: string;
@@ -197,6 +197,7 @@ const RenderedPage = React.memo(
     onEraseStrokes,
     annotationSaving
   }: RenderedPageProps) {
+  const { colors } = useAppTheme();
     const [containerSize, setContainerSize] =
       useState({ width: 0, height: 0 });
 
@@ -215,7 +216,7 @@ const RenderedPage = React.memo(
       <View
         style={{
           flex: 1,
-          backgroundColor: "white",
+          backgroundColor: image ? "white" : colors.readerBackground,
           alignItems: "center",
           justifyContent: "center",
         }}
@@ -285,8 +286,8 @@ const RenderedPage = React.memo(
               gap: 8,
             }}
           >
-            <ActivityIndicator />
-            <Text style={{ color: ACCENT_COLOR }}>
+            <ActivityIndicator color={colors.accent} />
+            <Text style={{ color: colors.accent }}>
               Rendering page {pageNumber}…
             </Text>
           </View>
@@ -303,21 +304,22 @@ const RenderedPage = React.memo(
   label: string;
   value: string;
 }) {
+  const { colors } = useAppTheme();
   return (
     <View
       style={{
         flexDirection: 'row',
         justifyContent: 'space-between',
         borderBottomWidth: 1,
-        borderBottomColor: '#eee',
+        borderBottomColor: colors.separator,
         paddingVertical: 8,
       }}
     >
-      <Text style={{ color: '#666', fontSize: 15 }}>
+      <Text style={{ color: colors.secondaryText, fontSize: 15 }}>
         {label}
       </Text>
 
-      <Text style={{ fontWeight: '600', fontSize: 15 }}>
+      <Text style={{ fontWeight: '600', fontSize: 15, color: colors.text }}>
         {value}
       </Text>
     </View>
@@ -331,11 +333,12 @@ function InfoSection({
   title: string;
   children: React.ReactNode;
 }) {
+  const { colors } = useAppTheme();
   return (
     <View
       style={{
         borderTopWidth: 1,
-        borderTopColor: '#eee',
+        borderTopColor: colors.separator,
         paddingTop: 12,
         marginTop: 12,
       }}
@@ -344,7 +347,7 @@ function InfoSection({
         style={{
           fontSize: 12,
           fontWeight: '700',
-          color: '#777',
+          color: colors.text,
           marginBottom: 6,
           textTransform: 'uppercase',
         }}
@@ -366,6 +369,7 @@ function ActionRow({
   label: string;
   onPress?: () => void;
 }) {
+  const { colors } = useAppTheme();
   return (
     <TouchableOpacity
       style={{
@@ -376,13 +380,14 @@ function ActionRow({
       }}
       onPress={onPress}
     >
-      <Ionicons name={icon} size={19} color={ACCENT_COLOR} />
-      <Text style={{ fontSize: 15 }}>{label}</Text>
+      <Ionicons name={icon} size={19} color={colors.accent} />
+      <Text style={{ fontSize: 15, color: colors.text }}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
 const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings, toastVisible, toastMessage, onNextScore, onPreviousScore, onNextScoreFromPageTurn, onPreviousScoreFromPageTurn, onSetlistChanged }: BufferedPDFViewerProps) => {
+  const { colors } = useAppTheme();
   const pagerRef = useRef<PagerView>(null);
   // const renderingPages = useRef<Set<number>>(new Set());
 
@@ -433,7 +438,7 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const [
     annotationToolbarPosition,
     setAnnotationToolbarPosition,
-  ] = useState<"top" | "bottom">("top");
+  ] = useState<"top" | "bottom">("bottom");
 
   const [loadedAnnotationMusicId, setLoadedAnnotationMusicId] =
     useState<number | null>(null);
@@ -566,6 +571,9 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     performanceModeOverride ?? settings.performanceMode;
 
   const insets = useSafeAreaInsets();
+  // ReaderScreen already places the score inside the safe area on iOS.
+  // Only the chrome overlay extends back to the window edges.
+  const scoreUsesSafeArea = Platform.OS === "ios";
 
   const effectiveFacialGestures =
     effectivePerformanceMode &&
@@ -3336,185 +3344,245 @@ const handleDeleteBookmark = async (
   // console.log("thumbnailPages:", thumbnailPages.length, "totalPages:", totalPages);
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'white' }}>
+    <View style={{ flex: 1, backgroundColor: colors.readerBackground }}>
       
       {(chromeVisible || annotationMode) && (
-        <ReaderTopBar
-          accentColor={ACCENT_COLOR}
-          performanceMode={effectivePerformanceMode}
-          annotationsReady={annotationsReady && !annotationMode}
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            top: scoreUsesSafeArea ? -insets.top : 0,
+            bottom: scoreUsesSafeArea ? -insets.bottom : 0,
+            left: scoreUsesSafeArea ? -insets.left : 0,
+            right: scoreUsesSafeArea ? -insets.right : 0,
+            zIndex: annotationMode ? 1400 : 1300,
+          }}
+        >
+          <ReaderTopBar
+            performanceMode={effectivePerformanceMode}
+            annotationsReady={annotationsReady && !annotationMode}
 
-          onBack={handleReaderBack}
+            onBack={handleReaderBack}
           
-          libraryMenu={
-            <ReaderLibraryMenu
-              currentMusicId={musicId}
-              accentColor={ACCENT_COLOR}
+            libraryMenu={
+              <ReaderLibraryMenu
+                currentMusicId={musicId}
 
-              disabled={
-                annotationMode ||
-                annotationSaving
-              }
+                disabled={
+                  annotationMode ||
+                  annotationSaving
+                }
 
-              onOpen={handleReaderMenuOpen}
-              onClose={handleReaderMenuClose}
+                onOpen={handleReaderMenuOpen}
+                onClose={handleReaderMenuClose}
 
-              onSelectScore={handleOpenLibraryScore}
-            />
-          }
+                onSelectScore={handleOpenLibraryScore}
+              />
+            }
 
-          setlistMenu={
-            <ReaderSetlistMenu
-              context={context}
+            setlistMenu={
+              <ReaderSetlistMenu
+                context={context}
 
-              currentMusicId={musicId}
-              currentScoreTitle={score.title}
+                currentMusicId={musicId}
+                currentScoreTitle={score.title}
 
-              accentColor={ACCENT_COLOR}
 
-              disabled={
-                annotationMode ||
-                annotationSaving
-              }
+                disabled={
+                  annotationMode ||
+                  annotationSaving
+                }
 
-              onOpen={handleReaderMenuOpen}
-              onClose={handleReaderMenuClose}
+                onOpen={handleReaderMenuOpen}
+                onClose={handleReaderMenuClose}
 
-              onSelectEntry={
-                handleOpenSetlistEntry
-              }
+                onSelectEntry={
+                  handleOpenSetlistEntry
+                }
 
-              onManageSetlists={() => {
-                setManageSetlistsVisible(true);
+                onManageSetlists={() => {
+                  setManageSetlistsVisible(true);
+                }}
+
+                currentPage={currentPage}
+                totalPages={totalPages}
+
+                onSetlistChanged={onSetlistChanged}
+              />
+            }
+          
+            bookmarksMenu={
+              <ReaderBookmarksMenu
+
+                currentPage={currentPage}
+                minimumPage={minimumPage}
+                maximumPage={maximumPage}
+
+                bookmarks={bookmarks}
+
+                disabled={
+                  annotationMode ||
+                  annotationSaving
+                }
+
+                onOpen={handleReaderMenuOpen}
+                onClose={handleReaderMenuClose}
+
+                onSelectBookmark={
+                  handleSelectBookmark
+                }
+
+                onAddBookmark={
+                  handleAddBookmark
+                }
+
+                onRenameBookmark={
+                  handleRenameBookmark
+                }
+
+                onDeleteBookmark={
+                  handleDeleteBookmark
+                }
+              />
+            }
+          
+            scoreInfoMenu={
+              <ReaderScoreInfo
+                score={score}
+                context={context}
+
+                totalPages={totalPages}
+
+                thumbnailUri={
+                  thumbnailImages[1] ??
+                  pageImages[1]?.uri
+                }
+
+
+                disabled={
+                  annotationMode ||
+                  annotationSaving
+                }
+
+                onOpen={handleReaderMenuOpen}
+                onClose={handleReaderMenuClose}
+
+                onEditMetadata={
+                  handleEditScoreMetadata
+                }
+              />
+            }
+
+            musicUtilitiesMenu={
+              <ReaderMusicUtilitiesMenu
+
+                disabled={
+                  annotationMode ||
+                  annotationSaving
+                }
+
+                onOpen={handleReaderMenuOpen}
+                onClose={handleReaderMenuClose}
+              />
+            }
+
+            onTogglePerformanceMode={
+              handleTogglePerformanceMode
+            }
+
+            onAnnotate={handleOpenAnnotations}
+          
+            toolsMenu={
+              <ReaderToolsMenu
+
+                currentPage={currentPage}
+                totalPages={totalPages}
+                minimumPage={minimumPage}
+                maximumPage={maximumPage}
+
+                hasSetlist={Boolean(context?.setlistId)}
+
+                disabled={
+                  annotationMode ||
+                  annotationSaving
+                }
+
+                onOpen={handleReaderMenuOpen}
+                onClose={handleReaderMenuClose}
+
+                onSelectAction={handleReaderToolAction}
+
+                onJumpToPage={(page) => {
+                  goToPage(page);
+                  showChromeTemporarily();
+                }}
+
+                displayMode={displayMode}
+                coverOffset={coverOffset}
+                orientationLock={orientationLock}
+
+                onDisplayModeChange={applyDisplayMode}
+                onCoverOffsetChange={applyCoverOffset}
+                onOrientationChange={applyOrientationLock}
+              />
+            }
+          />
+          {annotationMode && (
+            <View
+              style={{
+                ...(annotationToolbarPosition === "bottom" && {
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  paddingBottom: insets.bottom,
+                }),
+
+                paddingLeft: scoreUsesSafeArea ? insets.left : 0,
+                paddingRight: scoreUsesSafeArea ? insets.right : 0,
+                zIndex: 1400,
+                backgroundColor: colors.readerChrome,
               }}
+            >
+              <View pointerEvents={annotationSaving ? "none" : "auto"}>
+                <AnnotationToolbar
+                  settings={drawingSettings}
+                  onChange={setDrawingSettings}
+                  onUndo={handleUndoAnnotation}
+                  onRedo={handleRedoAnnotation}
+                  onDone={commitAnnotationSession}
+                  canUndo={annotationState.index > 0}
+                  canRedo={
+                    annotationState.index <
+                    annotationState.entries.length - 1
+                  }
 
-              currentPage={currentPage}
-              totalPages={totalPages}
+                  position={annotationToolbarPosition}
+                  onTogglePosition={toggleAnnotationToolbarPosition}
+                />
+              </View>
 
-              onSetlistChanged={onSetlistChanged}
-            />
-          }
-          
-          bookmarksMenu={
-            <ReaderBookmarksMenu
-              accentColor={ACCENT_COLOR}
-
-              currentPage={currentPage}
-              minimumPage={minimumPage}
-              maximumPage={maximumPage}
-
-              bookmarks={bookmarks}
-
-              disabled={
-                annotationMode ||
-                annotationSaving
-              }
-
-              onOpen={handleReaderMenuOpen}
-              onClose={handleReaderMenuClose}
-
-              onSelectBookmark={
-                handleSelectBookmark
-              }
-
-              onAddBookmark={
-                handleAddBookmark
-              }
-
-              onRenameBookmark={
-                handleRenameBookmark
-              }
-
-              onDeleteBookmark={
-                handleDeleteBookmark
-              }
-            />
-          }
-          
-          scoreInfoMenu={
-            <ReaderScoreInfo
-              score={score}
-              context={context}
-
-              totalPages={totalPages}
-
-              thumbnailUri={
-                thumbnailImages[1] ??
-                pageImages[1]?.uri
-              }
-
-              accentColor={ACCENT_COLOR}
-
-              disabled={
-                annotationMode ||
-                annotationSaving
-              }
-
-              onOpen={handleReaderMenuOpen}
-              onClose={handleReaderMenuClose}
-
-              onEditMetadata={
-                handleEditScoreMetadata
-              }
-            />
-          }
-
-          musicUtilitiesMenu={
-            <ReaderMusicUtilitiesMenu
-              accentColor={ACCENT_COLOR}
-
-              disabled={
-                annotationMode ||
-                annotationSaving
-              }
-
-              onOpen={handleReaderMenuOpen}
-              onClose={handleReaderMenuClose}
-            />
-          }
-
-          onTogglePerformanceMode={
-            handleTogglePerformanceMode
-          }
-
-          onAnnotate={handleOpenAnnotations}
-          
-          toolsMenu={
-            <ReaderToolsMenu
-              accentColor={ACCENT_COLOR}
-
-              currentPage={currentPage}
-              totalPages={totalPages}
-              minimumPage={minimumPage}
-              maximumPage={maximumPage}
-
-              hasSetlist={Boolean(context?.setlistId)}
-
-              disabled={
-                annotationMode ||
-                annotationSaving
-              }
-
-              onOpen={handleReaderMenuOpen}
-              onClose={handleReaderMenuClose}
-
-              onSelectAction={handleReaderToolAction}
-
-              onJumpToPage={(page) => {
-                goToPage(page);
-                showChromeTemporarily();
-              }}
-
-              displayMode={displayMode}
-              coverOffset={coverOffset}
-              orientationLock={orientationLock}
-
-              onDisplayModeChange={applyDisplayMode}
-              onCoverOffsetChange={applyCoverOffset}
-              onOrientationChange={applyOrientationLock}
-            />
-          }
-        />
+              {annotationSaving && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingVertical: 5,
+                  }}
+                >
+                  <ActivityIndicator
+                    size="small"
+                    color={colors.accent}
+                  />
+                  <Text style={{ marginLeft: 8, color: colors.text }}>
+                    Saving annotations…
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
       )}
 
 
@@ -3757,8 +3825,8 @@ const handleDeleteBookmark = async (
           </GestureDetector>
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator />
-            <Text style={{ color: ACCENT_COLOR }}>
+            <ActivityIndicator color={colors.accent} />
+            <Text style={{ color: colors.accent }}>
               Opening score…
             </Text>
           </View>
@@ -3775,9 +3843,6 @@ const handleDeleteBookmark = async (
 
           minimumPage={minimumPage}
           maximumPage={maximumPage}
-
-          bottomInset={insets.bottom}
-          accentColor={ACCENT_COLOR}
 
           thumbnails={sliderThumbnailImages}
           bookmarks={bookmarks}
@@ -3797,7 +3862,6 @@ const handleDeleteBookmark = async (
 
       {jumpOverlayVisible && (
         <ReaderPageBrowser
-          accentColor={ACCENT_COLOR}
 
           currentPage={currentPage}
           totalPages={totalPages}
@@ -3844,7 +3908,7 @@ const handleDeleteBookmark = async (
           <View
             style={{
               maxWidth: "90%",
-              backgroundColor: "rgba(0,0,0,0.85)",
+              backgroundColor: colors.toastBackground,
               paddingHorizontal: 16,
               paddingVertical: 10,
               borderRadius: 20,
@@ -3852,7 +3916,7 @@ const handleDeleteBookmark = async (
           >
             <Text
               style={{
-                color: "white",
+                color: colors.toastText,
                 fontSize: 14,
                 textAlign: "center",
               }}
@@ -3886,67 +3950,6 @@ const handleDeleteBookmark = async (
         }}
       />
 
-      {annotationMode && (
-        <View
-          style={{
-            position: "absolute",
-
-            ...(annotationToolbarPosition === "top"
-              ? {
-                  top: insets.top + TOP_CHROME_HEIGHT,
-                }
-              : {
-                  bottom: insets.bottom,
-                }),
-
-            left: 0,
-            right: 0,
-
-            zIndex: 1400,
-            elevation: 15,
-            backgroundColor: "#FFFFFF",
-          }}
-        >
-          <View pointerEvents={annotationSaving ? "none" : "auto"}>
-            <AnnotationToolbar
-              settings={drawingSettings}
-              onChange={setDrawingSettings}
-              onUndo={handleUndoAnnotation}
-              onRedo={handleRedoAnnotation}
-              onDone={commitAnnotationSession}
-              canUndo={annotationState.index > 0}
-              canRedo={
-                annotationState.index <
-                annotationState.entries.length - 1
-              }
-              accentColor={ACCENT_COLOR}
-
-              position={annotationToolbarPosition}
-              onTogglePosition={toggleAnnotationToolbarPosition}
-            />
-          </View>
-
-          {annotationSaving && (
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                paddingVertical: 5,
-                backgroundColor: "#FFFFFF",
-              }}
-            >
-              <ActivityIndicator
-                size="small"
-                color={ACCENT_COLOR}
-              />
-              <Text style={{ marginLeft: 8 }}>
-                Saving annotations…
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
 
       <ManageSetlistsModal
         visible={manageSetlistsVisible}

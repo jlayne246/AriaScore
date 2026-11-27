@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, type NavigationProp } from "@react-navigation/native";
-import { RootStackParamList, ACCENT_COLOR } from "../types";
+import { RootStackParamList } from "../types";
 import {
   BackupError,
   BackupRepository,
@@ -33,6 +33,8 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { CommonActions } from "@react-navigation/native";
 import { getLastBackupSummary, saveLastBackupSummary } from "../src/services/backup/backup.history";
 
+import { useAppTheme } from "../utils/theme/useAppTheme";
+
 // type BackupSummary = {
 //   createdAt: string;
 //   scoreCount: number;
@@ -46,6 +48,7 @@ export default function BackupsScreen() {
 
   const navigation =
     useNavigation<BackupsNavigationProp>();
+  const { colors } = useAppTheme();
 
   const [isExporting, setIsExporting] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
@@ -94,9 +97,9 @@ export default function BackupsScreen() {
         <View
           style={{
             height: 92,
-            backgroundColor: "white",
+            backgroundColor: colors.background,
             borderBottomWidth: 1,
-            borderBottomColor: "#E5E7EB",
+            borderBottomColor: colors.separator,
             justifyContent: "flex-end",
             paddingHorizontal: 20,
             paddingBottom: 12,
@@ -129,14 +132,14 @@ export default function BackupsScreen() {
                 <Ionicons
                   name="chevron-back"
                   size={28}
-                  color={ACCENT_COLOR}
+                  color={colors.accent}
                 />
               </TouchableOpacity>
 
               <Text
                 style={{
                   fontSize: 24,
-                  color: '#464950',
+                  color: colors.text,
                   fontWeight: '400',
                 }}
               >
@@ -147,7 +150,7 @@ export default function BackupsScreen() {
         </View>
       ),
     });
-  }, [navigation]);
+  }, [navigation, colors]);
 
   async function handleExportBackup(): Promise<void> {
     try {
@@ -420,7 +423,7 @@ export default function BackupsScreen() {
     <ScrollView
       style={{
         flex: 1,
-        backgroundColor: "#ffffff",
+        backgroundColor: colors.background,
       }}
       contentContainerStyle={{
         padding: 24,
@@ -429,7 +432,7 @@ export default function BackupsScreen() {
     >
       <View
         style={{
-          backgroundColor: "#fff",
+          backgroundColor: colors.surface,
           borderRadius: 24,
           padding: 28,
           marginBottom: 20,
@@ -448,7 +451,7 @@ export default function BackupsScreen() {
             width: 52,
             height: 52,
             borderRadius: 16,
-            backgroundColor: `${ACCENT_COLOR}18`,
+            backgroundColor: colors.selectedBackground,
             alignItems: "center",
             justifyContent: "center",
             marginBottom: 18,
@@ -457,7 +460,7 @@ export default function BackupsScreen() {
           <Ionicons
             name="archive-outline"
             size={28}
-            color={ACCENT_COLOR}
+            color={colors.accent}
           />
         </View>
 
@@ -465,7 +468,7 @@ export default function BackupsScreen() {
           style={{
             fontSize: 30,
             fontWeight: "600",
-            color: "#111",
+            color: colors.text,
           }}
         >
           Backups
@@ -475,7 +478,7 @@ export default function BackupsScreen() {
           style={{
             fontSize: 16,
             lineHeight: 24,
-            color: "#555",
+            color: colors.secondaryText,
             marginTop: 12,
           }}
         >
@@ -487,7 +490,7 @@ export default function BackupsScreen() {
 
       <View
         style={{
-          backgroundColor: "#fff",
+          backgroundColor: colors.surface,
           borderRadius: 20,
           padding: 22,
           marginBottom: 20,
@@ -511,14 +514,14 @@ export default function BackupsScreen() {
           <Ionicons
             name="document-text-outline"
             size={24}
-            color={ACCENT_COLOR}
+            color={colors.accent}
           />
 
           <Text
             style={{
               fontSize: 21,
               fontWeight: "700",
-              color: "#111",
+              color: colors.text,
               marginLeft: 10,
             }}
           >
@@ -544,7 +547,7 @@ export default function BackupsScreen() {
             <Ionicons
               name="checkmark-circle"
               size={19}
-              color={ACCENT_COLOR}
+              color={colors.accent}
               style={{ marginTop: 2 }}
             />
 
@@ -553,7 +556,7 @@ export default function BackupsScreen() {
                 flex: 1,
                 fontSize: 16,
                 lineHeight: 24,
-                color: "#555",
+                color: colors.secondaryText,
                 marginLeft: 10,
               }}
             >
@@ -565,7 +568,7 @@ export default function BackupsScreen() {
 
       <View
         style={{
-          backgroundColor: "#fff",
+          backgroundColor: colors.surface,
           borderRadius: 20,
           padding: 22,
           marginBottom: 20,
@@ -588,14 +591,14 @@ export default function BackupsScreen() {
           <Ionicons
             name="information-circle-outline"
             size={24}
-            color={ACCENT_COLOR}
+            color={colors.accent}
           />
 
           <Text
             style={{
               fontSize: 21,
               fontWeight: "700",
-              color: "#111",
+              color: colors.text,
               marginLeft: 10,
             }}
           >
@@ -607,7 +610,7 @@ export default function BackupsScreen() {
           style={{
             fontSize: 16,
             lineHeight: 24,
-            color: "#555",
+            color: colors.secondaryText,
             marginTop: 12,
           }}
         >
@@ -616,7 +619,7 @@ export default function BackupsScreen() {
 
         <View
           style={{
-            backgroundColor: "#F3F4F6",
+            backgroundColor: colors.surfaceSecondary,
             borderRadius: 14,
             padding: 14,
             marginTop: 16,
@@ -626,7 +629,7 @@ export default function BackupsScreen() {
             style={{
               fontSize: 14,
               fontWeight: "600",
-              color: "#374151",
+              color: colors.text,
             }}
           >
             Last backup
@@ -636,7 +639,7 @@ export default function BackupsScreen() {
             style={{
               fontSize: 15,
               lineHeight: 22,
-              color: "#555",
+              color: colors.secondaryText,
               marginTop: 4,
             }}
           >
@@ -648,7 +651,7 @@ export default function BackupsScreen() {
               style={{
                 fontSize: 14,
                 lineHeight: 21,
-                color: "#6B7280",
+                color: colors.secondaryText,
                 marginTop: 8,
               }}
             >
@@ -673,7 +676,7 @@ export default function BackupsScreen() {
           }}
           style={{
             minHeight: 54,
-            backgroundColor: isBackupBusy ? "#9CA3AF" : ACCENT_COLOR,
+            backgroundColor: isBackupBusy ? colors.surfaceSecondary : colors.accent,
             borderRadius: 14,
             paddingVertical: 14,
             paddingHorizontal: 18,
@@ -689,11 +692,11 @@ export default function BackupsScreen() {
               alignItems: "center",
             }}
           >
-            <ActivityIndicator size="small" color="#ffffff" />
+            <ActivityIndicator size="small" color={isBackupBusy ? colors.disabledText : colors.onAccent} />
 
             <Text
               style={{
-                color: "#fff",
+                color: isBackupBusy ? colors.disabledText : colors.onAccent,
                 fontSize: 16,
                 fontWeight: "700",
                 marginLeft: 10,
@@ -712,12 +715,12 @@ export default function BackupsScreen() {
             <Ionicons
               name="save-outline"
               size={21}
-              color="#ffffff"
+              color={isBackupBusy ? colors.disabledText : colors.onAccent}
             />
 
             <Text
               style={{
-                color: "#fff",
+                color: isBackupBusy ? colors.disabledText : colors.onAccent,
                 fontSize: 16,
                 fontWeight: "700",
                 marginLeft: 9,
@@ -737,7 +740,7 @@ export default function BackupsScreen() {
         accessibilityState={{ disabled: isBackupBusy, busy: isSharing }}
         style={{
           minHeight: 54,
-          backgroundColor: isBackupBusy ? "#9CA3AF" : ACCENT_COLOR,
+          backgroundColor: isBackupBusy ? colors.surfaceSecondary : colors.accent,
           borderRadius: 14,
           paddingVertical: 14,
           paddingHorizontal: 18,
@@ -754,11 +757,11 @@ export default function BackupsScreen() {
               alignItems: "center",
             }}
           >
-            <ActivityIndicator size="small" color="#ffffff" />
+            <ActivityIndicator size="small" color={isBackupBusy ? colors.disabledText : colors.onAccent} />
 
             <Text
               style={{
-                color: "#fff",
+                color: isBackupBusy ? colors.disabledText : colors.onAccent,
                 fontSize: 16,
                 fontWeight: "700",
                 marginLeft: 10,
@@ -777,12 +780,12 @@ export default function BackupsScreen() {
             <Ionicons
               name="share-outline"
               size={21}
-              color="#ffffff"
+              color={isBackupBusy ? colors.disabledText : colors.onAccent}
             />
 
             <Text
               style={{
-                color: "#fff",
+                color: isBackupBusy ? colors.disabledText : colors.onAccent,
                 fontSize: 16,
                 fontWeight: "700",
                 marginLeft: 9,
@@ -809,8 +812,8 @@ export default function BackupsScreen() {
         style={{
           minHeight: 54,
           backgroundColor: isBackupBusy
-            ? "#9CA3AF"
-            : "#D97706",
+            ? colors.surfaceSecondary
+            : colors.warning,
           borderRadius: 14,
           paddingVertical: 14,
           paddingHorizontal: 18,
@@ -831,12 +834,12 @@ export default function BackupsScreen() {
           >
             <ActivityIndicator
               size="small"
-              color="#ffffff"
+              color={isBackupBusy ? colors.disabledText : colors.onWarning}
             />
 
             <Text
               style={{
-                color: "#ffffff",
+                color: isBackupBusy ? colors.disabledText : colors.onWarning,
                 fontSize: 16,
                 fontWeight: "700",
                 marginLeft: 10,
@@ -855,12 +858,12 @@ export default function BackupsScreen() {
             <Ionicons
               name="download-outline"
               size={21}
-              color="#ffffff"
+              color={isBackupBusy ? colors.disabledText : colors.onWarning}
             />
 
             <Text
               style={{
-                color: "#ffffff",
+                color: isBackupBusy ? colors.disabledText : colors.onWarning,
                 fontSize: 16,
                 fontWeight: "700",
                 marginLeft: 9,
@@ -876,7 +879,7 @@ export default function BackupsScreen() {
         style={{
           marginTop: 10,
           paddingHorizontal: 12,
-          color: "#6B7280",
+          color: colors.secondaryText,
           fontSize: 13,
           lineHeight: 19,
           textAlign: "center",

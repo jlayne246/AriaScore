@@ -1,3 +1,6 @@
+import { useMemo } from "react";
+import type { ThemeColors } from "../utils/theme/types";
+import { useAppTheme } from "../utils/theme/useAppTheme";
 // components/AppSidebar.tsx
 import { Pressable, Text, View, StyleSheet } from "react-native";
 
@@ -12,6 +15,8 @@ type Props = {
 };
 
 export function AppSidebar({ items }: Props) {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <View style={styles.sidebar}>
       <Text style={styles.title}>AIRScore</Text>
@@ -31,16 +36,17 @@ export function AppSidebar({ items }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   sidebar: {
     width: 260,
     borderRightWidth: 1,
-    borderRightColor: "#ddd",
+    borderRightColor: colors.border,
     paddingTop: 24,
     paddingHorizontal: 16,
-    backgroundColor: "#fff",
+    backgroundColor: colors.elevated,
   },
   title: {
+    color: colors.text,
     fontSize: 22,
     fontWeight: "700",
     marginBottom: 24,
@@ -52,12 +58,14 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   activeItem: {
-    backgroundColor: "#eee",
+    backgroundColor: colors.selectedBackground,
   },
   itemText: {
+    color: colors.text,
     fontSize: 16,
   },
   activeText: {
+    color: colors.accent,
     fontWeight: "700",
   },
 });

@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useMemo } from "react";
 
 import {
   View,
@@ -21,6 +21,9 @@ import {
   renderers,
 } from "react-native-popup-menu";
 
+import {useAppTheme} from "../../utils/theme/useAppTheme";
+import { ThemeColors } from "../../utils/theme/types";
+
 const { Popover } = renderers;
 
 export type MusicUtilityAction =
@@ -30,7 +33,6 @@ export type MusicUtilityAction =
   | "audio-recording";
 
 interface ReaderMusicUtilitiesMenuProps {
-  accentColor: string;
   disabled?: boolean;
 
   onOpen?: () => void;
@@ -48,7 +50,6 @@ interface UtilityItemProps {
   description: string;
   action: MusicUtilityAction;
 
-  accentColor: string;
 
   available?: boolean;
 }
@@ -58,9 +59,13 @@ const UtilityItem = ({
   label,
   description,
   action,
-  accentColor,
   available = false,
 }: UtilityItemProps) => {
+  const {colors} = useAppTheme();
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
   return (
     <MenuOption
       value={action}
@@ -81,7 +86,7 @@ const UtilityItem = ({
           <MaterialCommunityIcons
             name={icon}
             size={25}
-            color={accentColor}
+            color={colors.accent}
           />
         </View>
 
@@ -104,7 +109,7 @@ const UtilityItem = ({
         <Ionicons
           name="chevron-forward"
           size={16}
-          color="#94A3B8"
+          color={colors.tertiaryText}
         />
       </View>
     </MenuOption>
@@ -112,13 +117,18 @@ const UtilityItem = ({
 };
 
 const ReaderMusicUtilitiesMenu = ({
-  accentColor,
   disabled = false,
   onOpen,
   onClose,
   onSelectAction,
 }: ReaderMusicUtilitiesMenuProps) => {
+  const { colors } = useAppTheme();
   const { width } = useWindowDimensions();
+
+  const styles = useMemo(
+      () => createStyles(colors),
+      [colors]
+    );
 
   const menuWidth = Math.min(
     340,
@@ -131,7 +141,7 @@ const ReaderMusicUtilitiesMenu = ({
       rendererProps={{
         placement: "bottom",
         anchorStyle: {
-          backgroundColor: "#FFFFFF",
+          backgroundColor: colors.elevated,
         },
       }}
 
@@ -156,7 +166,7 @@ const ReaderMusicUtilitiesMenu = ({
         <Ionicons
           name="musical-notes-outline"
           size={24}
-          color={accentColor}
+          color={colors.accent}
           accessibilityLabel="Music Utilities"
         />
       </MenuTrigger>
@@ -168,7 +178,7 @@ const ReaderMusicUtilitiesMenu = ({
           optionsContainer: {
             width: menuWidth,
             borderRadius: 14,
-            backgroundColor: "#FFFFFF",
+            backgroundColor: colors.elevated,
             elevation: 10,
           },
         }}
@@ -182,7 +192,7 @@ const ReaderMusicUtilitiesMenu = ({
             <Ionicons
               name="musical-notes-outline"
               size={22}
-              color={accentColor}
+              color={colors.accent}
             />
           </View>
 
@@ -193,7 +203,6 @@ const ReaderMusicUtilitiesMenu = ({
             label="Metronome"
             description="Tempo and time signature"
             action="metronome"
-            accentColor={accentColor}
           />
 
           <UtilityItem
@@ -201,7 +210,6 @@ const ReaderMusicUtilitiesMenu = ({
             label="Pitch & Keyboard"
             description="Virtual piano and pitch reference"
             action="pitch-keyboard"
-            accentColor={accentColor}
           />
 
           <UtilityItem
@@ -209,7 +217,6 @@ const ReaderMusicUtilitiesMenu = ({
             label="Audio Playback"
             description="Play associated audio tracks"
             action="audio-playback"
-            accentColor={accentColor}
           />
 
           <UtilityItem
@@ -217,7 +224,6 @@ const ReaderMusicUtilitiesMenu = ({
             label="Audio Recording"
             description="Record rehearsals and performances"
             action="audio-recording"
-            accentColor={accentColor}
           />
         </View>
       </MenuOptions>
@@ -225,7 +231,7 @@ const ReaderMusicUtilitiesMenu = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   trigger: {
     width: 44,
     height: 44,
@@ -248,12 +254,12 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 19,
     fontWeight: "700",
-    color: "#222",
+    color: colors.text,
   },
 
   divider: {
     height: 1,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.surfaceSecondary,
     marginBottom: 6,
   },
 
@@ -286,19 +292,19 @@ const styles = StyleSheet.create({
   itemLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#222",
+    color: colors.text,
   },
 
   description: {
     fontSize: 12,
     lineHeight: 16,
-    color: "#64748B",
+    color: colors.secondaryText,
     marginTop: 3,
   },
 
   comingSoon: {
     fontSize: 11,
-    color: "#64748B",
+    color: colors.secondaryText,
     fontStyle: "italic",
     marginTop: 4,
   },

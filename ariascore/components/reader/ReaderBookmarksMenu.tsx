@@ -26,12 +26,14 @@ import {
   renderers,
 } from "react-native-popup-menu";
 
+import { useAppTheme } from "../../utils/theme/useAppTheme";
+import { ThemeColors } from "../../utils/theme/types";
+
 import type { Bookmark } from "../../types";
 
 const { Popover } = renderers;
 
 interface ReaderBookmarksMenuProps {
-  accentColor: string;
   currentPage: number;
   minimumPage: number;
   maximumPage: number;
@@ -67,7 +69,6 @@ type FormState =
   | null;
 
 const ReaderBookmarksMenu = ({
-  accentColor,
   currentPage,
   minimumPage,
   maximumPage,
@@ -84,6 +85,13 @@ const ReaderBookmarksMenu = ({
 }: ReaderBookmarksMenuProps) => {
   const { width, height } =
     useWindowDimensions();
+
+  const { colors } = useAppTheme();
+
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
 
   const [query, setQuery] =
     useState("");
@@ -291,7 +299,7 @@ const ReaderBookmarksMenu = ({
       rendererProps={{
         placement: "bottom",
         anchorStyle: {
-          backgroundColor: "#FFFFFF",
+          backgroundColor: colors.elevated,
         },
       }}
       onOpen={handleOpen}
@@ -321,7 +329,7 @@ const ReaderBookmarksMenu = ({
               : "bookmarks-outline"
           }
           size={24}
-          color={accentColor}
+          color={colors.accent}
           accessibilityLabel="Bookmarks"
         />
       </MenuTrigger>
@@ -333,7 +341,7 @@ const ReaderBookmarksMenu = ({
           optionsContainer: {
             width: menuWidth,
             borderRadius: 14,
-            backgroundColor: "#FFFFFF",
+            backgroundColor: colors.elevated,
             elevation: 10,
           },
         }}
@@ -354,7 +362,7 @@ const ReaderBookmarksMenu = ({
                   <Ionicons
                     name="chevron-back"
                     size={23}
-                    color={accentColor}
+                    color={colors.accent}
                   />
                 </TouchableOpacity>
 
@@ -376,9 +384,11 @@ const ReaderBookmarksMenu = ({
               </Text>
 
               <TextInput
+                cursorColor={colors.accent}
+                selectionColor={colors.accent}
                 style={styles.formInput}
                 placeholder="Enter bookmark label"
-                placeholderTextColor="#999"
+                placeholderTextColor={colors.tertiaryText}
                 value={label}
                 onChangeText={(value) => {
                   setLabel(value);
@@ -414,7 +424,7 @@ const ReaderBookmarksMenu = ({
                     <Ionicons
                       name="trash-outline"
                       size={18}
-                      color="#DC2626"
+                      color={colors.danger}
                     />
 
                     <Text style={styles.deleteLabel}>
@@ -443,8 +453,7 @@ const ReaderBookmarksMenu = ({
                   style={[
                     styles.saveButton,
                     {
-                      backgroundColor:
-                        accentColor,
+                      backgroundColor: colors.accent,
                       opacity: saving ? 0.6 : 1,
                     },
                   ]}
@@ -452,7 +461,7 @@ const ReaderBookmarksMenu = ({
                   {saving ? (
                     <ActivityIndicator
                       size="small"
-                      color="#FFFFFF"
+                      color={colors.onAccent}
                     />
                   ) : (
                     <Text style={styles.saveLabel}>
@@ -488,7 +497,7 @@ const ReaderBookmarksMenu = ({
                     <Ionicons
                       name="add"
                       size={25}
-                      color={accentColor}
+                      color={colors.accent}
                     />
                   </TouchableOpacity>
                 </View>
@@ -500,13 +509,15 @@ const ReaderBookmarksMenu = ({
                 <Ionicons
                   name="search-outline"
                   size={18}
-                  color="#888"
+                  color={colors.secondaryText}
                 />
 
                 <TextInput
+                  cursorColor={colors.accent}
+                  selectionColor={colors.accent}
                   style={styles.searchInput}
                   placeholder="Search bookmarks..."
-                  placeholderTextColor="#999"
+                  placeholderTextColor={colors.tertiaryText}
                   value={query}
                   onChangeText={setQuery}
                   autoCorrect={false}
@@ -519,7 +530,7 @@ const ReaderBookmarksMenu = ({
                     <Ionicons
                       name="close-circle"
                       size={18}
-                      color="#888"
+                      color={colors.secondaryText}
                     />
                   </TouchableOpacity>
                 )}
@@ -542,7 +553,7 @@ const ReaderBookmarksMenu = ({
                     <Ionicons
                       name="bookmark-outline"
                       size={32}
-                      color="#CBD5E1"
+                      color={colors.tertiaryText}
                     />
 
                     <Text style={styles.emptyText}>
@@ -562,7 +573,7 @@ const ReaderBookmarksMenu = ({
                         styles.bookmarkRow,
                         isCurrent && {
                           backgroundColor:
-                            `${accentColor}0D`,
+                            colors.selectedBackground,
                         },
                       ]}
                     >
@@ -579,7 +590,7 @@ const ReaderBookmarksMenu = ({
                           <Ionicons
                             name="bookmark"
                             size={23}
-                            color="#D97706"
+                            color={colors.bookmark}
                           />
 
                           <View style={styles.details}>
@@ -587,7 +598,7 @@ const ReaderBookmarksMenu = ({
                               style={[
                                 styles.bookmarkTitle,
                                 isCurrent && {
-                                  color: accentColor,
+                                  color: colors.accent,
                                 },
                               ]}
                               numberOfLines={2}
@@ -616,7 +627,7 @@ const ReaderBookmarksMenu = ({
                         <Ionicons
                           name="ellipsis-horizontal"
                           size={21}
-                          color="#64748B"
+                          color={colors.secondaryText}
                         />
                       </TouchableOpacity>
                     </View>
@@ -635,13 +646,13 @@ const ReaderBookmarksMenu = ({
                 <Ionicons
                   name="bookmark-outline"
                   size={21}
-                  color={accentColor}
+                  color={colors.accent}
                 />
 
                 <Text
                   style={[
                     styles.footerLabel,
-                    { color: accentColor },
+                    { color: colors.accent },
                   ]}
                 >
                   Bookmark page {currentPage}
@@ -650,7 +661,7 @@ const ReaderBookmarksMenu = ({
                 <Ionicons
                   name="add"
                   size={20}
-                  color={accentColor}
+                  color={colors.accent}
                 />
               </TouchableOpacity>
             </>
@@ -661,7 +672,7 @@ const ReaderBookmarksMenu = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   trigger: {
     width: 44,
     height: 44,
@@ -684,7 +695,7 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 19,
     fontWeight: "700",
-    color: "#222",
+    color: colors.text,
   },
 
   headerActions: {
@@ -695,14 +706,14 @@ const styles = StyleSheet.create({
 
   count: {
     fontSize: 12,
-    color: "#888",
+    color: colors.secondaryText,
   },
 
   addButton: {
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.surfaceSecondary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -717,7 +728,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.surface,
     borderRadius: 8,
     paddingHorizontal: 10,
     gap: 8,
@@ -727,7 +738,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     fontSize: 14,
-    color: "#222",
+    color: colors.text,
   },
 
   bookmarkRow: {
@@ -753,12 +764,12 @@ const styles = StyleSheet.create({
   bookmarkTitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#222",
+    color: colors.text,
   },
 
   subtitle: {
     fontSize: 12,
-    color: "#888",
+    color: colors.secondaryText,
     marginTop: 3,
   },
 
@@ -777,13 +788,13 @@ const styles = StyleSheet.create({
 
   emptyText: {
     fontSize: 13,
-    color: "#888",
+    color: colors.secondaryText,
     textAlign: "center",
   },
 
   divider: {
     height: 1,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.surfaceSecondary,
   },
 
   footerButton: {
@@ -803,18 +814,18 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#475569",
+    color: colors.secondaryText,
     marginTop: 4,
   },
 
   formInput: {
     minHeight: 44,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.surface,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: "#222",
+    color: colors.text,
   },
 
   formActions: {
@@ -833,7 +844,7 @@ const styles = StyleSheet.create({
 
   deleteLabel: {
     fontSize: 13,
-    color: "#DC2626",
+    color: colors.danger,
     fontWeight: "500",
   },
 
@@ -844,7 +855,7 @@ const styles = StyleSheet.create({
 
   cancelLabel: {
     fontSize: 14,
-    color: "#64748B",
+    color: colors.secondaryText,
   },
 
   saveButton: {
@@ -859,12 +870,12 @@ const styles = StyleSheet.create({
   saveLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: colors.onAccent,
   },
 
   error: {
     fontSize: 12,
-    color: "#DC2626",
+    color: colors.danger,
   },
 });
 

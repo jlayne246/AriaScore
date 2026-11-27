@@ -1,3 +1,4 @@
+import { useAppTheme } from "../utils/theme/useAppTheme";
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -46,7 +47,6 @@ type Props = {
   displayPageCount?: number | null;
 };
 
-const ACCENT_COLOR = "#2563EB";
 
 function MusicMenuItem({
   icon,
@@ -59,6 +59,7 @@ function MusicMenuItem({
   onPress: () => void;
   destructive?: boolean;
 }) {
+  const { colors } = useAppTheme();
   return (
     <MenuOption onSelect={onPress}>
       <View
@@ -72,7 +73,7 @@ function MusicMenuItem({
         <Ionicons
           name={icon}
           size={20}
-          color={destructive ? "#DC2626" : "#374151"}
+          color={destructive ? colors.danger : colors.text}
           style={{ width: 28 }}
         />
 
@@ -80,7 +81,7 @@ function MusicMenuItem({
           style={{
             marginLeft: 10,
             fontSize: 16,
-            color: destructive ? "#DC2626" : "#111827",
+            color: destructive ? colors.danger : colors.text,
           }}
         >
           {label}
@@ -106,6 +107,7 @@ const MusicItemCard: React.FC<Props> = ({
   displaySubtitle,
   displayPageCount,
 }) => {
+  const { colors } = useAppTheme();
   const navigation =
     useNavigation<NavigationProp>();
 
@@ -184,13 +186,13 @@ const MusicItemCard: React.FC<Props> = ({
     <TouchableOpacity
       style={{
         flexDirection: "row",
-        backgroundColor: "white",
+        backgroundColor: colors.background,
         borderRadius: 14,
         // padding: 12,
         marginBottom: 12,
         alignItems: "center",
         borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+        borderBottomColor: colors.separator,
         paddingVertical: 12,
       }}
       onPress={onOpen}
@@ -203,7 +205,7 @@ const MusicItemCard: React.FC<Props> = ({
             width: 82,
             height: 108,
             resizeMode: "contain",
-            backgroundColor: "#f3f4f6",
+            backgroundColor: colors.surfaceSecondary,
             marginRight: 14,
           }}
         />
@@ -212,30 +214,30 @@ const MusicItemCard: React.FC<Props> = ({
           style={{
             width: 70,
             height: 92,
-            backgroundColor: "#f3f4f6",
+            backgroundColor: colors.surfaceSecondary,
             marginRight: 14,
             borderWidth: 1,
-            borderColor: "#e5e7eb",
+            borderColor: colors.border,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="document-outline" size={26} color="#9ca3af" />
+          <Ionicons name="document-outline" size={26} color={colors.tertiaryText} />
         </View>
       )}
 
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 17, fontWeight: "700", color: "#1f2937" }}>
+        <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>
           {resolvedTitle}
         </Text>
 
         {!!resolvedSubtitle && (
-          <Text style={{ fontSize: 14, color: "#666", marginTop: 4 }}>
+          <Text style={{ fontSize: 14, color: colors.secondaryText, marginTop: 4 }}>
             {resolvedSubtitle}
           </Text>
         )}
 
-        <Text style={{ fontSize: 13, color: "#888", marginTop: 4 }}>
+        <Text style={{ fontSize: 13, color: colors.secondaryText, marginTop: 4 }}>
           {detailParts.join(" • ")}
         </Text>
 
@@ -249,7 +251,7 @@ const MusicItemCard: React.FC<Props> = ({
                     <View
                         key={item.metadata?.genre}
                         style={{
-                        backgroundColor: "#eaffe8",
+                        backgroundColor: colors.genreBackground,
                         borderRadius: 999,
                         paddingHorizontal: 8,
                         paddingVertical: 3,
@@ -257,7 +259,7 @@ const MusicItemCard: React.FC<Props> = ({
                         marginBottom: 4,
                         }}
                     >
-                        <Text style={{ color: "#0b590e", fontSize: 12 }}>{item.metadata?.genre}</Text>
+                        <Text style={{ color: colors.genreText, fontSize: 12 }}>{item.metadata?.genre}</Text>
                     </View>
                 </View>
                 ) : null}
@@ -268,7 +270,7 @@ const MusicItemCard: React.FC<Props> = ({
                     <View
                         key={label}
                         style={{
-                        backgroundColor: "#F3E8FF",
+                        backgroundColor: colors.labelBackground,
                         borderRadius: 999,
                         paddingHorizontal: 8,
                         paddingVertical: 3,
@@ -276,7 +278,7 @@ const MusicItemCard: React.FC<Props> = ({
                         marginBottom: 4,
                         }}
                     >
-                        <Text style={{ color: "#7E22CE", fontSize: 12 }}>{label}</Text>
+                        <Text style={{ color: colors.labelText, fontSize: 12 }}>{label}</Text>
                     </View>
                     ))}
                 </View>
@@ -287,7 +289,7 @@ const MusicItemCard: React.FC<Props> = ({
 
       <Menu>
         <MenuTrigger style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
-          <Ionicons name="ellipsis-vertical" size={22} color="#777" />
+          <Ionicons name="ellipsis-vertical" size={22} color={colors.secondaryText} />
         </MenuTrigger>
 
         <MenuOptions
@@ -296,7 +298,7 @@ const MusicItemCard: React.FC<Props> = ({
               width: 220,
               borderRadius: 14,
               paddingVertical: 6,
-              backgroundColor: "white",
+              backgroundColor: colors.elevated,
               elevation: 10,
             },
           }}

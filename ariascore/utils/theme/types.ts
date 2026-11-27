@@ -34,11 +34,24 @@ export interface ThemeColors {
 
   // Semantic colours
   success: string;
+  onSuccess: string;
   warning: string;
   danger: string;
   favourite: string;
+  genreBackground: string;
+  genreText: string;
+  labelBackground: string;
+  labelText: string;
+  dangerBackground: string;
+  dangerBorder: string;
+  onDanger: string;
+  bookmark: string;
+  bookmarkActive: string;
+  bookmarkOnPaper: string;
+  onWarning: string;
 
   // Interactive controls
+  thumbInactive: string;
   selectedBackground: string;
   pressedBackground: string;
   trackInactive: string;
@@ -46,6 +59,9 @@ export interface ThemeColors {
 
   // Overlays
   overlay: string;
+  readerOverlay: string;
+  toastBackground: string;
+  toastText: string;
 
   // Reader
   readerBackground: string;

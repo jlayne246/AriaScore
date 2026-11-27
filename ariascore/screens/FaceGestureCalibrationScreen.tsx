@@ -1,3 +1,5 @@
+import type { ThemeColors } from "../utils/theme/types";
+import { useAppTheme } from "../utils/theme/useAppTheme";
 import React, {
   useCallback,
   useEffect,
@@ -41,8 +43,6 @@ import {
 } from "../src/services/face_gesture";
 
 import {
-  ACCENT_COLOR,
-  COLORS,
   RootStackParamList,
 } from "../types";
 
@@ -105,6 +105,8 @@ const STEPS: Record<
 };
 
 export default function FaceGestureCalibrationScreen() {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation =
     useNavigation<NavigationProp>();
 
@@ -599,6 +601,7 @@ export default function FaceGestureCalibrationScreen() {
           }
         >
           <ActivityIndicator
+            color={colors.accent}
             size="large"
           />
 
@@ -639,7 +642,7 @@ export default function FaceGestureCalibrationScreen() {
               name="happy-outline"
               size={30}
               color={
-                ACCENT_COLOR
+                colors.accent
               }
             />
           </View>
@@ -672,7 +675,7 @@ export default function FaceGestureCalibrationScreen() {
             name="information-circle-outline"
             size={22}
             color={
-              ACCENT_COLOR
+              colors.accent
             }
           />
 
@@ -699,7 +702,7 @@ export default function FaceGestureCalibrationScreen() {
               name="camera-outline"
               size={42}
               color={
-                COLORS.secondaryText
+                colors.secondaryText
               }
             />
 
@@ -835,7 +838,7 @@ export default function FaceGestureCalibrationScreen() {
                       }
                       size={24}
                       color={
-                        ACCENT_COLOR
+                        colors.accent
                       }
                     />
                   </View>
@@ -948,7 +951,7 @@ export default function FaceGestureCalibrationScreen() {
                   <Ionicons
                     name="checkmark"
                     size={34}
-                    color="#FFFFFF"
+                    color={colors.onSuccess}
                   />
                 </View>
 
@@ -1011,7 +1014,7 @@ export default function FaceGestureCalibrationScreen() {
                           }
                           size={26}
                           color={
-                            ACCENT_COLOR
+                            colors.accent
                           }
                         />
 
@@ -1086,7 +1089,7 @@ export default function FaceGestureCalibrationScreen() {
             <Ionicons
               name="alert-circle-outline"
               size={22}
-              color="#B91C1C"
+              color={colors.danger}
             />
 
             <Text
@@ -1116,6 +1119,8 @@ function PrimaryButton({
   disabled = false,
   loading = false,
 }: ButtonProps) {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <TouchableOpacity
       activeOpacity={
@@ -1136,13 +1141,11 @@ function PrimaryButton({
     >
       {loading ? (
         <ActivityIndicator
-          color="#FFFFFF"
+          color={colors.onAccent}
         />
       ) : (
         <Text
-          style={
-            styles.primaryButtonText
-          }
+          style={styles.primaryButtonText}
         >
           {title}
         </Text>
@@ -1156,6 +1159,8 @@ function SecondaryButton({
   onPress,
   disabled = false,
 }: ButtonProps) {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <TouchableOpacity
       activeOpacity={
@@ -1175,9 +1180,7 @@ function SecondaryButton({
       ]}
     >
       <Text
-        style={
-          styles.secondaryButtonText
-        }
+        style={styles.secondaryButtonText}
       >
         {title}
       </Text>
@@ -1185,12 +1188,12 @@ function SecondaryButton({
   );
 }
 
-const styles =
+const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
       backgroundColor:
-        COLORS.background,
+        colors.background,
     },
 
     container: {
@@ -1208,7 +1211,7 @@ const styles =
 
     loadingText: {
       color:
-        COLORS.secondaryText,
+        colors.secondaryText,
       fontSize: 15,
     },
 
@@ -1222,7 +1225,7 @@ const styles =
       height: 58,
       borderRadius: 29,
       backgroundColor:
-        COLORS.accentVeryLight,
+        colors.selectedBackground,
       alignItems: "center",
       justifyContent: "center",
       marginBottom: 14,
@@ -1230,7 +1233,7 @@ const styles =
 
     title: {
       color:
-        COLORS.text,
+        colors.text,
       fontSize: 26,
       fontWeight: "700",
       textAlign: "center",
@@ -1239,7 +1242,7 @@ const styles =
     subtitle: {
       marginTop: 7,
       color:
-        COLORS.secondaryText,
+        colors.secondaryText,
       fontSize: 16,
       lineHeight: 22,
       textAlign: "center",
@@ -1253,14 +1256,14 @@ const styles =
       padding: 14,
       borderRadius: 12,
       backgroundColor:
-        COLORS.accentVeryLight,
+        colors.selectedBackground,
       marginBottom: 18,
     },
 
     positionText: {
       flex: 1,
       color:
-        COLORS.text,
+        colors.text,
       fontSize: 14,
       lineHeight: 20,
     },
@@ -1271,8 +1274,8 @@ const styles =
       borderRadius: 16,
       borderWidth: 1,
       borderColor:
-        COLORS.border,
-      backgroundColor: "#FFFFFF",
+        colors.border,
+      backgroundColor: colors.elevated,
       gap: 12,
     },
 
@@ -1280,13 +1283,13 @@ const styles =
       fontSize: 18,
       fontWeight: "700",
       color:
-        COLORS.text,
+        colors.text,
     },
 
     permissionText: {
       textAlign: "center",
       color:
-        COLORS.secondaryText,
+        colors.secondaryText,
       lineHeight: 21,
       maxWidth: 420,
     },
@@ -1337,17 +1340,17 @@ const styles =
     calibrationCard: {
       borderWidth: 1,
       borderColor:
-        COLORS.border,
+        colors.border,
       borderRadius: 16,
       padding: 18,
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.elevated,
     },
 
     stepCounter: {
       fontSize: 12,
       fontWeight: "700",
       color:
-        ACCENT_COLOR,
+        colors.accent,
       textTransform: "uppercase",
       marginBottom: 14,
     },
@@ -1363,14 +1366,14 @@ const styles =
       height: 44,
       borderRadius: 22,
       backgroundColor:
-        COLORS.accentVeryLight,
+        colors.selectedBackground,
       alignItems: "center",
       justifyContent: "center",
     },
 
     stepTitle: {
       color:
-        COLORS.text,
+        colors.text,
       fontSize: 20,
       fontWeight: "700",
     },
@@ -1378,7 +1381,7 @@ const styles =
     stepDescription: {
       marginTop: 4,
       color:
-        COLORS.secondaryText,
+        colors.secondaryText,
       lineHeight: 21,
     },
 
@@ -1388,12 +1391,12 @@ const styles =
       padding: 14,
       borderRadius: 12,
       backgroundColor:
-        COLORS.pageBackground,
+        colors.pageBackground,
     },
 
     instructionLabel: {
       color:
-        COLORS.secondaryText,
+        colors.secondaryText,
       fontSize: 11,
       fontWeight: "700",
       letterSpacing: 0.6,
@@ -1402,7 +1405,7 @@ const styles =
 
     instructionText: {
       color:
-        COLORS.text,
+        colors.text,
       fontSize: 16,
       lineHeight: 22,
       fontWeight: "600",
@@ -1411,7 +1414,7 @@ const styles =
     primaryButton: {
       minHeight: 50,
       backgroundColor:
-        ACCENT_COLOR,
+        colors.accent,
       borderRadius: 12,
       paddingHorizontal: 18,
       alignItems: "center",
@@ -1420,18 +1423,19 @@ const styles =
     },
 
     primaryButtonText: {
-      color: "#FFFFFF",
+      color: colors.onAccent,
       fontSize: 16,
       fontWeight: "700",
       textAlign: "center",
     },
 
     secondaryButton: {
+      backgroundColor: colors.surfaceSecondary,
       minHeight: 48,
       borderRadius: 12,
       borderWidth: 1,
       borderColor:
-        COLORS.border,
+        colors.border,
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: 18,
@@ -1440,7 +1444,7 @@ const styles =
 
     secondaryButtonText: {
       color:
-        COLORS.text,
+        colors.text,
       fontSize: 15,
       fontWeight: "600",
     },
@@ -1452,9 +1456,9 @@ const styles =
     successCard: {
       borderWidth: 1,
       borderColor:
-        COLORS.border,
+        colors.border,
       borderRadius: 16,
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.elevated,
       padding: 20,
       alignItems: "center",
     },
@@ -1465,7 +1469,7 @@ const styles =
       borderRadius: 31,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "#16A34A",
+      backgroundColor: colors.success,
       marginBottom: 14,
     },
 
@@ -1473,14 +1477,14 @@ const styles =
       fontSize: 22,
       fontWeight: "700",
       color:
-        COLORS.text,
+        colors.text,
       textAlign: "center",
     },
 
     successText: {
       marginTop: 7,
       color:
-        COLORS.secondaryText,
+        colors.secondaryText,
       fontSize: 15,
       lineHeight: 21,
       textAlign: "center",
@@ -1494,19 +1498,19 @@ const styles =
       padding: 16,
       borderRadius: 12,
       backgroundColor:
-        COLORS.pageBackground,
+        colors.pageBackground,
     },
 
     testTitle: {
       color:
-        COLORS.text,
+        colors.text,
       fontWeight: "700",
       fontSize: 16,
     },
 
     testDescription: {
       color:
-        COLORS.secondaryText,
+        colors.secondaryText,
       fontSize: 14,
       marginTop: 4,
     },
@@ -1515,10 +1519,10 @@ const styles =
       minHeight: 58,
       marginTop: 12,
       borderRadius: 10,
-      backgroundColor: "#FFFFFF",
+      backgroundColor: colors.elevated,
       borderWidth: 1,
       borderColor:
-        COLORS.border,
+        colors.border,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
@@ -1528,14 +1532,14 @@ const styles =
 
     testResultText: {
       color:
-        COLORS.text,
+        colors.text,
       fontSize: 17,
       fontWeight: "700",
     },
 
     testWaitingText: {
       color:
-        COLORS.secondaryText,
+        colors.secondaryText,
       fontSize: 15,
     },
 
@@ -1546,7 +1550,7 @@ const styles =
     },
 
     resetButtonText: {
-      color: "#B91C1C",
+      color: colors.danger,
       fontSize: 14,
       fontWeight: "600",
     },
@@ -1558,14 +1562,14 @@ const styles =
       marginTop: 16,
       padding: 14,
       borderRadius: 12,
-      backgroundColor: "#FEF2F2",
+      backgroundColor: colors.dangerBackground,
       borderWidth: 1,
-      borderColor: "#FECACA",
+      borderColor: colors.dangerBorder,
     },
 
     errorText: {
       flex: 1,
-      color: "#991B1B",
+      color: colors.danger,
       fontSize: 14,
       lineHeight: 20,
     },

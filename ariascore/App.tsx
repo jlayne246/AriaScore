@@ -46,7 +46,6 @@ import ThemeProvider from "./utils/theme/ThemeProvider";
 import { useAppTheme } from "./utils/theme/useAppTheme";
 import * as SystemUI from "expo-system-ui";
 
-// @ts-expect-error CSS side-effect import is provided by the bundler at build time.
 import "./global.css";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -209,6 +208,8 @@ function AppContent(){
     }, [dbReady]);
 
     useEffect(() => {
+      if (!themeReady) return;
+
       void SystemUI
         .setBackgroundColorAsync(colors.background)
         .catch(error => {
@@ -217,19 +218,11 @@ function AppContent(){
             error
           );
         });
-    }, [colors.background]);
+    }, [colors.background, themeReady]);
 
    if (!dbReady || !themeReady) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          width: "100%",
-          backgroundColor: colors.background,
-        }}
-      >
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
         <StatusBar
           style={isDark ? "light" : "dark"}
         />
@@ -257,7 +250,6 @@ function AppContent(){
               style={isDark ? "light" : "dark"}
             />
 
-          {/* <View className="flex-1 bg-black"> */}
             <MenuProvider>
               <NavigationContainer ref={navigationRef} theme={navigationTheme}>
                 <Stack.Navigator
@@ -267,7 +259,7 @@ function AppContent(){
                       backgroundColor: colors.background,
                     },
                     headerStyle: {
-                      backgroundColor: colors.elevated,
+                      backgroundColor: colors.background,
                     },
                     headerTintColor: colors.accent,
                     headerTitleStyle: {
@@ -351,14 +343,11 @@ function AppContent(){
     );
   }
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#fff',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-  });
-
-
-
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+  },
+});

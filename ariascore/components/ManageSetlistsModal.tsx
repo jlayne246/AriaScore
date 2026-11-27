@@ -1,3 +1,4 @@
+import { useAppTheme } from "../utils/theme/useAppTheme";
 import React, {
   useCallback,
   useEffect,
@@ -63,7 +64,6 @@ type ExcerptDraft = {
   endPage: string;
 };
 
-const ACCENT_COLOR = "#2563EB";
 
 const getEntryLabel = (
   entry: SetlistEntry
@@ -103,6 +103,7 @@ const ManageSetlistsModal:
     onClose,
     onSaved,
   }) => {
+  const { colors } = useAppTheme();
     const navigation =
       useNavigation<NavigationProp>();
 
@@ -529,7 +530,7 @@ const ManageSetlistsModal:
             marginLeft: 12,
             paddingHorizontal: 12,
             paddingVertical: 10,
-            backgroundColor: "#F9FAFB",
+            backgroundColor: colors.surface,
             borderRadius: 10,
           }}
         >
@@ -540,7 +541,7 @@ const ManageSetlistsModal:
                 : "document-outline"
             }
             size={20}
-            color={ACCENT_COLOR}
+            color={colors.accent}
           />
 
           <View
@@ -553,7 +554,7 @@ const ManageSetlistsModal:
               style={{
                 fontSize: 14,
                 fontWeight: "600",
-                color: "#111827",
+                color: colors.text,
               }}
             >
               {entry.entry_title?.trim() ||
@@ -563,7 +564,7 @@ const ManageSetlistsModal:
             <Text
               style={{
                 fontSize: 12,
-                color: "#6B7280",
+                color: colors.secondaryText,
                 marginTop: 2,
               }}
             >
@@ -586,7 +587,7 @@ const ManageSetlistsModal:
               <Ionicons
                 name="create-outline"
                 size={19}
-                color="#6B7280"
+                color={colors.secondaryText}
               />
             </TouchableOpacity>
           )}
@@ -605,7 +606,7 @@ const ManageSetlistsModal:
             <Ionicons
               name="trash-outline"
               size={19}
-              color="#DC2626"
+              color={colors.danger}
             />
           </TouchableOpacity>
         </View>
@@ -623,7 +624,7 @@ const ManageSetlistsModal:
           style={{
             flex: 1,
             backgroundColor:
-              "rgba(0,0,0,0.35)",
+              colors.overlay,
             alignItems: "center",
             justifyContent: "center",
             padding: 24,
@@ -634,7 +635,7 @@ const ManageSetlistsModal:
               width: "72%",
               maxWidth: 640,
               maxHeight: "82%",
-              backgroundColor: "white",
+              backgroundColor: colors.elevated,
               borderRadius: 18,
               padding: 20,
             }}
@@ -654,7 +655,7 @@ const ManageSetlistsModal:
                   style={{
                     fontSize: 22,
                     fontWeight: "700",
-                    color: "#111827",
+                    color: colors.text,
                   }}
                 >
                   Manage Setlists
@@ -664,7 +665,7 @@ const ManageSetlistsModal:
                   style={{
                     marginTop: 3,
                     fontSize: 13,
-                    color: "#6B7280",
+                    color: colors.secondaryText,
                   }}
                 >
                   Add this score as a full
@@ -679,19 +680,22 @@ const ManageSetlistsModal:
                 <Ionicons
                   name="close"
                   size={26}
-                  color={ACCENT_COLOR}
+                  color={colors.accent}
                 />
               </TouchableOpacity>
             </View>
 
             {/* Search */}
             <TextInput
+              cursorColor={colors.accent}
+              selectionColor={colors.accent}
+              placeholderTextColor={colors.tertiaryText}
               placeholder="Search setlists..."
               value={searchText}
               onChangeText={setSearchText}
-              style={{
+              style={{ color: colors.text, backgroundColor: colors.surface,
                 borderWidth: 1,
-                borderColor: "#D1D5DB",
+                borderColor: colors.border,
                 borderRadius: 10,
                 paddingHorizontal: 12,
                 paddingVertical: 10,
@@ -703,7 +707,7 @@ const ManageSetlistsModal:
             {loading ? (
               <Text
                 style={{
-                  color: "#6B7280",
+                  color: colors.secondaryText,
                   paddingVertical: 16,
                 }}
               >
@@ -722,7 +726,7 @@ const ManageSetlistsModal:
                 ListEmptyComponent={
                   <Text
                     style={{
-                      color: "#6B7280",
+                      color: colors.secondaryText,
                       paddingVertical: 18,
                       textAlign: "center",
                     }}
@@ -744,7 +748,7 @@ const ManageSetlistsModal:
                         paddingVertical: 14,
                         borderBottomWidth: 1,
                         borderBottomColor:
-                          "#E5E7EB",
+                          colors.separator,
                       }}
                     >
                       {/* Setlist heading */}
@@ -772,7 +776,7 @@ const ManageSetlistsModal:
                               fontWeight:
                                 "700",
                               color:
-                                "#111827",
+                                colors.text,
                             }}
                           >
                             {item.name}
@@ -782,7 +786,7 @@ const ManageSetlistsModal:
                             style={{
                               fontSize: 13,
                               color:
-                                "#6B7280",
+                                colors.secondaryText,
                               marginTop: 2,
                             }}
                           >
@@ -810,7 +814,7 @@ const ManageSetlistsModal:
                         <Ionicons
                           name="chevron-forward"
                           size={20}
-                          color="#9CA3AF"
+                          color={colors.tertiaryText}
                         />
                       </TouchableOpacity>
 
@@ -848,15 +852,15 @@ const ManageSetlistsModal:
                             name="add"
                             size={18}
                             color={
-                              ACCENT_COLOR
+                              colors.accent
                             }
                           />
 
                           <Text
                             style={{
                               color:
-                                ACCENT_COLOR,
-                              fontWeight:
+                                colors.accent,
+                                fontWeight:
                                 "600",
                               marginLeft: 3,
                             }}
@@ -887,15 +891,15 @@ const ManageSetlistsModal:
                             name="copy-outline"
                             size={17}
                             color={
-                              ACCENT_COLOR
+                              colors.accent
                             }
                           />
 
                           <Text
                             style={{
                               color:
-                                ACCENT_COLOR,
-                              fontWeight:
+                                colors.accent,
+                                fontWeight:
                                 "600",
                               marginLeft: 5,
                             }}
@@ -917,16 +921,16 @@ const ManageSetlistsModal:
                   marginTop: 16,
                   padding: 14,
                   borderWidth: 1,
-                  borderColor: "#D1D5DB",
+                  borderColor: colors.border,
                   borderRadius: 12,
-                  backgroundColor: "#F9FAFB",
+                  backgroundColor: colors.surface,
                 }}
               >
                 <Text
                   style={{
                     fontSize: 16,
                     fontWeight: "700",
-                    color: "#111827",
+                    color: colors.text,
                     marginBottom: 4,
                   }}
                 >
@@ -938,7 +942,7 @@ const ManageSetlistsModal:
                 <Text
                   style={{
                     fontSize: 13,
-                    color: "#6B7280",
+                    color: colors.secondaryText,
                     marginBottom: 12,
                   }}
                 >
@@ -955,7 +959,7 @@ const ManageSetlistsModal:
                   <Text
                     style={{
                       fontSize: 12,
-                      color: "#6B7280",
+                      color: colors.secondaryText,
                       marginBottom: 4,
                     }}
                   >
@@ -963,6 +967,9 @@ const ManageSetlistsModal:
                   </Text>
 
                   <TextInput
+                    cursorColor={colors.accent}
+                    selectionColor={colors.accent}
+                    placeholderTextColor={colors.tertiaryText}
                     value={excerptEditor.entryTitle}
                     onChangeText={(value) =>
                       setExcerptEditor((previous) =>
@@ -975,13 +982,13 @@ const ManageSetlistsModal:
                       )
                     }
                     placeholder="e.g. Kyrie"
-                    style={{
+                    style={{ color: colors.text,
                       borderWidth: 1,
-                      borderColor: "#D1D5DB",
+                      borderColor: colors.border,
                       borderRadius: 8,
                       paddingHorizontal: 10,
                       paddingVertical: 9,
-                      backgroundColor: "white",
+                      backgroundColor: colors.surface,
                       fontSize: 15,
                     }}
                   />
@@ -1002,7 +1009,7 @@ const ManageSetlistsModal:
                     <Text
                       style={{
                         fontSize: 12,
-                        color: "#6B7280",
+                        color: colors.secondaryText,
                         marginBottom: 4,
                       }}
                     >
@@ -1010,6 +1017,9 @@ const ManageSetlistsModal:
                     </Text>
 
                     <TextInput
+                      cursorColor={colors.accent}
+                      selectionColor={colors.accent}
+                      placeholderTextColor={colors.tertiaryText}
                       keyboardType="number-pad"
                       value={excerptEditor.startPage}
                       onChangeText={(value) =>
@@ -1023,13 +1033,13 @@ const ManageSetlistsModal:
                         )
                       }
                       placeholder="1"
-                      style={{
+                      style={{ color: colors.text,
                         borderWidth: 1,
-                        borderColor: "#D1D5DB",
+                        borderColor: colors.border,
                         borderRadius: 8,
                         paddingHorizontal: 10,
                         paddingVertical: 9,
-                        backgroundColor: "white",
+                        backgroundColor: colors.surface,
                       }}
                     />
                   </View>
@@ -1042,7 +1052,7 @@ const ManageSetlistsModal:
                     <Text
                       style={{
                         fontSize: 12,
-                        color: "#6B7280",
+                        color: colors.secondaryText,
                         marginBottom: 4,
                       }}
                     >
@@ -1050,6 +1060,9 @@ const ManageSetlistsModal:
                     </Text>
 
                     <TextInput
+                      cursorColor={colors.accent}
+                      selectionColor={colors.accent}
+                      placeholderTextColor={colors.tertiaryText}
                       keyboardType="number-pad"
                       editable={!busy}
                       value={
@@ -1067,13 +1080,13 @@ const ManageSetlistsModal:
                         )
                       }
                       placeholder="Same as start"
-                      style={{
+                      style={{ color: colors.text,
                         borderWidth: 1,
-                        borderColor: "#D1D5DB",
+                        borderColor: colors.border,
                         borderRadius: 8,
                         paddingHorizontal: 10,
                         paddingVertical: 9,
-                        backgroundColor: "white",
+                        backgroundColor: colors.surface,
                       }}
                     />
 
@@ -1081,7 +1094,7 @@ const ManageSetlistsModal:
                       style={{
                         marginTop: 4,
                         fontSize: 11,
-                        color: "#9CA3AF",
+                        color: colors.tertiaryText,
                       }}
                     >
                       Leave blank for a single-page
@@ -1107,7 +1120,7 @@ const ManageSetlistsModal:
                   >
                     <Text
                       style={{
-                        color: "#6B7280",
+                        color: colors.secondaryText,
                         fontSize: 15,
                       }}
                     >
@@ -1123,7 +1136,7 @@ const ManageSetlistsModal:
                   >
                     <Text
                       style={{
-                        color: ACCENT_COLOR,
+                        color: colors.accent,
                         fontWeight: "700",
                         fontSize: 15,
                         opacity: busy ? 0.6 : 1,
@@ -1147,20 +1160,23 @@ const ManageSetlistsModal:
                   marginTop: 16,
                   padding: 12,
                   borderWidth: 1,
-                  borderColor: "#D1D5DB",
+                  borderColor: colors.border,
                   borderRadius: 10,
                 }}
               >
                 <TextInput
+                  cursorColor={colors.accent}
+                  selectionColor={colors.accent}
+                  placeholderTextColor={colors.tertiaryText}
                   placeholder="New setlist name..."
                   value={newSetlistName}
                   onChangeText={
                     setNewSetlistName
                   }
                   autoFocus
-                  style={{
+                  style={{ color: colors.text, backgroundColor: colors.surface,
                     borderWidth: 1,
-                    borderColor: "#D1D5DB",
+                    borderColor: colors.border,
                     borderRadius: 10,
                     paddingHorizontal: 12,
                     paddingVertical: 10,
@@ -1190,7 +1206,7 @@ const ManageSetlistsModal:
                   >
                     <Text
                       style={{
-                        color: "#6B7280",
+                        color: colors.secondaryText,
                         fontWeight: "600",
                       }}
                     >
@@ -1207,8 +1223,8 @@ const ManageSetlistsModal:
                     <Text
                       style={{
                         color:
-                          ACCENT_COLOR,
-                        fontWeight: "700",
+                          colors.accent,
+                          fontWeight: "700",
                       }}
                     >
                       Create
@@ -1231,13 +1247,13 @@ const ManageSetlistsModal:
                 <Ionicons
                   name="add"
                   size={22}
-                  color={ACCENT_COLOR}
+                  color={colors.accent}
                 />
 
                 <Text
                   style={{
                     marginLeft: 6,
-                    color: ACCENT_COLOR,
+                    color: colors.accent,
                     fontWeight: "700",
                   }}
                 >
@@ -1262,8 +1278,8 @@ const ManageSetlistsModal:
                 <Text
                   style={{
                     color:
-                      ACCENT_COLOR,
-                    fontWeight: "700",
+                      colors.accent,
+                      fontWeight: "700",
                     fontSize: 16,
                   }}
                 >

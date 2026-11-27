@@ -1,53 +1,66 @@
-import React from "react";
-import { View, StyleSheet } from "react-native";
+import React, { useMemo } from "react";
+import { Platform, View, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ReaderPageSlider from "./ReaderPageSlider";
 import type { ReaderPageSliderProps } from "./ReaderPageSlider";
 
-interface ReaderBottomBarProps
-  extends ReaderPageSliderProps {
-  bottomInset: number;
-}
+import { useAppTheme } from "../../utils/theme/useAppTheme";
+import { ThemeColors } from "../../utils/theme/types";
 
-const ReaderBottomBar = ({
-  bottomInset,
-  ...sliderProps
-}: ReaderBottomBarProps) => {
+const BAR_MIN_HEIGHT = 64;
+const BAR_BOTTOM_PADDING = 8;
+
+const ReaderBottomBar = (sliderProps: ReaderPageSliderProps) => {
+  const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const scoreUsesSafeArea = Platform.OS === "ios";
+  // Reach past the iOS score's safe-area boundary while keeping the slider
+  // at its existing offset from that boundary.
+  const bottom = scoreUsesSafeArea ? -insets.bottom : 0;
+  const extension = insets.bottom - bottom;
+  const left = scoreUsesSafeArea ? insets.left : 0;
+  const right = scoreUsesSafeArea ? insets.right : 0;
+
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
+
   return (
     <View
-        style={[
-            styles.container,
-            {
-            bottom: bottomInset,
-            },
-        ]}
+      style={[
+        styles.container,
+        {
+          bottom,
+          left: -left,
+          right: -right,
+          minHeight: BAR_MIN_HEIGHT + extension,
+          paddingBottom: BAR_BOTTOM_PADDING + extension,
+          paddingLeft: 16 + left,
+          paddingRight: 16 + right,
+        },
+      ]}
     >
-        <ReaderPageSlider {...sliderProps} />
+      <ReaderPageSlider {...sliderProps} />
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    position: "absolute",
-    left: 0,
-    right: 0,
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      position: "absolute",
+      zIndex: 1300,
 
-    zIndex: 1300,
+      backgroundColor: colors.readerChrome,
 
-    minHeight: 64,
+      borderTopWidth: 1,
+      borderTopColor: colors.separator,
+      paddingTop: 4,
 
-    backgroundColor: "rgba(255,255,255,0.96)",
-
-    borderTopWidth: 1,
-    borderTopColor: "#ddd",
-
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 8,
-
-    overflow: "visible",
-  },
-});
+      overflow: "visible",
+    },
+  });
 
 export default ReaderBottomBar;

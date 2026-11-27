@@ -1,3 +1,5 @@
+import type { ThemeColors } from "../../../utils/theme/types";
+import { useAppTheme } from "../../../utils/theme/useAppTheme";
 
 import React, { useEffect, useState } from "react";
 import {
@@ -26,7 +28,6 @@ interface Props {
   onDone: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  accentColor: string;
   position?: "top" | "bottom";
   onTogglePosition?: () => void;
 }
@@ -36,7 +37,7 @@ type IconName =
 
 type Panel = "colors" | "opacity" | null;
 
-const COLORS = [
+const INK_SWATCHES = [
   "#D84343",
   "#E7B92B",
   "#337CCF",
@@ -70,10 +71,11 @@ export function AnnotationToolbar({
   onDone,
   canUndo,
   canRedo,
-  accentColor,
-  position = "top",
+  position = "bottom",
   onTogglePosition,
 }: Props) {
+  const { colors } = useAppTheme();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
 
@@ -99,7 +101,7 @@ export function AnnotationToolbar({
   const [isSlidingOpacity, setIsSlidingOpacity] =
     useState(false);
 
-  const accentTint = `${accentColor}16`;
+  const accentTint = colors.selectedBackground;
 
   const popoverPlacement =
   position === "bottom" ? "top" : "bottom";
@@ -135,7 +137,7 @@ export function AnnotationToolbar({
     update({ color: normalized });
 
     if (
-      !COLORS.some(
+      !INK_SWATCHES.some(
         (preset) =>
           preset.toUpperCase() === normalized
       )
@@ -227,11 +229,11 @@ export function AnnotationToolbar({
           size={23}
           color={
             disabled
-              ? "#CBD5E1"
+              ? colors.border
               : options?.color ??
                 (active
-                  ? accentColor
-                  : "#475569")
+                  ? colors.accent
+                  : colors.secondaryText)
           }
         />
       </Pressable>
@@ -257,7 +259,7 @@ export function AnnotationToolbar({
         style={[
           styles.swatchButton,
           active && {
-            borderColor: accentColor,
+            borderColor: colors.accent,
           },
         ]}
       >
@@ -294,7 +296,7 @@ export function AnnotationToolbar({
       </Text>
 
       <View style={styles.swatchRow}>
-        {COLORS.map(swatch)}
+        {INK_SWATCHES.map(swatch)}
       </View>
 
       {recentColors.length > 0 && (
@@ -326,13 +328,13 @@ export function AnnotationToolbar({
         <MaterialCommunityIcons
           name="palette"
           size={20}
-          color={accentColor}
+          color={colors.accent}
         />
 
         <Text
           style={[
             styles.customToggleLabel,
-            { color: accentColor },
+            { color: colors.accent },
           ]}
         >
           Custom colour wheel
@@ -345,7 +347,7 @@ export function AnnotationToolbar({
               : "chevron-down"
           }
           size={21}
-          color={accentColor}
+          color={colors.accent}
         />
       </Pressable>
 
@@ -353,7 +355,6 @@ export function AnnotationToolbar({
         <AnnotationColorPicker
           color={settings.color}
           onChange={chooseColor}
-          accentColor={accentColor}
         />
       )}
     </View>
@@ -373,9 +374,9 @@ export function AnnotationToolbar({
         maximumValue={1}
         step={0.05}
         value={opacity}
-        minimumTrackTintColor={accentColor}
-        maximumTrackTintColor="#CBD5E1"
-        thumbTintColor={accentColor}
+        minimumTrackTintColor={colors.trackActive}
+        maximumTrackTintColor={colors.trackInactive}
+        thumbTintColor={colors.accent}
         onSlidingStart={() =>
           setIsSlidingOpacity(true)
         }
@@ -484,8 +485,8 @@ export function AnnotationToolbar({
               size={23}
               color={
                 panel === "colors"
-                  ? accentColor
-                  : "#475569"
+                  ? colors.accent
+                  : colors.secondaryText
               }
             />
 
@@ -560,7 +561,7 @@ export function AnnotationToolbar({
           <MaterialCommunityIcons
             name="circle-outline"
             size={18}
-            color="#475569"
+            color={colors.secondaryText}
           />
 
           <Slider
@@ -570,10 +571,10 @@ export function AnnotationToolbar({
             step={1}
             value={strokeWidth}
             minimumTrackTintColor={
-              accentColor
+              colors.trackActive
             }
-            maximumTrackTintColor="#CBD5E1"
-            thumbTintColor={accentColor}
+            maximumTrackTintColor={colors.trackInactive}
+            thumbTintColor={colors.accent}
             onSlidingStart={() =>
               setIsSlidingWidth(true)
             }
@@ -614,7 +615,7 @@ export function AnnotationToolbar({
               },
 
               {
-                color: accentColor,
+                color: colors.accent,
               }
             )}
           </View>
@@ -630,14 +631,14 @@ export function AnnotationToolbar({
             style={[
               styles.doneButton,
               {
-                backgroundColor: accentColor,
+                backgroundColor: colors.accent,
               },
             ]}
           >
             <MaterialCommunityIcons
               name="check"
               size={24}
-              color="#FFFFFF"
+              color={colors.onAccent}
             />
           </Pressable>
         </View>
@@ -648,19 +649,18 @@ export function AnnotationToolbar({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.readerChrome,
     borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-    elevation: 5,
+    borderBottomColor: colors.separator,
   },
 
   bottomContainer: {
     borderBottomWidth: 0,
     borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
+    borderTopColor: colors.separator,
   },
 
   toolbarRow: {
@@ -695,7 +695,7 @@ const styles = StyleSheet.create({
   separator: {
     width: 1,
     height: 25,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: colors.separator,
     marginHorizontal: 4,
   },
 
@@ -723,7 +723,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 8,
     borderLeftWidth: 1,
-    borderLeftColor: "#E2E8F0",
+    borderLeftColor: colors.separator,
   },
 
   widthSlider: {
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
   widthValue: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#334155",
+    color: colors.text,
     minWidth: 22,
     textAlign: "center",
   },
@@ -745,9 +745,8 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 12,
     gap: 8,
-    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
+    borderBottomColor: colors.separator,
   },
 
   panelHeader: {
@@ -759,13 +758,13 @@ const styles = StyleSheet.create({
   panelTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#334155",
+    color: colors.text,
   },
 
   sectionLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#64748B",
+    color: colors.text,
   },
 
   swatchRow: {
@@ -790,7 +789,7 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     borderWidth: 1,
-    borderColor: "#CBD5E1",
+    borderColor: colors.border,
   },
 
   customToggle: {
@@ -811,16 +810,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 14,
     paddingVertical: 6,
-    backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
+    borderBottomColor: colors.separator,
     gap: 8,
   },
 
   opacityLabel: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#475569",
+    color: colors.secondaryText,
   },
 
   opacitySlider: {
@@ -831,7 +829,7 @@ const styles = StyleSheet.create({
   opacityValue: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#334155",
+    color: colors.text,
     width: 44,
     textAlign: "right",
   },
@@ -839,8 +837,7 @@ const styles = StyleSheet.create({
   doneArea: {
     paddingHorizontal: 8,
     borderLeftWidth: 1,
-    borderLeftColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
+    borderLeftColor: colors.separator,
   },
 
   doneButton: {
@@ -854,7 +851,6 @@ const styles = StyleSheet.create({
   relocateArea: {
     paddingHorizontal: 4,
     borderLeftWidth: 1,
-    borderLeftColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
+    borderLeftColor: colors.separator,
   },
 });

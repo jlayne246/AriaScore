@@ -1,3 +1,4 @@
+import { useAppTheme } from "../utils/theme/useAppTheme";
 import {
   Alert,
   FlatList,
@@ -51,7 +52,6 @@ type ExcerptDraft = {
   endPage: string;
 };
 
-const ACCENT_COLOR = "#2563EB";
 
 const AddScoreToSetlistModal = ({
   visible,
@@ -60,6 +60,7 @@ const AddScoreToSetlistModal = ({
   onAddFullScores,
   onAddExcerpt,
 }: AddScoreToSetlistModalProps) => {
+  const { colors } = useAppTheme();
   const [
     searchText,
     setSearchText,
@@ -338,7 +339,7 @@ const AddScoreToSetlistModal = ({
         style={{
           flex: 1,
           backgroundColor:
-            "rgba(0,0,0,0.4)",
+            colors.overlay,
           justifyContent:
             "center",
           padding: 20,
@@ -347,7 +348,7 @@ const AddScoreToSetlistModal = ({
         <View
           style={{
             backgroundColor:
-              "white",
+              colors.elevated,
             borderRadius: 16,
             maxHeight: "84%",
             padding: 20,
@@ -375,7 +376,7 @@ const AddScoreToSetlistModal = ({
                 style={{
                   fontSize: 22,
                   fontWeight: "600",
-                  color: "#111827",
+                  color: colors.text,
                 }}
               >
                 Add Scores
@@ -384,7 +385,7 @@ const AddScoreToSetlistModal = ({
               <Text
                 style={{
                   fontSize: 13,
-                  color: "#6B7280",
+                  color: colors.secondaryText,
                   marginTop: 4,
                 }}
               >
@@ -408,7 +409,7 @@ const AddScoreToSetlistModal = ({
                 name="close"
                 size={26}
                 color={
-                  ACCENT_COLOR
+                  colors.accent
                 }
               />
             </TouchableOpacity>
@@ -416,16 +417,19 @@ const AddScoreToSetlistModal = ({
 
           {/* Search */}
           <TextInput
+            cursorColor={colors.accent}
+            selectionColor={colors.accent}
+            placeholderTextColor={colors.tertiaryText}
             placeholder="Search scores..."
             value={searchText}
             onChangeText={
               setSearchText
             }
             editable={!busy}
-            style={{
+            style={{ color: colors.text, backgroundColor: colors.surface,
               borderWidth: 1,
               borderColor:
-                "#E5E7EB",
+                colors.border,
               borderRadius: 10,
               paddingHorizontal: 12,
               paddingVertical: 10,
@@ -495,7 +499,7 @@ const AddScoreToSetlistModal = ({
                     borderBottomWidth:
                       1,
                     borderBottomColor:
-                      "#F3F4F6",
+                      colors.separator,
                   }}
                 >
                   {/* Full-score selector */}
@@ -522,7 +526,7 @@ const AddScoreToSetlistModal = ({
                       }
                       size={24}
                       color={
-                        ACCENT_COLOR
+                        colors.accent
                       }
                     />
 
@@ -541,7 +545,7 @@ const AddScoreToSetlistModal = ({
                           fontWeight:
                             "600",
                           color:
-                            "#111827",
+                            colors.text,
                         }}
                       >
                         {title}
@@ -553,7 +557,7 @@ const AddScoreToSetlistModal = ({
                         }
                         style={{
                           color:
-                            "#6B7280",
+                            colors.secondaryText,
                           marginTop: 2,
                           fontSize: 13,
                         }}
@@ -607,8 +611,8 @@ const AddScoreToSetlistModal = ({
                       size={18}
                       color={
                         selected
-                          ? ACCENT_COLOR
-                          : "#9CA3AF"
+                          ? colors.accent
+                          : colors.tertiaryText
                       }
                     />
 
@@ -617,8 +621,8 @@ const AddScoreToSetlistModal = ({
                         marginLeft: 5,
                         color:
                           selected
-                            ? ACCENT_COLOR
-                            : "#9CA3AF",
+                            ? colors.accent
+                            : colors.tertiaryText,
                         fontWeight:
                           "600",
                         fontSize: 14,
@@ -634,7 +638,7 @@ const AddScoreToSetlistModal = ({
               <Text
                 style={{
                   color:
-                    "#6B7280",
+                    colors.secondaryText,
                   textAlign:
                     "center",
                   padding: 20,
@@ -653,10 +657,10 @@ const AddScoreToSetlistModal = ({
                 padding: 14,
                 borderWidth: 1,
                 borderColor:
-                  "#D1D5DB",
+                  colors.border,
                 borderRadius: 12,
                 backgroundColor:
-                  "#F9FAFB",
+                  colors.surface,
               }}
             >
               <View
@@ -681,7 +685,7 @@ const AddScoreToSetlistModal = ({
                       fontWeight:
                         "700",
                       color:
-                        "#111827",
+                        colors.text,
                     }}
                   >
                     Add Excerpt
@@ -694,7 +698,7 @@ const AddScoreToSetlistModal = ({
                     style={{
                       fontSize: 13,
                       color:
-                        "#6B7280",
+                        colors.secondaryText,
                       marginTop: 2,
                     }}
                   >
@@ -715,7 +719,7 @@ const AddScoreToSetlistModal = ({
                   <Ionicons
                     name="close"
                     size={22}
-                    color="#6B7280"
+                    color={colors.secondaryText}
                   />
                 </TouchableOpacity>
               </View>
@@ -730,7 +734,7 @@ const AddScoreToSetlistModal = ({
                   style={{
                     fontSize: 12,
                     color:
-                      "#6B7280",
+                      colors.secondaryText,
                     marginBottom: 4,
                   }}
                 >
@@ -738,6 +742,9 @@ const AddScoreToSetlistModal = ({
                 </Text>
 
                 <TextInput
+                  cursorColor={colors.accent}
+                  selectionColor={colors.accent}
+                  placeholderTextColor={colors.tertiaryText}
                   value={
                     excerptEditor.entryTitle
                   }
@@ -759,13 +766,13 @@ const AddScoreToSetlistModal = ({
                     )
                   }
                   placeholder="e.g. Kyrie"
-                  style={{
+                  style={{ color: colors.text,
                     borderWidth: 1,
                     borderColor:
-                      "#D1D5DB",
+                      colors.border,
                     borderRadius: 8,
                     backgroundColor:
-                      "white",
+                      colors.surface,
                     paddingHorizontal:
                       10,
                     paddingVertical:
@@ -793,7 +800,7 @@ const AddScoreToSetlistModal = ({
                     style={{
                       fontSize: 12,
                       color:
-                        "#6B7280",
+                        colors.secondaryText,
                       marginBottom: 4,
                     }}
                   >
@@ -801,6 +808,9 @@ const AddScoreToSetlistModal = ({
                   </Text>
 
                   <TextInput
+                    cursorColor={colors.accent}
+                    selectionColor={colors.accent}
+                    placeholderTextColor={colors.tertiaryText}
                     keyboardType="number-pad"
                     editable={!busy}
                     value={
@@ -823,13 +833,13 @@ const AddScoreToSetlistModal = ({
                       )
                     }
                     placeholder="1"
-                    style={{
+                    style={{ color: colors.text,
                       borderWidth: 1,
                       borderColor:
-                        "#D1D5DB",
+                        colors.border,
                       borderRadius: 8,
                       backgroundColor:
-                        "white",
+                        colors.surface,
                       paddingHorizontal:
                         10,
                       paddingVertical:
@@ -848,7 +858,7 @@ const AddScoreToSetlistModal = ({
                     style={{
                       fontSize: 12,
                       color:
-                        "#6B7280",
+                        colors.secondaryText,
                       marginBottom: 4,
                     }}
                   >
@@ -856,6 +866,9 @@ const AddScoreToSetlistModal = ({
                   </Text>
 
                   <TextInput
+                    cursorColor={colors.accent}
+                    selectionColor={colors.accent}
+                    placeholderTextColor={colors.tertiaryText}
                     keyboardType="number-pad"
                     editable={!busy}
                     value={
@@ -878,13 +891,13 @@ const AddScoreToSetlistModal = ({
                       )
                     }
                     placeholder="Same as start"
-                    style={{
+                    style={{ color: colors.text,
                       borderWidth: 1,
                       borderColor:
-                        "#D1D5DB",
+                        colors.border,
                       borderRadius: 8,
                       backgroundColor:
-                        "white",
+                        colors.surface,
                       paddingHorizontal:
                         10,
                       paddingVertical:
@@ -896,7 +909,7 @@ const AddScoreToSetlistModal = ({
                     style={{
                       fontSize: 11,
                       color:
-                        "#9CA3AF",
+                        colors.tertiaryText,
                       marginTop: 4,
                     }}
                   >
@@ -930,7 +943,7 @@ const AddScoreToSetlistModal = ({
                   <Text
                     style={{
                       color:
-                        "#6B7280",
+                        colors.secondaryText,
                       fontSize: 15,
                     }}
                   >
@@ -947,8 +960,8 @@ const AddScoreToSetlistModal = ({
                   <Text
                     style={{
                       color:
-                        ACCENT_COLOR,
-                      fontWeight:
+                        colors.accent,
+                        fontWeight:
                         "700",
                       fontSize: 15,
                       opacity:
@@ -993,7 +1006,7 @@ const AddScoreToSetlistModal = ({
                 style={{
                   fontSize: 16,
                   color:
-                    "#6B7280",
+                    colors.secondaryText,
                   paddingHorizontal:
                     16,
                   paddingVertical:
@@ -1027,8 +1040,8 @@ const AddScoreToSetlistModal = ({
                     selectedIds.length ===
                       0 ||
                     busy
-                      ? "#9CA3AF"
-                      : ACCENT_COLOR,
+                      ? colors.surfaceSecondary
+                      : colors.accent,
                   paddingHorizontal:
                     16,
                   paddingVertical:
@@ -1038,7 +1051,7 @@ const AddScoreToSetlistModal = ({
               >
                 <Text
                   style={{
-                    color: "white",
+                    color: selectedIds.length === 0 || busy ? colors.disabledText : colors.onAccent,
                     fontWeight: "600",
                   }}
                 >

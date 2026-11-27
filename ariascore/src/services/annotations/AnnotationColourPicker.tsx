@@ -1,3 +1,5 @@
+import type { ThemeColors } from "../../../utils/theme/types";
+import { useAppTheme } from "../../../utils/theme/useAppTheme";
 
 import React, {
   memo,
@@ -34,7 +36,6 @@ type DragTarget = "hue" | "sv" | null;
 interface Props {
   color: string;
   onChange: (color: string) => void;
-  accentColor: string;
 }
 
 const SIZE = 220;
@@ -230,8 +231,9 @@ const HueRing = memo(function HueRing() {
 function AnnotationColorPickerComponent({
   color,
   onChange,
-  accentColor,
 }: Props) {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   // Local HSV value.
   // Parent settings are NOT changed during dragging.
 
@@ -647,7 +649,7 @@ export const AnnotationColorPicker = memo(
   AnnotationColorPickerComponent
 );
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     alignItems: "center",
     gap: 10,
@@ -670,11 +672,11 @@ const styles = StyleSheet.create({
     height: 25,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#CBD5E1",
+    borderColor: colors.border,
   },
 
   hex: {
-    color: "#334155",
+    color: colors.text,
     fontWeight: "600",
     fontSize: 13,
     flex: 1,

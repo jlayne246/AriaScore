@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useMemo } from "react";
 
 import {
   View,
@@ -22,6 +22,9 @@ import {
 
 import type { ReaderContext } from "../../types";
 
+import { useAppTheme } from "../../utils/theme/useAppTheme";
+import { ThemeColors } from "../../utils/theme/types";
+
 const { Popover } = renderers;
 
 interface ScoreInformation {
@@ -43,7 +46,6 @@ interface ReaderScoreInfoProps {
   totalPages: number;
   thumbnailUri?: string;
 
-  accentColor: string;
   disabled?: boolean;
 
   onOpen?: () => void;
@@ -58,7 +60,13 @@ const InfoSection = ({
 }: {
   title: string;
   children: React.ReactNode;
-}) => (
+}) => {
+  const {colors} = useAppTheme();
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
+  return (
   <View style={styles.section}>
     <Text style={styles.sectionTitle}>
       {title.toUpperCase()}
@@ -66,7 +74,8 @@ const InfoSection = ({
 
     {children}
   </View>
-);
+  );
+};
 
 const MetadataRow = ({
   label,
@@ -75,6 +84,11 @@ const MetadataRow = ({
   label: string;
   value?: string;
 }) => {
+  const {colors} = useAppTheme();
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
   if (!value?.trim()) {
     return null;
   }
@@ -97,7 +111,6 @@ const ReaderScoreInfo = ({
   context,
   totalPages,
   thumbnailUri,
-  accentColor,
   disabled = false,
 
   onOpen,
@@ -106,6 +119,11 @@ const ReaderScoreInfo = ({
 }: ReaderScoreInfoProps) => {
   const { width, height } =
     useWindowDimensions();
+  const { colors } = useAppTheme();
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
 
   const compact = width < 600;
 
@@ -170,7 +188,7 @@ const ReaderScoreInfo = ({
         rendererProps={{
           placement: "bottom",
           anchorStyle: {
-            backgroundColor: "#FFFFFF",
+            backgroundColor: colors.elevated,
           },
         }}
         onOpen={onOpen}
@@ -215,7 +233,7 @@ const ReaderScoreInfo = ({
             optionsContainer: {
               width: menuWidth,
               borderRadius: 14,
-              backgroundColor: "#FFFFFF",
+              backgroundColor: colors.elevated,
               elevation: 10,
             },
           }}
@@ -232,7 +250,7 @@ const ReaderScoreInfo = ({
               <Ionicons
                 name="information-circle-outline"
                 size={23}
-                color={accentColor}
+                color={colors.accent}
               />
             </View>
 
@@ -250,7 +268,7 @@ const ReaderScoreInfo = ({
               {/* SCORE SUMMARY */}
 
               <View style={styles.scoreSummary}>
-                <View style={styles.thumbnail}>
+                <View style={[styles.thumbnail, thumbnailUri && styles.thumbnailPaper]}>
                   {thumbnailUri ? (
                     <Image
                       source={{
@@ -263,7 +281,7 @@ const ReaderScoreInfo = ({
                     <Ionicons
                       name="document-text-outline"
                       size={36}
-                      color="#CBD5E1"
+                      color={colors.tertiaryText}
                     />
                   )}
                 </View>
@@ -292,7 +310,7 @@ const ReaderScoreInfo = ({
                         styles.documentType,
                         {
                           backgroundColor:
-                            `${accentColor}12`,
+                            colors.selectedBackground,
                         },
                       ]}
                     >
@@ -300,7 +318,7 @@ const ReaderScoreInfo = ({
                         style={[
                           styles.documentTypeText,
                           {
-                            color: accentColor,
+                            color: colors.accent,
                           },
                         ]}
                       >
@@ -351,7 +369,7 @@ const ReaderScoreInfo = ({
                     <Ionicons
                       name="list-outline"
                       size={24}
-                      color={accentColor}
+                      color={colors.accent}
                     />
 
                     <View style={styles.details}>
@@ -437,14 +455,14 @@ const ReaderScoreInfo = ({
                   <Ionicons
                     name="create-outline"
                     size={23}
-                    color={accentColor}
+                    color={colors.accent}
                   />
 
                   <Text
                     style={[
                       styles.actionLabel,
                       {
-                        color: accentColor,
+                        color: colors.accent,
                       },
                     ]}
                   >
@@ -454,7 +472,7 @@ const ReaderScoreInfo = ({
                   <Ionicons
                     name="chevron-forward"
                     size={17}
-                    color="#94A3B8"
+                    color={colors.tertiaryText}
                   />
                 </View>
               </MenuOption>
@@ -466,7 +484,7 @@ const ReaderScoreInfo = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   wrapper: {
     flex: 1,
     minWidth: 0,
@@ -478,7 +496,7 @@ const styles = StyleSheet.create({
   },
 
   scoreTitle: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 8,
 
     paddingHorizontal: 8,
@@ -492,13 +510,13 @@ const styles = StyleSheet.create({
     maxWidth: "100%",
     fontSize: 15,
     fontWeight: "600",
-    color: "#222",
+    color: colors.text,
   },
 
   toolbarSubtitle: {
     maxWidth: "100%",
     fontSize: 12,
-    color: "#666",
+    color: colors.secondaryText,
   },
 
   container: {
@@ -512,13 +530,13 @@ const styles = StyleSheet.create({
 
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    borderBottomColor: colors.separator,
   },
 
   heading: {
     fontSize: 19,
     fontWeight: "700",
-    color: "#222",
+    color: colors.text,
   },
 
   scoreSummary: {
@@ -533,16 +551,20 @@ const styles = StyleSheet.create({
     width: 85,
     height: 118,
 
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.surface,
 
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.border,
     borderRadius: 4,
 
     alignItems: "center",
     justifyContent: "center",
 
     overflow: "hidden",
+  },
+
+  thumbnailPaper: {
+    backgroundColor: "#F8FAFC",
   },
 
   thumbnailImage: {
@@ -559,18 +581,18 @@ const styles = StyleSheet.create({
   scoreName: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#222",
+    color: colors.text,
   },
 
   attribution: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#475569",
+    color: colors.secondaryText,
   },
 
   pageCount: {
     fontSize: 13,
-    color: "#64748B",
+    color: colors.secondaryText,
   },
 
   documentType: {
@@ -589,7 +611,7 @@ const styles = StyleSheet.create({
   section: {
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
+    borderTopColor: colors.separator,
     gap: 8,
   },
 
@@ -597,7 +619,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.7,
-    color: "#64748B",
+    color: colors.text,
   },
 
   metadataRow: {
@@ -610,13 +632,13 @@ const styles = StyleSheet.create({
   metadataLabel: {
     width: 82,
     fontSize: 13,
-    color: "#64748B",
+    color: colors.secondaryText,
   },
 
   metadataValue: {
     flex: 1,
     fontSize: 13,
-    color: "#222",
+    color: colors.text,
     fontWeight: "500",
     textAlign: "right",
   },
@@ -635,19 +657,19 @@ const styles = StyleSheet.create({
   setlistName: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#222",
+    color: colors.text,
   },
 
   entryTitle: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#334155",
+    color: colors.secondaryText,
     marginTop: 3,
   },
 
   subtitle: {
     fontSize: 12,
-    color: "#64748B",
+    color: colors.secondaryText,
     marginTop: 3,
   },
 
@@ -658,7 +680,7 @@ const styles = StyleSheet.create({
   },
 
   labelChip: {
-    backgroundColor: "#F1F5F9",
+    backgroundColor: colors.labelBackground,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
@@ -666,23 +688,23 @@ const styles = StyleSheet.create({
 
   labelText: {
     fontSize: 12,
-    color: "#475569",
+    color: colors.labelText,
   },
 
   notes: {
     fontSize: 13,
-    color: "#475569",
+    color: colors.secondaryText,
     lineHeight: 19,
   },
 
   emptyText: {
     fontSize: 13,
-    color: "#888",
+    color: colors.secondaryText,
   },
 
   actions: {
     borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
+    borderTopColor: colors.separator,
     paddingTop: 8,
   },
 

@@ -1,3 +1,4 @@
+import { useAppTheme } from "../utils/theme/useAppTheme";
 import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -26,6 +27,7 @@ function MenuItem({
   destructive?: boolean;
   onPress?: () => void;
 }) {
+  const { colors } = useAppTheme();
   return (
     <MenuOption onSelect={onPress}>
       <TouchableOpacity
@@ -40,16 +42,15 @@ function MenuItem({
         <Ionicons
           name={icon as any}
           size={18}
-          color={destructive ? "#DC2626" : "#111827"}
+          color={destructive ? colors.danger : colors.text}
           style={{ width: 26 }}
         />
-        <Text style={{ marginLeft: 10, color: destructive ? "#DC2626" : "#111827", fontSize: 16 }}>{label}</Text>
+        <Text style={{ marginLeft: 10, color: destructive ? colors.danger : colors.text, fontSize: 16 }}>{label}</Text>
       </TouchableOpacity>
     </MenuOption>
   );
 }
 
-const ACCENT_COLOR = "#2563EB";
 
 type SetlistSummary = {
   id: number;
@@ -70,17 +71,18 @@ type SortMode =
 
 
     function StatChip({ label }: { label: string }) {
+  const { colors } = useAppTheme();
     return (
       <View
         style={{
-          backgroundColor: "#F3F4F6",
+          backgroundColor: colors.surfaceSecondary,
           borderRadius: 999,
           paddingHorizontal: 10,
           paddingVertical: 4,
           marginRight: 8,
         }}
       >
-        <Text style={{ color: "#6B7280", fontSize: 12, fontWeight: "600" }}>
+        <Text style={{ color: colors.secondaryText, fontSize: 12, fontWeight: "600" }}>
           {label}
         </Text>
       </View>
@@ -100,6 +102,7 @@ type SortMode =
     onSettings: () => void;
     onDelete: () => void;
   }) {
+  const { colors } = useAppTheme();
     const description = item.description?.trim();
     const isEmpty = item.item_count === 0;
 
@@ -110,12 +113,12 @@ type SortMode =
         style={{
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: "white",
+          backgroundColor: colors.surface,
           borderRadius: 16,
           padding: 14,
           marginBottom: 12,
           borderWidth: 1,
-          borderColor: "#E5E7EB",
+          borderColor: colors.border,
         }}
       >
         <View
@@ -123,13 +126,13 @@ type SortMode =
             width: 54,
             height: 66,
             borderRadius: 12,
-            backgroundColor: "#EFF6FF",
+            backgroundColor: colors.selectedBackground,
             alignItems: "center",
             justifyContent: "center",
             marginRight: 14,
           }}
         >
-          <Ionicons name="list-outline" size={28} color={ACCENT_COLOR} />
+          <Ionicons name="list-outline" size={28} color={colors.accent} />
         </View>
 
         <View style={{ flex: 1 }}>
@@ -138,7 +141,7 @@ type SortMode =
             style={{
               fontSize: 19,
               fontWeight: "700",
-              color: "#111827",
+              color: colors.text,
             }}
           >
             {item.name}
@@ -148,7 +151,7 @@ type SortMode =
             <Text
               numberOfLines={1}
               style={{
-                color: "#6B7280",
+                color: colors.secondaryText,
                 marginTop: 3,
                 fontSize: 14,
               }}
@@ -202,7 +205,7 @@ type SortMode =
 
         <Menu>
           <MenuTrigger style={{ paddingHorizontal: 8, paddingVertical: 8 }}>
-            <Ionicons name="ellipsis-vertical" size={24} color={ACCENT_COLOR} />
+            <Ionicons name="ellipsis-vertical" size={24} color={colors.accent} />
           </MenuTrigger>
 
           <MenuOptions
@@ -211,7 +214,7 @@ type SortMode =
                 width: 220,
                 borderRadius: 14,
                 paddingVertical: 6,
-                backgroundColor: "white",
+                backgroundColor: colors.elevated,
                 elevation: 10,
               },
             }}
@@ -269,6 +272,7 @@ type SortMode =
     icon: keyof typeof Ionicons.glyphMap;
     label: string;
   }) {
+  const { colors } = useAppTheme();
     return (
       <View
         style={{
@@ -278,8 +282,8 @@ type SortMode =
           marginTop: 2,
         }}
       >
-        <Ionicons name={icon} size={13} color="#9CA3AF" />
-        <Text style={{ marginLeft: 4, color: "#6B7280", fontSize: 12 }}>
+        <Ionicons name={icon} size={13} color={colors.tertiaryText} />
+        <Text style={{ marginLeft: 4, color: colors.secondaryText, fontSize: 12 }}>
           {label}
         </Text>
       </View>
@@ -287,6 +291,7 @@ type SortMode =
   }
 
 const SetlistsScreen = () => {
+  const { colors } = useAppTheme();
   const navigation = useNavigation<any>();
 
   const [setlists, setSetlists] = useState<SetlistSummary[]>([]);
@@ -437,6 +442,7 @@ const SetlistsScreen = () => {
     onPress: () => void;
     destructive?: boolean;
   }) {
+  const { colors } = useAppTheme();
     return (
       <MenuOption onSelect={onPress}>
         <View style={{
@@ -448,14 +454,14 @@ const SetlistsScreen = () => {
           <Ionicons
             name={icon}
             size={20}
-            color={destructive ? "#DC2626" : "#374151"}
+            color={destructive ? colors.danger : colors.text}
             style={{ width: 28 }}
           />
 
           <Text style={{
             marginLeft: 10,
             fontSize: 16,
-            color: destructive ? "#DC2626" : "#111827",
+            color: destructive ? colors.danger : colors.text,
           }}>
             {label}
           </Text>
@@ -470,9 +476,9 @@ const SetlistsScreen = () => {
         <View
           style={{
             height: 92,
-            backgroundColor: "white",
+            backgroundColor: colors.background,
             borderBottomWidth: 1,
-            borderBottomColor: "#E5E7EB",
+            borderBottomColor: colors.separator,
             justifyContent: "flex-end",
             paddingHorizontal: 20,
             paddingBottom: 12,
@@ -483,14 +489,14 @@ const SetlistsScreen = () => {
               onPress={() => navigation.goBack()}
               style={{ marginRight: 12 }}
             >
-              <Ionicons name="chevron-back" size={28} color={ACCENT_COLOR} />
+              <Ionicons name="chevron-back" size={28} color={colors.accent} />
             </TouchableOpacity>
 
             <Text
               style={{
                 flex: 1,
                 fontSize: 24,
-                color: '#464950',
+                color: colors.text,
                 fontWeight: '400',
               }}
             >
@@ -499,7 +505,7 @@ const SetlistsScreen = () => {
 
             <Menu>
               <MenuTrigger style={{ paddingHorizontal: 8 }}>
-                <Ionicons name="swap-vertical-outline" size={24} color={ACCENT_COLOR} />
+                <Ionicons name="swap-vertical-outline" size={24} color={colors.accent} />
               </MenuTrigger>
 
               <MenuOptions
@@ -508,7 +514,7 @@ const SetlistsScreen = () => {
                     width: 230,
                     borderRadius: 14,
                     paddingVertical: 6,
-                    backgroundColor: "white",
+                    backgroundColor: colors.elevated,
                     elevation: 10,
                   },
                 }}
@@ -537,13 +543,13 @@ const SetlistsScreen = () => {
             </Menu>
 
             <TouchableOpacity onPress={openCreateModal} style={{ marginLeft: 12 }}>
-              <Ionicons name="add" size={28} color={ACCENT_COLOR} />
+              <Ionicons name="add" size={28} color={colors.accent} />
             </TouchableOpacity>
           </View>
         </View>
       ),
     });
-  }, [navigation, sortMode]);
+  }, [navigation, sortMode, colors]);
 
   const handleCreateSetlist = async () => {
     const name = newName.trim();
@@ -567,15 +573,18 @@ const SetlistsScreen = () => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "white", padding: 16 }}>
+    <View style={{ flex: 1, backgroundColor: colors.background, padding: 16 }}>
       <View style={{ marginBottom: 14 }}>
         <TextInput
+          cursorColor={colors.accent}
+          selectionColor={colors.accent}
+          placeholderTextColor={colors.tertiaryText}
           value={search}
           onChangeText={setSearch}
           placeholder="Search setlists..."
-          style={{
+          style={{ color: colors.text, backgroundColor: colors.surface,
             borderWidth: 1,
-            borderColor: "#D1D5DB",
+            borderColor: colors.border,
             borderRadius: 12,
             paddingHorizontal: 14,
             paddingVertical: 10,
@@ -584,7 +593,7 @@ const SetlistsScreen = () => {
           }}
         />
 
-        <Text style={{ color: "#6B7280", fontSize: 13 }}>
+        <Text style={{ color: colors.secondaryText, fontSize: 13 }}>
           {setlists.length} {setlists.length === 1 ? "setlist" : "setlists"} ·{" "}
           {(() => {
             const totalScores = setlists.reduce((sum, s) => sum + s.item_count, 0);
@@ -623,16 +632,16 @@ const SetlistsScreen = () => {
               <Ionicons
                 name="folder-open-outline"
                 size={48}
-                color="#9CA3AF"
+                color={colors.tertiaryText}
               />
 
-              <Text style={{ marginTop: 12, fontSize: 18, fontWeight: "600" }}>
+              <Text style={{ color: colors.text, marginTop: 12, fontSize: 18, fontWeight: "600" }}>
                 {search.trim() ? "No matching setlists" : "No setlists yet"}
               </Text>
 
               <Text
                 style={{
-                  color: "#6B7280",
+                  color: colors.secondaryText,
                   textAlign: "center",
                   marginTop: 6,
                   paddingHorizontal: 28,
@@ -647,13 +656,13 @@ const SetlistsScreen = () => {
                 onPress={openCreateModal}
                 style={{
                   marginTop: 16,
-                  backgroundColor: ACCENT_COLOR,
+                  backgroundColor: colors.accent,
                   paddingHorizontal: 20,
                   paddingVertical: 10,
                   borderRadius: 8,
                 }}
               >
-                <Text style={{ color: "white", fontWeight: "700" }}>
+                <Text style={{ color: colors.onAccent, fontWeight: "700" }}>
                   Add Setlist
                 </Text>
               </TouchableOpacity>
@@ -666,7 +675,7 @@ const SetlistsScreen = () => {
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0,0,0,0.35)",
+            backgroundColor: colors.overlay,
             alignItems: "center",
             justifyContent: "center",
             padding: 24,
@@ -676,25 +685,28 @@ const SetlistsScreen = () => {
             style={{
               width: "70%",
               maxWidth: 520,
-              backgroundColor: "white",
+              backgroundColor: colors.elevated,
               borderRadius: 18,
               padding: 20,
             }}
           >
             <Text
-              style={{ fontSize: 22, fontWeight: "700", marginBottom: 16 }}
+              style={{ color: colors.text, fontSize: 22, fontWeight: "700", marginBottom: 16 }}
             >
               New Setlist
             </Text>
 
             <TextInput
+              cursorColor={colors.accent}
+              selectionColor={colors.accent}
+              placeholderTextColor={colors.tertiaryText}
               value={newName}
               onChangeText={setNewName}
               placeholder="Setlist name"
               autoFocus
-              style={{
+              style={{ color: colors.text, backgroundColor: colors.surface,
                 borderWidth: 1,
-                borderColor: "#D1D5DB",
+                borderColor: colors.border,
                 borderRadius: 10,
                 padding: 12,
                 fontSize: 16,
@@ -703,13 +715,16 @@ const SetlistsScreen = () => {
             />
 
             <TextInput
+              cursorColor={colors.accent}
+              selectionColor={colors.accent}
+              placeholderTextColor={colors.tertiaryText}
               value={newDescription}
               onChangeText={setNewDescription}
               placeholder="Description optional"
               multiline
-              style={{
+              style={{ color: colors.text, backgroundColor: colors.surface,
                 borderWidth: 1,
-                borderColor: "#D1D5DB",
+                borderColor: colors.border,
                 borderRadius: 10,
                 padding: 12,
                 fontSize: 16,
@@ -727,13 +742,13 @@ const SetlistsScreen = () => {
               }}
             >
               <TouchableOpacity onPress={closeCreateModal}>
-                <Text style={{ color: "#6B7280", fontSize: 16 }}>Cancel</Text>
+                <Text style={{ color: colors.secondaryText, fontSize: 16 }}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={handleCreateSetlist}>
                 <Text
                   style={{
-                    color: ACCENT_COLOR,
+                    color: colors.accent,
                     fontWeight: "700",
                     fontSize: 16,
                   }}
@@ -750,7 +765,7 @@ const SetlistsScreen = () => {
         <View
           style={{
             flex: 1,
-            backgroundColor: "rgba(0,0,0,0.35)",
+            backgroundColor: colors.overlay,
             alignItems: "center",
             justifyContent: "center",
             padding: 24,
@@ -760,23 +775,26 @@ const SetlistsScreen = () => {
             style={{
               width: "70%",
               maxWidth: 520,
-              backgroundColor: "white",
+              backgroundColor: colors.elevated,
               borderRadius: 18,
               padding: 20,
             }}
           >
-            <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
+            <Text style={{ color: colors.text, fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
               Edit Setlist
             </Text>
 
             <TextInput
+              cursorColor={colors.accent}
+              selectionColor={colors.accent}
+              placeholderTextColor={colors.tertiaryText}
               value={editName}
               onChangeText={setEditName}
               placeholder="Setlist name"
               autoFocus
-              style={{
+              style={{ color: colors.text, backgroundColor: colors.surface,
                 borderWidth: 1,
-                borderColor: "#D1D5DB",
+                borderColor: colors.border,
                 borderRadius: 10,
                 padding: 12,
                 fontSize: 16,
@@ -785,13 +803,16 @@ const SetlistsScreen = () => {
             />
 
             <TextInput
+              cursorColor={colors.accent}
+              selectionColor={colors.accent}
+              placeholderTextColor={colors.tertiaryText}
               value={editDescription}
               onChangeText={setEditDescription}
               placeholder="Description optional"
               multiline
-              style={{
+              style={{ color: colors.text, backgroundColor: colors.surface,
                 borderWidth: 1,
-                borderColor: "#D1D5DB",
+                borderColor: colors.border,
                 borderRadius: 10,
                 padding: 12,
                 fontSize: 16,
@@ -814,13 +835,13 @@ const SetlistsScreen = () => {
                   setEditingSetlist(null);
                 }}
               >
-                <Text style={{ color: "#6B7280", fontSize: 16 }}>Cancel</Text>
+                <Text style={{ color: colors.secondaryText, fontSize: 16 }}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={handleUpdateSetlist}>
                 <Text
                   style={{
-                    color: ACCENT_COLOR,
+                    color: colors.accent,
                     fontWeight: "700",
                     fontSize: 16,
                   }}

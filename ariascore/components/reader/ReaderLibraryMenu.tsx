@@ -35,11 +35,13 @@ import type {
   MusicItemWithAllData,
 } from "../../types";
 
+import { useAppTheme } from "../../utils/theme/useAppTheme";
+import { ThemeColors } from "../../utils/theme/types";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface ReaderLibraryMenuProps {
   currentMusicId: number;
-  accentColor: string;
   disabled?: boolean;
 
   onOpen?: () => void;
@@ -59,13 +61,19 @@ const getTitle = (item: MusicItemWithAllData) =>
 
 const ReaderLibraryMenu = ({
   currentMusicId,
-  accentColor,
   disabled = false,
   onOpen,
   onClose,
   onSelectScore,
 }: ReaderLibraryMenuProps) => {
   const { width, height } = useWindowDimensions();
+
+  const { colors } = useAppTheme();
+
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
 
   const [scores, setScores] =
     useState<MusicItemWithAllData[]>([]);
@@ -178,7 +186,7 @@ const ReaderLibraryMenu = ({
         rendererProps={{
             placement: "bottom",
             anchorStyle: {
-            backgroundColor: "#FFFFFF",
+            backgroundColor: colors.elevated,
             },
         }}
         onOpen={handleOpen}
@@ -206,7 +214,7 @@ const ReaderLibraryMenu = ({
         <Ionicons
           name="library-outline"
           size={24}
-          color={accentColor}
+          color={colors.accent}
           accessibilityLabel="Library"
         />
       </MenuTrigger>
@@ -216,7 +224,7 @@ const ReaderLibraryMenu = ({
           optionsContainer: {
             width: menuWidth,
             borderRadius: 14,
-            backgroundColor: "#FFFFFF",
+            backgroundColor: colors.elevated,
             elevation: 10,
           },
         }}
@@ -238,13 +246,15 @@ const ReaderLibraryMenu = ({
             <Ionicons
               name="search-outline"
               size={18}
-              color="#888"
+              color={colors.secondaryText}
             />
 
             <TextInput
+              cursorColor={colors.accent}
+              selectionColor={colors.accent}
               style={styles.searchInput}
               placeholder="Search library..."
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.tertiaryText}
               value={query}
               onChangeText={setQuery}
               autoCorrect={false}
@@ -257,7 +267,7 @@ const ReaderLibraryMenu = ({
                 <Ionicons
                   name="close-circle"
                   size={18}
-                  color="#888"
+                  color={colors.secondaryText}
                 />
               </TouchableOpacity>
             )}
@@ -280,7 +290,7 @@ const ReaderLibraryMenu = ({
                     style={[
                       styles.tabText,
                       filter === tab && {
-                        color: accentColor,
+                        color: colors.accent,
                         fontWeight: "600",
                       },
                     ]}
@@ -298,7 +308,7 @@ const ReaderLibraryMenu = ({
           {loading ? (
             <View style={styles.emptyContainer}>
               <ActivityIndicator
-                color={accentColor}
+                color={colors.accent}
               />
 
               <Text style={styles.emptyText}>
@@ -316,7 +326,7 @@ const ReaderLibraryMenu = ({
               >
                 <Text
                   style={{
-                    color: accentColor,
+                    color: colors.accent,
                     fontWeight: "600",
                   }}
                 >
@@ -364,7 +374,7 @@ const ReaderLibraryMenu = ({
                         styles.scoreRow,
                         isCurrent && {
                           backgroundColor:
-                            `${accentColor}0D`,
+                            colors.selectedBackground,
                         },
                       ],
                     }}
@@ -377,8 +387,8 @@ const ReaderLibraryMenu = ({
                         size={22}
                         color={
                           isCurrent
-                            ? accentColor
-                            : "#888"
+                            ? colors.accent
+                            : colors.tertiaryText
                         }
                       />
                     </View>
@@ -390,7 +400,7 @@ const ReaderLibraryMenu = ({
                         style={[
                           styles.scoreTitle,
                           isCurrent && {
-                            color: accentColor,
+                            color: colors.accent,
                           },
                         ]}
                         numberOfLines={2}
@@ -419,8 +429,8 @@ const ReaderLibraryMenu = ({
                       size={18}
                       color={
                         isCurrent
-                          ? accentColor
-                          : "#AAA"
+                          ? colors.accent
+                          : colors.tertiaryText
                       }
                     />
                   </MenuOption>
@@ -434,7 +444,7 @@ const ReaderLibraryMenu = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     padding: 12,
   },
@@ -449,18 +459,18 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 19,
     fontWeight: "700",
-    color: "#222",
+    color: colors.text,
   },
 
   count: {
     fontSize: 12,
-    color: "#888",
+    color: colors.secondaryText,
   },
 
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.surface,
     borderRadius: 8,
     paddingHorizontal: 10,
     gap: 8,
@@ -471,12 +481,12 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     fontSize: 14,
-    color: "#222",
+    color: colors.text,
   },
 
   tabs: {
     flexDirection: "row",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 8,
     padding: 3,
     marginBottom: 8,
@@ -490,13 +500,13 @@ const styles = StyleSheet.create({
   },
 
   activeTab: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.elevated,
     elevation: 1,
   },
 
   tabText: {
     fontSize: 13,
-    color: "#666",
+    color: colors.secondaryText,
   },
 
   scoreRow: {
@@ -512,7 +522,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 44,
     borderRadius: 5,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.surfaceSecondary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -525,12 +535,12 @@ const styles = StyleSheet.create({
   scoreTitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#222",
+    color: colors.text,
   },
 
   scoreSubtitle: {
     fontSize: 12,
-    color: "#888",
+    color: colors.secondaryText,
     marginTop: 3,
   },
 
@@ -542,7 +552,7 @@ const styles = StyleSheet.create({
 
   emptyText: {
     fontSize: 13,
-    color: "#888",
+    color: colors.secondaryText,
   },
 });
 

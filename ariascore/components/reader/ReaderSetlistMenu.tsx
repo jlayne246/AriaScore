@@ -43,6 +43,9 @@ import type {
   SetlistEntryWithMusic,
 } from "../../types";
 
+import { useAppTheme } from "../../utils/theme/useAppTheme";
+import { ThemeColors } from "../../utils/theme/types";
+
 const { Popover } = renderers;
 
 export interface SetlistSelection {
@@ -57,7 +60,6 @@ interface ReaderSetlistMenuProps {
   currentMusicId: number;
   currentScoreTitle: string;
 
-  accentColor: string;
   disabled?: boolean;
 
   onOpen?: () => void;
@@ -81,7 +83,6 @@ const ReaderSetlistMenu = ({
   context,
   currentMusicId,
   currentScoreTitle,
-  accentColor,
   disabled = false,
   onOpen,
   onClose,
@@ -147,6 +148,12 @@ const ReaderSetlistMenu = ({
     const savingRef = useRef(false);
 
   const requestRef = useRef(0);
+
+  const { colors } = useAppTheme();
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
 
   const activeEntryId =
     context?.entries?.[
@@ -467,7 +474,7 @@ const canCreateSetlist =
       <View style={styles.creationHeader}>
         <TouchableOpacity style={styles.backButton} disabled={saving}
           onPress={handleCancelCreation} accessibilityLabel="Back">
-          <Ionicons name="chevron-back" size={22} color={accentColor} />
+          <Ionicons name="chevron-back" size={22} color={colors.accent} />
         </TouchableOpacity>
         <View style={styles.details}>
           <Text style={styles.heading}>{selectedSetlist ? "Add current score" : "New Setlist"}</Text>
@@ -478,18 +485,26 @@ const canCreateSetlist =
       {!selectedSetlist && (
         <>
           <Text style={styles.fieldLabel}>Name</Text>
-          <TextInput style={styles.formInput} placeholder="Setlist name"
+          <TextInput
+            cursorColor={colors.accent}
+            selectionColor={colors.accent}
+            placeholderTextColor={colors.tertiaryText}
+            style={styles.formInput} placeholder="Setlist name"
             value={newSetlistName} editable={!saving}
             onChangeText={value => { setNewSetlistName(value); setCreationError(null); }} />
           <Text style={styles.fieldLabel}>Description (optional)</Text>
-          <TextInput style={[styles.formInput, styles.descriptionInput]}
+          <TextInput
+            cursorColor={colors.accent}
+            selectionColor={colors.accent}
+            placeholderTextColor={colors.tertiaryText}
+            style={[styles.formInput, styles.descriptionInput]}
             placeholder="Setlist description" multiline editable={!saving}
             value={newSetlistDescription} onChangeText={setNewSetlistDescription} />
           <TouchableOpacity style={styles.checkboxRow} disabled={saving}
             accessibilityRole="checkbox" accessibilityState={{ checked: addCurrentScore }}
             onPress={() => setAddCurrentScore(previous => !previous)}>
             <Ionicons name={addCurrentScore ? "checkbox" : "square-outline"}
-              size={24} color={addCurrentScore ? accentColor : "#94A3B8"} />
+              size={24} color={addCurrentScore ? colors.accent : colors.tertiaryText} />
             <Text style={styles.checkboxLabel}>Add current score</Text>
           </TouchableOpacity>
         </>
@@ -504,15 +519,19 @@ const canCreateSetlist =
               <TouchableOpacity key={mode} disabled={saving}
                 onPress={() => { setEntryMode(mode); setCreationError(null); }}
                 accessibilityRole="radio" accessibilityState={{ checked: entryMode === mode }}
-                style={[styles.modeButton, entryMode === mode && { backgroundColor: "#FFFFFF" }]}>
-                <Text style={[styles.modeLabel, entryMode === mode && { color: accentColor, fontWeight: "600" }]}>
+                style={[styles.modeButton, entryMode === mode && { backgroundColor: colors.selectedBackground }]}>
+                <Text style={[styles.modeLabel, entryMode === mode && { color: colors.accent, fontWeight: "600" }]}>
                   {mode === "full" ? "Full score" : "Excerpt"}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
           <Text style={styles.fieldLabel}>Entry title (optional)</Text>
-          <TextInput style={styles.formInput} value={entryTitle}
+          <TextInput
+            cursorColor={colors.accent}
+            selectionColor={colors.accent}
+            placeholderTextColor={colors.tertiaryText}
+            style={styles.formInput} value={entryTitle}
             onChangeText={setEntryTitle} placeholder="Custom entry title" editable={!saving} />
           {entryMode === "excerpt" && (
             <>
@@ -523,16 +542,20 @@ const canCreateSetlist =
                 ] as const).map(([label, value, setter]) => (
                   <View key={label} style={styles.pageField}>
                     <Text style={styles.fieldLabel}>{label}</Text>
-                    <TextInput style={styles.formInput} value={value}
+                    <TextInput
+                      cursorColor={colors.accent}
+                      selectionColor={colors.accent}
+                      placeholderTextColor={colors.tertiaryText}
+                      style={styles.formInput} value={value}
                       onChangeText={text => setter(text.replace(/[^0-9]/g, ""))}
                       keyboardType="number-pad" selectTextOnFocus editable={!saving} />
                     <TouchableOpacity disabled={saving} onPress={() => setter(String(currentPage))}>
-                      <Text style={{ color: accentColor, fontSize: 12 }}>Use current page</Text>
+                      <Text style={{ color: colors.accent, fontSize: 12 }}>Use current page</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
               </View>
-              <Text style={[styles.rowSubtitle, !validExcerpt && { color: "#DC2626" }]}>
+              <Text style={[styles.rowSubtitle, !validExcerpt && { color: colors.danger }]}>
                 {validExcerpt
                   ? `Pages ${startPage}–${endPage} · ${excerptPageCount} ${excerptPageCount === 1 ? "page" : "pages"}`
                   : `Enter a valid range between 1 and ${totalPages}.`}
@@ -548,8 +571,8 @@ const canCreateSetlist =
           <Text style={styles.cancelButtonText}>Cancel</Text>
         </TouchableOpacity>
         <TouchableOpacity disabled={!canCreateSetlist} onPress={handleCreateSetlist}
-          style={[styles.createButton, { backgroundColor: accentColor, opacity: canCreateSetlist ? 1 : 0.45 }]}>
-          {saving ? <ActivityIndicator color="#FFFFFF" size="small" /> :
+          style={[styles.createButton, { backgroundColor: colors.accent, opacity: canCreateSetlist ? 1 : 0.45 }]}>
+          {saving ? <ActivityIndicator color={colors.onAccent} size="small" /> :
             <Text style={styles.createButtonText}>{selectedSetlist ? "Add Entry" : "Create Setlist"}</Text>}
         </TouchableOpacity>
       </View>
@@ -562,7 +585,7 @@ const canCreateSetlist =
       rendererProps={{
         placement: "bottom",
         anchorStyle: {
-          backgroundColor: "#FFFFFF",
+          backgroundColor: colors.elevated,
         },
       }}
       onOpen={handleOpen}
@@ -592,7 +615,7 @@ const canCreateSetlist =
         <Ionicons
           name="list-outline"
           size={24}
-          color={accentColor}
+          color={colors.accent}
           accessibilityLabel="Setlists"
         />
       </MenuTrigger>
@@ -602,7 +625,7 @@ const canCreateSetlist =
             optionsContainer: {
             width: menuWidth,
             borderRadius: 14,
-            backgroundColor: "#FFFFFF",
+            backgroundColor: colors.elevated,
             elevation: 10,
             },
         }}
@@ -625,7 +648,7 @@ const canCreateSetlist =
                         <Ionicons
                             name="chevron-back"
                             size={22}
-                            color={accentColor}
+                            color={colors.accent}
                         />
                         </TouchableOpacity>
 
@@ -668,7 +691,7 @@ const canCreateSetlist =
                             <Ionicons
                                 name="add"
                                 size={25}
-                                color={accentColor}
+                                color={colors.accent}
                             />
                             </TouchableOpacity>
                         </View>
@@ -682,13 +705,15 @@ const canCreateSetlist =
                     <Ionicons
                         name="search-outline"
                         size={18}
-                        color="#888"
+                        color={colors.secondaryText}
                     />
 
                     <TextInput
+                      cursorColor={colors.accent}
+                      selectionColor={colors.accent}
                         style={styles.searchInput}
                         placeholder="Search setlists..."
-                        placeholderTextColor="#999"
+                        placeholderTextColor={colors.tertiaryText}
                         value={query}
                         onChangeText={setQuery}
                         autoCorrect={false}
@@ -701,7 +726,7 @@ const canCreateSetlist =
                         <Ionicons
                             name="close-circle"
                             size={18}
-                            color="#888"
+                            color={colors.secondaryText}
                         />
                         </TouchableOpacity>
                     )}
@@ -712,7 +737,7 @@ const canCreateSetlist =
                 {loading ? (
                     <View style={styles.emptyContainer}>
                     <ActivityIndicator
-                        color={accentColor}
+                        color={colors.accent}
                     />
 
                     <Text style={styles.emptyText}>
@@ -737,7 +762,7 @@ const canCreateSetlist =
                         }}
                     >
                         <Text
-                        style={{ color: accentColor }}
+                        style={{ color: colors.accent }}
                         >
                         Retry
                         </Text>
@@ -772,7 +797,7 @@ const canCreateSetlist =
                             styles.row,
                             isCurrent && {
                                 backgroundColor:
-                                `${accentColor}0D`,
+                                colors.selectedBackground,
                             },
                             ]}
                         >
@@ -780,7 +805,7 @@ const canCreateSetlist =
                             <Ionicons
                                 name="list-outline"
                                 size={24}
-                                color={accentColor}
+                                color={colors.accent}
                             />
                             </View>
 
@@ -805,7 +830,7 @@ const canCreateSetlist =
                             <Ionicons
                             name="chevron-forward"
                             size={18}
-                            color="#AAA"
+                            color={colors.tertiaryText}
                             />
                         </TouchableOpacity>
                         );
@@ -869,7 +894,7 @@ const canCreateSetlist =
                                 styles.row,
                                 isCurrent && {
                                 backgroundColor:
-                                    `${accentColor}0D`,
+                                    colors.selectedBackground,
                                 },
                             ],
                             }}
@@ -878,7 +903,7 @@ const canCreateSetlist =
                             style={[
                                 styles.entryNumber,
                                 isCurrent && {
-                                color: accentColor,
+                                color: colors.accent,
                                 },
                             ]}
                             >
@@ -890,7 +915,7 @@ const canCreateSetlist =
                                 style={[
                                 styles.rowTitle,
                                 isCurrent && {
-                                    color: accentColor,
+                                    color: colors.accent,
                                 },
                                 ]}
                                 numberOfLines={2}
@@ -918,8 +943,8 @@ const canCreateSetlist =
                             size={18}
                             color={
                                 isCurrent
-                                ? accentColor
-                                : "#AAA"
+                                ? colors.accent
+                                : colors.tertiaryText
                             }
                             />
                         </MenuOption>
@@ -930,9 +955,9 @@ const canCreateSetlist =
                 {!loading && !error && selectedSetlist && (
                   <TouchableOpacity style={styles.row} onPress={handleAddToExisting}
                     accessibilityLabel="Add current score to this setlist">
-                    <Ionicons name="add-circle-outline" size={24} color={accentColor} />
+                    <Ionicons name="add-circle-outline" size={24} color={colors.accent} />
                     <View style={styles.details}>
-                      <Text style={[styles.rowTitle, { color: accentColor }]}>Add current score</Text>
+                      <Text style={[styles.rowTitle, { color: colors.accent }]}>Add current score</Text>
                       <Text style={styles.rowSubtitle}>Full score or excerpt</Text>
                     </View>
                   </TouchableOpacity>
@@ -940,8 +965,8 @@ const canCreateSetlist =
                 {!loading && !error && !selectedSetlist && onManageSetlists && (
                   <MenuOption value="manage-setlists">
                     <View style={styles.row}>
-                      <Ionicons name="list-outline" size={22} color={accentColor} />
-                      <Text style={[styles.rowTitle, { color: accentColor, flex: 1 }]}>Manage current score's setlists</Text>
+                      <Ionicons name="list-outline" size={22} color={colors.accent} />
+                      <Text style={[styles.rowTitle, { color: colors.accent, flex: 1 }]}>Manage current score's setlists</Text>
                     </View>
                   </MenuOption>
                 )}
@@ -953,7 +978,7 @@ const canCreateSetlist =
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     padding: 12,
   },
@@ -974,12 +999,12 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 19,
     fontWeight: "700",
-    color: "#222",
+    color: colors.text,
   },
 
   count: {
     fontSize: 12,
-    color: "#888",
+    color: colors.secondaryText,
     marginTop: 2,
   },
 
@@ -993,7 +1018,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.surface,
     borderRadius: 8,
     paddingHorizontal: 10,
     gap: 8,
@@ -1004,7 +1029,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     fontSize: 14,
-    color: "#222",
+    color: colors.text,
   },
 
   row: {
@@ -1020,7 +1045,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 40,
     borderRadius: 6,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.surfaceSecondary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1033,12 +1058,12 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#222",
+    color: colors.text,
   },
 
   rowSubtitle: {
     fontSize: 12,
-    color: "#888",
+    color: colors.secondaryText,
     marginTop: 3,
   },
 
@@ -1047,7 +1072,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     textAlign: "center",
-    color: "#888",
+    color: colors.secondaryText,
     fontVariant: ["tabular-nums"],
   },
 
@@ -1060,7 +1085,7 @@ const styles = StyleSheet.create({
   emptyText: {
     paddingVertical: 8,
     fontSize: 13,
-    color: "#888",
+    color: colors.secondaryText,
     textAlign: "center",
   },
 
@@ -1075,7 +1100,7 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 8,
     },
 
@@ -1084,9 +1109,20 @@ creationForm: {
   gap: 10,
 },
 entryConfiguration: { gap: 10 },
-modeSelector: { flexDirection: "row", gap: 4, padding: 4, borderRadius: 8, backgroundColor: "#F1F5F9" },
-modeButton: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 6 },
-modeLabel: { fontSize: 13, color: "#64748B" },
+modeSelector: {
+  flexDirection: "row",
+  gap: 4,
+  padding: 4,
+  borderRadius: 8,
+  backgroundColor: colors.surfaceSecondary,
+},
+modeButton: {
+  flex: 1,
+  alignItems: "center",
+  paddingVertical: 10,
+  borderRadius: 6,
+},
+modeLabel: { fontSize: 13, color: colors.secondaryText },
 pageRangeRow: { flexDirection: "row", gap: 12 },
 pageField: { flex: 1, minWidth: 0, gap: 6 },
 
@@ -1100,17 +1136,17 @@ creationHeader: {
 fieldLabel: {
   fontSize: 13,
   fontWeight: "600",
-  color: "#475569",
+  color: colors.secondaryText,
 },
 
 formInput: {
   minHeight: 42,
-  backgroundColor: "#F3F4F6",
+  backgroundColor: colors.surface,
   borderRadius: 8,
   paddingHorizontal: 12,
   paddingVertical: 10,
   fontSize: 14,
-  color: "#222",
+  color: colors.text,
 },
 
 descriptionInput: {
@@ -1124,17 +1160,17 @@ checkboxRow: {
   gap: 10,
   paddingVertical: 10,
   borderTopWidth: 1,
-  borderTopColor: "#E5E7EB",
+  borderTopColor: colors.separator,
 },
 
 checkboxLabel: {
   fontSize: 14,
   fontWeight: "500",
-  color: "#222",
+  color: colors.text,
 },
 
 creationError: {
-  color: "#DC2626",
+  color: colors.danger,
   fontSize: 12,
 },
 
@@ -1153,7 +1189,7 @@ cancelButton: {
 
 cancelButtonText: {
   fontSize: 14,
-  color: "#64748B",
+  color: colors.secondaryText,
   fontWeight: "500",
 },
 
@@ -1168,7 +1204,7 @@ createButton: {
 },
 
 createButtonText: {
-  color: "#FFFFFF",
+  color: colors.onAccent,
   fontSize: 14,
   fontWeight: "600",
 },

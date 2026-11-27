@@ -1,10 +1,11 @@
+import { useAppTheme } from "../utils/theme/useAppTheme";
 import React, { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { RefreshControl, View, ScrollView, Text, FlatList, SectionList, Animated, Button, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import { Menu, MenuOption, MenuOptions, MenuTrigger } from 'react-native-popup-menu';
 
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList, MusicItemWithAllData, ACCENT_COLOR } from '../types';
+import { RootStackParamList, MusicItemWithAllData } from '../types';
 
 import {MaterialIcons, Ionicons} from '@expo/vector-icons';
 import * as SolarIconSet from "solar-icon-set";
@@ -20,6 +21,7 @@ import AriaScorePdfRenderer from '../native/AriaScorePdfRenderer';
 import { Pressable } from 'react-native-gesture-handler';
 
 const DashboardScreen = ({}) => {
+  const { colors } = useAppTheme();
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const [showDeleteForm, setShowDeleteForm] = useState(false);
     const [deletedMusicId, setDeletedMusicId] = useState<number>();
@@ -29,7 +31,7 @@ const DashboardScreen = ({}) => {
       menuItem: {
         padding: 12,
         fontSize: 16,
-        color: '#111827',
+        color: colors.text,
       },
       menuOption: {
         paddingHorizontal: 4,
@@ -46,7 +48,7 @@ const DashboardScreen = ({}) => {
                 <View
                     style={{
                         height: 100,
-                        backgroundColor: 'white',
+                        backgroundColor: colors.background,
                         justifyContent: 'flex-end',
                         padding: 12,
                     }}
@@ -60,7 +62,7 @@ const DashboardScreen = ({}) => {
                     >
                         <Text
                             style={{
-                                color: '#464950',
+                                color: colors.text,
                                 fontWeight: '400',
                                 fontSize: 24,
                                 padding: 12,
@@ -99,14 +101,14 @@ const DashboardScreen = ({}) => {
                         </Menu> */}
 
                         <Pressable onPress={() => setMenuOpen(true)}>
-                            <Ionicons name="menu-outline" style={{fontSize: 28, color: ACCENT_COLOR, marginRight: 20, marginTop: 12}}></Ionicons>
+                            <Ionicons name="menu-outline" style={{fontSize: 28, color: colors.accent, marginRight: 20, marginTop: 12}}></Ionicons>
                         </Pressable>
                     </View>
                 </View>
             ),
             });
 
-    }, [navigation]);
+    }, [navigation, colors]);
 
     const [recentMusicItems, setRecentMusicItems] = useState<MusicItemWithAllData[]>([]);
 
@@ -194,7 +196,7 @@ const DashboardScreen = ({}) => {
     ];
 
     return (
-        <View className="flex-1 bg-white">
+        <View className="flex-1" style={{ backgroundColor: colors.background }}>
             {menuOpen && (
                 <>
                     <Pressable
@@ -211,7 +213,7 @@ const DashboardScreen = ({}) => {
                         top: -10,
                         right: 16,
                         width: 180,
-                        backgroundColor: "#fff",
+                        backgroundColor: colors.elevated,
                         borderRadius: 12,
                         paddingVertical: 8,
                         zIndex: 100,
@@ -234,7 +236,7 @@ const DashboardScreen = ({}) => {
                             paddingHorizontal: 18,
                         }}
                         >
-                        <Text style={{ fontSize: 16 }}>{item.label}</Text>
+                        <Text style={{ color: colors.text, fontSize: 16 }}>{item.label}</Text>
                         </Pressable>
                     ))}
                     </View>
@@ -242,36 +244,36 @@ const DashboardScreen = ({}) => {
                 )}
 
             {/* Quick Options Menu */}
-            <View className="flex-row justify-between pt-10 pb-10 mt-4 mb-4 bg-white shadow-md w-[75%] self-center rounded-lg">
+            <View className="flex-row justify-between pt-10 pb-10 mt-4 mb-4 shadow-md w-[75%] self-center rounded-lg" style={{ backgroundColor: colors.surface }}>
                 {/* Library */}
                 <View className="flex-1 justify-center items-center">
                     <TouchableOpacity className="p-2 m-1 rounded justify-center items-center w-full" onPress={() => navigation.navigate('Library', {})}>
-                        <Ionicons name="library" size={48} color={ACCENT_COLOR}  />
-                        <Text className="text-[16px] p-1" style={{ color: ACCENT_COLOR }}>
+                        <Ionicons name="library" size={48} color={colors.accent}  />
+                        <Text className="text-[16px] p-1" style={{ color: colors.accent }}>
                             Library
                         </Text>
                     </TouchableOpacity>
                 </View>
 
-                <View className="w-px h-full bg-dodger" />
+                <View className="w-px h-full" style={{ backgroundColor: colors.accent }} />
 
                 {/* Sets */}
                 <View className="flex-1 justify-center items-center">
                     <TouchableOpacity className="p-2 m-1 rounded justify-center items-center w-full" onPress={() => navigation.navigate('Setlists')}>
-                        <Ionicons name="list" size={48} color={ACCENT_COLOR} />
-                        <Text className="text-[16px] p-1" style={{ color: ACCENT_COLOR }}>
+                        <Ionicons name="list" size={48} color={colors.accent} />
+                        <Text className="text-[16px] p-1" style={{ color: colors.accent }}>
                             Sets
                         </Text>
                     </TouchableOpacity>
                 </View>
 
-                <View className="w-px h-full bg-dodger" />
+                <View className="w-px h-full" style={{ backgroundColor: colors.accent }} />
 
                 {/* Add Score */}
                 <View className="flex-1 justify-center items-center">
                     <TouchableOpacity className="p-2 m-1 rounded justify-center items-center w-full" onPress={handleImport}>
-                        <MaterialIcons name="add" size={48} color={ACCENT_COLOR} />
-                        <Text className="text-[16px] p-1" style={{ color: ACCENT_COLOR }}>
+                        <MaterialIcons name="add" size={48} color={colors.accent} />
+                        <Text className="text-[16px] p-1" style={{ color: colors.accent }}>
                             Add
                         </Text>
                     </TouchableOpacity>
@@ -281,7 +283,7 @@ const DashboardScreen = ({}) => {
             <View className='flex-1 ml-14'>
                 {__DEV__ && (
                     <>
-                        <Text className="text-xl mt-4" style={{ color: ACCENT_COLOR }}>
+                        <Text className="text-xl mt-4" style={{ color: colors.text }}>
                             Debug Screens
                         </Text>
                             <Pressable
@@ -291,7 +293,7 @@ const DashboardScreen = ({}) => {
                                     )
                                 }
                                 >
-                                <Text>
+                                <Text style={{ color: colors.text }}>
                                     Open Face Gesture Debugging
                                 </Text>
                             </Pressable>
@@ -303,7 +305,7 @@ const DashboardScreen = ({}) => {
                                     )
                                 }
                                 >
-                                <Text>
+                                <Text style={{ color: colors.text }}>
                                     Open Annotation Test Screen
                                 </Text>
                             </Pressable>
@@ -311,7 +313,7 @@ const DashboardScreen = ({}) => {
                     </>
                 )}
     
-                <Text className="text-xl mt-4" style={{ color: ACCENT_COLOR }}>
+                <Text className="text-xl mt-4" style={{ color: colors.text }}>
                     Recent Items
                 </Text>
 
@@ -336,13 +338,16 @@ const DashboardScreen = ({}) => {
                     contentContainerStyle={{ padding: 10 }}
                     refreshControl={
                         <RefreshControl
+                          tintColor={colors.accent}
+                          colors={[colors.accent]}
+                          progressBackgroundColor={colors.elevated}
                             refreshing={false}
                             onRefresh={() => console.log('Refreshing...')}
                         />
                     } />
                 ) : (
                     <View className="flex-1 justify-center items-center">
-                        <Text className="text-gray-500 text-lg">No recent items.</Text>
+                        <Text className="text-lg" style={{ color: colors.secondaryText }}>No recent items.</Text>
                     </View>
                 )}
             </View>

@@ -10,8 +10,10 @@ import SettingsToggleRow from "../../components/settings/SettingsToggleRow";
 import SettingsSegmentedRow from "../../components/settings/SettingsSegmentedRow";
 import { RouteProp, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { ACCENT_COLOR, RootStackParamList } from "../../types";
+import { RootStackParamList } from "../../types";
 import { getSetlistById } from "../../utils/database";
+
+import { useAppTheme } from "../../utils/theme/useAppTheme";
 
 type Props = {
   route: RouteProp<
@@ -28,6 +30,7 @@ const SetlistSettingsScreen = ({ route }: Props) => {
 
   const navigation =
       useNavigation();
+  const { colors } = useAppTheme();
 
   const updateSetlistSetting = async <K extends keyof ReaderSettings>(
         key: K,
@@ -67,9 +70,9 @@ const SetlistSettingsScreen = ({ route }: Props) => {
         <View
             style={{
             height: 92,
-            backgroundColor: 'white',
+            backgroundColor: colors.background,
             borderBottomWidth: 1,
-            borderBottomColor: '#E5E7EB',
+            borderBottomColor: colors.separator,
             justifyContent: 'flex-end',
             paddingHorizontal: 20,
             paddingBottom: 12,
@@ -96,7 +99,7 @@ const SetlistSettingsScreen = ({ route }: Props) => {
                       <Ionicons
                           name="chevron-back"
                           size={28}
-                          color={ACCENT_COLOR}
+                          color={colors.accent}
                       />
                       </TouchableOpacity>
                   <Text
@@ -104,7 +107,7 @@ const SetlistSettingsScreen = ({ route }: Props) => {
                       fontSize: 24,
                       // fontWeight: '700',
                       fontWeight: '300',
-                      color: '#111827',
+                      color: colors.text,
                       }}
                   >
                       Setlist Settings
@@ -114,7 +117,7 @@ const SetlistSettingsScreen = ({ route }: Props) => {
         </View>
         ),
     });
-    }, [navigation]);
+    }, [navigation, colors]);
 
     const resetToGlobal = async () => {
 
@@ -133,14 +136,14 @@ const SetlistSettingsScreen = ({ route }: Props) => {
   if (!settings) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.accent} />
       </View>
     );
   }
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#ffffff" }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{
         padding: 20,
         paddingBottom: 40,
@@ -150,6 +153,7 @@ const SetlistSettingsScreen = ({ route }: Props) => {
             <Text
                 style={{
                     fontSize: 20,
+                    color: colors.text,
                     fontWeight: "700",
                 }}
             >
@@ -159,7 +163,7 @@ const SetlistSettingsScreen = ({ route }: Props) => {
             <Text
                 style={{
                     marginTop: 4,
-                    color: "#6B7280",
+                    color: colors.secondaryText,
                     fontSize: 15,
                 }}
             >
@@ -314,7 +318,7 @@ const SetlistSettingsScreen = ({ route }: Props) => {
             >
                 <Text
                     style={{
-                        color: "#2563EB",
+                        color: colors.accent,
                         fontWeight: "600",
                     }}
                 >

@@ -1,3 +1,4 @@
+import { useAppTheme } from "../utils/theme/useAppTheme";
 import React, {
   useState,
   useEffect,
@@ -36,13 +37,13 @@ import {
   useFocusEffect,
 } from "@react-navigation/native";
 
-const ACCENT_COLOR = '#2563EB';
 
 type SetlistEntryWithMusic = SetlistEntry & {
   music: MusicItemWithAllData;
 };
 
 const SetlistDetailScreen = ({ route, navigation }: any) => {
+  const { colors } = useAppTheme();
   const { setlistId } = route.params;
 
   const [setlist, setSetlist] = useState<Setlist | null>(null);
@@ -293,9 +294,9 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
         <View
             style={{
             height: 92,
-            backgroundColor: 'white',
+            backgroundColor: colors.background,
             borderBottomWidth: 1,
-            borderBottomColor: '#E5E7EB',
+            borderBottomColor: colors.separator,
             justifyContent: 'flex-end',
             paddingHorizontal: 20,
             paddingBottom: 12,
@@ -322,7 +323,7 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                 <Ionicons
                     name="chevron-back"
                     size={28}
-                    color={ACCENT_COLOR}
+                    color={colors.accent}
                 />
                 </TouchableOpacity>
 
@@ -331,7 +332,7 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                     numberOfLines={1}
                     style={{
                     fontSize: 24,
-                    color: '#464950',
+                    color: colors.text,
                     fontWeight: '400',
                     }}
                 >
@@ -355,7 +356,7 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
 
             <Menu>
               <MenuTrigger>
-                <Ionicons name="ellipsis-vertical" size={24} color={ACCENT_COLOR} />
+                <Ionicons name="ellipsis-vertical" size={24} color={colors.accent} />
               </MenuTrigger>
 
               <MenuOptions
@@ -364,7 +365,7 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                     width: 240,
                     borderRadius: 14,
                     paddingVertical: 6,
-                    backgroundColor: "white",
+                    backgroundColor: colors.elevated,
                     elevation: 10,
                   },
                 }}
@@ -423,6 +424,7 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
     });
     }, [
         navigation,
+        colors,
         setlist
     ]);
 
@@ -460,6 +462,7 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
     onPress: () => void;
     destructive?: boolean;
   }) {
+  const { colors } = useAppTheme();
     return (
       <MenuOption onSelect={onPress}>
         <View style={{
@@ -471,14 +474,14 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
           <Ionicons
             name={icon}
             size={20}
-            color={destructive ? "#DC2626" : "#374151"}
+            color={destructive ? colors.danger : colors.text}
             style={{ width: 28 }}
           />
 
           <Text style={{
             marginLeft: 10,
             fontSize: 16,
-            color: destructive ? "#DC2626" : "#111827",
+            color: destructive ? colors.danger : colors.text,
           }}>
             {label}
           </Text>
@@ -488,7 +491,7 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <DraggableFlatList
         data={entries}
 
@@ -526,11 +529,11 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
             </Text> */}
 
             {setlist?.description ? (
-              <Text style={{ fontSize: 20, color: '#6B7280'}}>
+              <Text style={{ fontSize: 20, color: colors.secondaryText}}>
                 {setlist?.description}
               </Text>
             ) : (
-                <Text style={{ fontSize: 20, color: '#6B7280'}}>
+                <Text style={{ fontSize: 20, color: colors.secondaryText}}>
                     No description...
                 </Text>
             )}
@@ -545,41 +548,41 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
             >
               <View
                 style={{
-                  backgroundColor: '#EFF6FF',
+                  backgroundColor: colors.selectedBackground,
                   borderRadius: 999,
                   paddingHorizontal: 10,
                   paddingVertical: 4,
                 }}
               >
-                <Text style={{ color: '#2563EB', fontWeight: '700', fontSize: 13 }}>
+                <Text style={{ color: colors.accent, fontWeight: '700', fontSize: 13 }}>
                   {entries.length} entries
                 </Text>
               </View>
 
               <View
                 style={{
-                  backgroundColor: '#F3F4F6',
+                  backgroundColor: colors.surfaceSecondary,
                   borderRadius: 999,
                   paddingHorizontal: 10,
                   paddingVertical: 4,
                 }}
               >
-                <Text style={{ color: '#6B7280', fontWeight: '600', fontSize: 13 }}>
+                <Text style={{ color: colors.secondaryText, fontWeight: '600', fontSize: 13 }}>
                   {totalPages} pages
                 </Text>
               </View>
 
               <View
                 style={{
-                  backgroundColor: '#F9FAFB',
+                  backgroundColor: colors.surface,
                   borderRadius: 999,
                   paddingHorizontal: 10,
                   paddingVertical: 4,
                   borderWidth: 1,
-                  borderColor: '#E5E7EB',
+                  borderColor: colors.border,
                 }}
               >
-                <Text style={{ color: '#6B7280', fontWeight: '600', fontSize: 13 }}>
+                <Text style={{ color: colors.secondaryText, fontWeight: '600', fontSize: 13 }}>
                   Performance order
                 </Text>
               </View>
@@ -634,10 +637,10 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                     }}
                     >
                     <View>
-                        <Text>{index + 1}</Text>
+                        <Text style={{ color: colors.text }}>{index + 1}</Text>
                     </View>
 
-                    <Ionicons name="reorder-two-outline" size={22} color="#9CA3AF" />
+                    <Ionicons name="reorder-two-outline" size={22} color={colors.tertiaryText} />
                     </TouchableOpacity>
 
                     <View style={{ flex: 1 }}>
@@ -729,11 +732,11 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
             <Ionicons
                 name="musical-notes-outline"
                 size={48}
-                color="#9CA3AF"
+                color={colors.tertiaryText}
             />
 
             <Text
-                style={{
+                style={{ color: colors.text,
                 marginTop: 12,
                 fontSize: 18,
                 fontWeight: '600',
@@ -746,13 +749,13 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                 onPress={() => setAddScoresVisible(true)}
                 style={{
                 marginTop: 16,
-                backgroundColor: '#2563EB',
+                backgroundColor: colors.accent,
                 paddingHorizontal: 20,
                 paddingVertical: 10,
                 borderRadius: 8,
                 }}
             >
-                <Text style={{ color: 'white' }}>
+                <Text style={{ color: colors.onAccent }}>
                 Add Scores
                 </Text>
             </TouchableOpacity>
@@ -777,7 +780,7 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
     <Modal visible={editSetlistVisible} transparent animationType="fade">
       <View style={{
         flex: 1,
-        backgroundColor: "rgba(0,0,0,0.35)",
+        backgroundColor: colors.overlay,
         alignItems: "center",
         justifyContent: "center",
         padding: 24,
@@ -785,21 +788,24 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
         <View style={{
           width: "70%",
           maxWidth: 520,
-          backgroundColor: "white",
+          backgroundColor: colors.elevated,
           borderRadius: 18,
           padding: 20,
         }}>
-          <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
+          <Text style={{ color: colors.text, fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
             Edit Setlist
           </Text>
 
           <TextInput
+            cursorColor={colors.accent}
+            selectionColor={colors.accent}
+            placeholderTextColor={colors.tertiaryText}
             value={editName}
             onChangeText={setEditName}
             placeholder="Setlist name"
-            style={{
+            style={{ color: colors.text, backgroundColor: colors.surface,
               borderWidth: 1,
-              borderColor: "#D1D5DB",
+              borderColor: colors.border,
               borderRadius: 10,
               padding: 12,
               fontSize: 16,
@@ -808,13 +814,16 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
           />
 
           <TextInput
+            cursorColor={colors.accent}
+            selectionColor={colors.accent}
+            placeholderTextColor={colors.tertiaryText}
             value={editDescription}
             onChangeText={setEditDescription}
             placeholder="Description optional"
             multiline
-            style={{
+            style={{ color: colors.text, backgroundColor: colors.surface,
               borderWidth: 1,
-              borderColor: "#D1D5DB",
+              borderColor: colors.border,
               borderRadius: 10,
               padding: 12,
               fontSize: 16,
@@ -830,7 +839,7 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
             marginTop: 20,
           }}>
             <TouchableOpacity onPress={() => setEditSetlistVisible(false)}>
-              <Text style={{ color: "#6B7280", fontSize: 16 }}>Cancel</Text>
+              <Text style={{ color: colors.secondaryText, fontSize: 16 }}>Cancel</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -852,7 +861,7 @@ const SetlistDetailScreen = ({ route, navigation }: any) => {
                 await loadSetlist();
               }}
             >
-              <Text style={{ color: ACCENT_COLOR, fontWeight: "700", fontSize: 16 }}>
+              <Text style={{ color: colors.accent, fontWeight: "700", fontSize: 16 }}>
                 Save
               </Text>
             </TouchableOpacity>

@@ -58,7 +58,7 @@ const SettingsScreen = () => {
         <View
             style={{
             height: 92,
-            backgroundColor: colors.elevated,
+            backgroundColor: colors.background,
             borderBottomWidth: 1,
             borderBottomColor: colors.border,
             justifyContent: 'flex-end',

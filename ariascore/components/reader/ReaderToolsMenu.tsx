@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 
 import {
   View,
@@ -27,6 +27,9 @@ import ReaderDisplayOptions, {
 import ReaderJumpToPage, {
   type JumpToPageSelection,
 } from "./ReaderJumpToPage";
+
+import { useAppTheme } from "../../utils/theme/useAppTheme";
+import { ThemeColors } from "../../utils/theme/types";
 
 const { Popover } = renderers;
 
@@ -66,7 +69,6 @@ interface ToolItemProps {
   label: string;
   sublabel?: string;
   action: ReaderToolAction;
-  accentColor: string;
   disabled?: boolean;
 }
 
@@ -75,9 +77,13 @@ const ToolItem = ({
   label,
   sublabel,
   action,
-  accentColor,
   disabled = false,
 }: ToolItemProps) => {
+  const { colors } = useAppTheme();
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
   return (
     <MenuOption
       value={action}
@@ -100,8 +106,8 @@ const ToolItem = ({
             size={22}
             color={
               disabled
-                ? "#94A3B8"
-                : accentColor
+                ? colors.tertiaryText
+                : colors.accent
             }
           />
         </View>
@@ -122,7 +128,7 @@ const ToolItem = ({
           <Ionicons
             name="chevron-forward"
             size={16}
-            color="#94A3B8"
+            color={colors.tertiaryText}
           />
         )}
       </View>
@@ -136,7 +142,13 @@ const ToolSection = ({
 }: {
   title: string;
   children: React.ReactNode;
-}) => (
+}) => {
+  const { colors } = useAppTheme();
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
+  return (
   <View style={styles.section}>
     <Text style={styles.sectionTitle}>
       {title.toUpperCase()}
@@ -144,10 +156,9 @@ const ToolSection = ({
 
     {children}
   </View>
-);
+)};
 
 const ReaderToolsMenu = ({
-  accentColor,
   hasSetlist = false,
   disabled = false,
 
@@ -172,6 +183,12 @@ const ReaderToolsMenu = ({
   const { width, height } =
     useWindowDimensions();
 
+  const { colors } = useAppTheme();
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
+
   const [activeView, setActiveView] =
     useState<"tools" | "display" | "jump">(
         "tools"
@@ -188,7 +205,7 @@ const ReaderToolsMenu = ({
       rendererProps={{
         placement: "bottom",
         anchorStyle: {
-          backgroundColor: "#FFFFFF",
+          backgroundColor: colors.elevated,
         },
       }}
 
@@ -233,7 +250,7 @@ const ReaderToolsMenu = ({
         <Ionicons
           name="briefcase-outline"
           size={24}
-          color={accentColor}
+          color={colors.accent}
           accessibilityLabel="Reader tools"
         />
       </MenuTrigger>
@@ -245,7 +262,7 @@ const ReaderToolsMenu = ({
           optionsContainer: {
             width: menuWidth,
             borderRadius: 14,
-            backgroundColor: "#FFFFFF",
+            backgroundColor: colors.elevated,
             elevation: 10,
           },
         }}
@@ -265,7 +282,7 @@ const ReaderToolsMenu = ({
                     <Ionicons
                     name="chevron-back"
                     size={23}
-                    color={accentColor}
+                    color={colors.accent}
                     />
                 </TouchableOpacity>
 
@@ -284,7 +301,7 @@ const ReaderToolsMenu = ({
                 <Ionicons
                     name="briefcase-outline"
                     size={22}
-                    color={accentColor}
+                    color={colors.accent}
                 />
                 </>
             )}
@@ -302,7 +319,6 @@ const ReaderToolsMenu = ({
                 >
             {activeView === "display" ? (
                 <ReaderDisplayOptions
-                accentColor={accentColor}
 
                 displayMode={displayMode}
                 coverOffset={coverOffset}
@@ -322,7 +338,6 @@ const ReaderToolsMenu = ({
                 />
             ) : activeView === "jump" ? (
                 <ReaderJumpToPage
-                accentColor={accentColor}
                 currentPage={currentPage}
                 totalPages={totalPages}
                 minimumPage={minimumPage}
@@ -346,7 +361,7 @@ const ReaderToolsMenu = ({
                         <Ionicons
                         name="grid-outline"
                         size={22}
-                        color={accentColor}
+                        color={colors.accent}
                         />
                     </View>
 
@@ -363,7 +378,7 @@ const ReaderToolsMenu = ({
                     <Ionicons
                         name="chevron-forward"
                         size={16}
-                        color="#94A3B8"
+                        color={colors.tertiaryText}
                     />
                     </TouchableOpacity>
 
@@ -372,7 +387,6 @@ const ReaderToolsMenu = ({
                         label="Add to Favourites"
                         sublabel="Coming soon"
                         action="favorite"
-                        accentColor={accentColor}
                         disabled
                     />
 
@@ -381,7 +395,6 @@ const ReaderToolsMenu = ({
                         label="Export Score"
                         sublabel="Coming soon"
                         action="export"
-                        accentColor={accentColor}
                         disabled
                     />
                     </ToolSection>
@@ -402,7 +415,7 @@ const ReaderToolsMenu = ({
                             <Ionicons
                                 name="albums-outline"
                                 size={22}
-                                color={accentColor}
+                                color={colors.accent}
                             />
                             </View>
 
@@ -429,7 +442,7 @@ const ReaderToolsMenu = ({
                             <Ionicons
                             name="chevron-forward"
                             size={16}
-                            color="#94A3B8"
+                            color={colors.tertiaryText}
                             />
                         </TouchableOpacity>
                     </ToolSection>
@@ -444,7 +457,6 @@ const ReaderToolsMenu = ({
                         icon="document-text-outline"
                         label="Score Settings"
                         action="score-settings"
-                        accentColor={accentColor}
                     />
 
                     {hasSetlist && (
@@ -452,7 +464,6 @@ const ReaderToolsMenu = ({
                         icon="list-outline"
                         label="Setlist Settings"
                         action="setlist-settings"
-                        accentColor={accentColor}
                         />
                     )}
 
@@ -460,7 +471,6 @@ const ReaderToolsMenu = ({
                         icon="settings-outline"
                         label="Global Settings"
                         action="global-settings"
-                        accentColor={accentColor}
                     />
                     </ToolSection>
                     </>
@@ -472,7 +482,7 @@ const ReaderToolsMenu = ({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   trigger: {
     width: 44,
     height: 44,
@@ -490,13 +500,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    borderBottomColor: colors.separator,
   },
 
   heading: {
     fontSize: 19,
     fontWeight: "700",
-    color: "#222",
+    color: colors.text,
   },
 
   section: {
@@ -506,7 +516,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#64748B",
+    color: colors.text,
     letterSpacing: 0.7,
     paddingHorizontal: 8,
     paddingTop: 6,
@@ -537,12 +547,12 @@ const styles = StyleSheet.create({
   itemLabel: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#222",
+    color: colors.text,
   },
 
   itemSublabel: {
     fontSize: 12,
-    color: "#888",
+    color: colors.secondaryText,
     marginTop: 3,
   },
 
@@ -552,7 +562,7 @@ const styles = StyleSheet.create({
 
   divider: {
     height: 1,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.surfaceSecondary,
     marginVertical: 4,
   },
 

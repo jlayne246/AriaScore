@@ -14,11 +14,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { Menu, MenuOption, MenuOptions, MenuTrigger } from 'react-native-popup-menu';
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useAppTheme } from "../utils/theme/useAppTheme";
 
 import {
   RootStackParamList,
   MusicItemWithAllData,
-  ACCENT_COLOR,
 } from '../types';
 
 import { UploadLocalPDF } from '../utils/fileUtils';
@@ -65,9 +65,12 @@ const LibraryScreen = () => {
   const [showAZ, setShowAZ] = useState(false);
   const [indicatorLetter, setIndicatorLetter] = useState('');
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { colors } = useAppTheme();
   const sectionListRef = useRef<SectionList<MusicItemWithAllData>>(null);
 
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+
 
   const route = useRoute<RouteProp<RootStackParamList, "Library">>();
 
@@ -105,9 +108,9 @@ const LibraryScreen = () => {
         <View
             style={{
             height: 92,
-            backgroundColor: 'white',
+            backgroundColor: colors.background,
             borderBottomWidth: 1,
-            borderBottomColor: '#E5E7EB',
+            borderBottomColor: colors.separator,
             justifyContent: 'flex-end',
             paddingHorizontal: 20,
             paddingBottom: 12,
@@ -134,14 +137,14 @@ const LibraryScreen = () => {
                       <Ionicons
                           name="chevron-back"
                           size={28}
-                          color={ACCENT_COLOR}
+                          color={colors.accent}
                       />
                       </TouchableOpacity>
                   <Text
                       style={{
                       fontSize: 24,
                       // fontWeight: '700',
-                      color: '#464950',
+                      color: colors.text,
                       fontWeight: '400',
                       }}
                   >
@@ -160,13 +163,13 @@ const LibraryScreen = () => {
                     // justifyContent: 'center',
                 }}
             >
-                <Ionicons name="add" size={28} color="#2563EB" />
+                <Ionicons name="add" size={28} color={colors.accent} />
             </TouchableOpacity>
             </View>
         </View>
         ),
     });
-    }, [navigation]);
+    }, [navigation, colors]);
 
 
   const loadMusic = useCallback(async () => {
@@ -357,15 +360,15 @@ const LibraryScreen = () => {
       : filterBy.charAt(0).toUpperCase() + filterBy.slice(1);
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <View
         style={{
-          backgroundColor: 'white',
+          backgroundColor: colors.background,
           paddingHorizontal: 16,
           paddingTop: 12,
           paddingBottom: 10,
           borderBottomWidth: 1,
-          borderBottomColor: '#E5E7EB',
+          borderBottomColor: colors.separator,
         }}
       >
         <View
@@ -380,30 +383,32 @@ const LibraryScreen = () => {
               flex: 1,
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: '#F3F4F6',
+              backgroundColor: colors.surface,
               borderRadius: 14,
               paddingHorizontal: 12,
               height: 46,
             }}
           >
-            <Ionicons name="search" size={20} color="#6B7280" />
+            <Ionicons name="search" size={20} color={colors.secondaryText} />
 
             <TextInput
+              cursorColor={colors.accent}
+              selectionColor={colors.accent}
               placeholder="Search library..."
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholderTextColor="#888"
+              placeholderTextColor={colors.tertiaryText}
               style={{
                 flex: 1,
                 marginLeft: 8,
                 fontSize: 16,
-                color: '#111827',
+                color: colors.text,
               }}
             />
 
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                <Ionicons name="close-circle" size={20} color={colors.tertiaryText} />
               </TouchableOpacity>
             )}
           </View>
@@ -415,22 +420,22 @@ const LibraryScreen = () => {
                   height: 46,
                   width: 118,
                   borderRadius: 14,
-                  backgroundColor: '#EFF6FF',
+                  backgroundColor: colors.selectedBackground,
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexDirection: 'row',
                   gap: 6,
                 }}
               >
-                <Ionicons name="filter" size={18} color="#2563EB" />
+                <Ionicons name="filter" size={18} color={colors.accent} />
 
-                <Text style={{ color: '#2563EB', fontWeight: '600' }}>
+                <Text style={{ color: colors.accent, fontWeight: '600' }}>
                   {filterLabel}
                 </Text>
               </View>
             </MenuTrigger>
 
-            <MenuOptions>
+            <MenuOptions customStyles={{ optionsContainer: { backgroundColor: colors.elevated } }}>
               {filterButtons.map((button, index) => {
                 const value = filterMap[index];
                 const selected = filterBy === value;
@@ -444,7 +449,7 @@ const LibraryScreen = () => {
                       style={{
                         padding: 10,
                         fontSize: 15,
-                        color: selected ? '#2563EB' : '#111827',
+                        color: selected ? colors.accent : colors.text,
                         fontWeight: selected ? '700' : '400',
                       }}
                     >
@@ -462,7 +467,7 @@ const LibraryScreen = () => {
             style={{
               marginTop: 8,
               fontSize: 14,
-              color: '#6B7280',
+              color: colors.secondaryText,
             }}
           >
             {sections.length > 0
@@ -488,14 +493,14 @@ const LibraryScreen = () => {
               paddingHorizontal: 16,
               paddingTop: 12,
               paddingBottom: 4,
-              backgroundColor: "white",
+              backgroundColor: colors.background,
             }}
           >
             <Text
               style={{
                 fontSize: 13,
                 fontWeight: "700",
-                color: "#9CA3AF",
+                color: colors.text,
                 letterSpacing: 0.5,
               }}
             >
@@ -505,6 +510,9 @@ const LibraryScreen = () => {
         )}
         refreshControl={
           <RefreshControl
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+            progressBackgroundColor={colors.elevated}
             refreshing={refreshing}
             onRefresh={refreshMusicList}
           />
@@ -523,7 +531,7 @@ const LibraryScreen = () => {
               style={{
                 textAlign: "center",
                 fontSize: 14,
-                color: "#4B5563",
+                color: colors.secondaryText,
               }}
             >
               No music in library. Press + to add music.
@@ -539,17 +547,18 @@ const LibraryScreen = () => {
       />
 
       <TouchableOpacity
-        className="absolute right-4 bottom-24 bg-gray-800 px-3 py-2 rounded-full"
+        className="absolute right-4 bottom-24 px-3 py-2 rounded-full"
+        style={{ backgroundColor: colors.text }}
         onPress={() => setShowAZ(true)}
       >
-        <Text className="text-white text-sm font-medium">A–Z</Text>
+        <Text className="text-sm font-medium" style={{ color: colors.background }}>A–Z</Text>
       </TouchableOpacity>
 
       {showAZ && (
-        <View className="absolute right-1 top-20 bottom-20 justify-center items-center bg-white/90 rounded-md px-1">
+        <View className="absolute right-1 top-20 bottom-20 justify-center items-center rounded-md px-1" style={{ backgroundColor: colors.elevated }}>
           {alphabet.map((letter) => (
             <TouchableOpacity key={letter} onPress={() => scrollToLetter(letter)}>
-              <Text className="text-xs text-gray-600 py-0.5 px-1">
+              <Text className="text-xs py-0.5 px-1" style={{ color: colors.secondaryText }}>
                 {letter}
               </Text>
             </TouchableOpacity>
@@ -564,12 +573,12 @@ const LibraryScreen = () => {
             position: 'absolute',
             alignSelf: 'center',
             top: '45%',
-            backgroundColor: 'rgba(0,0,0,0.7)',
+            backgroundColor: colors.toastBackground,
             padding: 20,
             borderRadius: 12,
           }}
         >
-          <Text className="text-white text-3xl font-bold">
+          <Text className="text-3xl font-bold" style={{ color: colors.toastText }}>
             {indicatorLetter}
           </Text>
         </Animated.View>
@@ -589,10 +598,10 @@ const LibraryScreen = () => {
       )}
 
       {/* <TouchableOpacity
-        className="absolute bottom-6 right-6 bg-blue-500 rounded w-14 h-14 justify-center items-center shadow-md shadow-black/20 elevation-5"
+        className="absolute bottom-6 right-6 rounded w-14 h-14 justify-center items-center shadow-md shadow-black/20 elevation-5" style={{ backgroundColor: colors.accent }}
         onPress={handleImport}
       >
-        <Ionicons name="add" size={32} color="white" />
+        <Ionicons name="add" size={32} color={colors.onAccent} />
       </TouchableOpacity> */}
     </View>
   );

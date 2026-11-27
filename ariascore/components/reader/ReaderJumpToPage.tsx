@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 
 import {
   View,
@@ -11,13 +11,16 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { MenuOption } from "react-native-popup-menu";
 
+
+import { useAppTheme } from "../../utils/theme/useAppTheme";
+import { ThemeColors } from "../../utils/theme/types";
+
 export type JumpToPageSelection = {
   type: "go-to-page";
   page: number;
 };
 
 interface ReaderJumpToPageProps {
-  accentColor: string;
 
   currentPage: number;
   totalPages: number;
@@ -27,12 +30,18 @@ interface ReaderJumpToPageProps {
 }
 
 const ReaderJumpToPage = ({
-  accentColor,
   currentPage,
   totalPages,
   minimumPage,
   maximumPage,
 }: ReaderJumpToPageProps) => {
+  const { colors } = useAppTheme();
+
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
+
   const [pageInput, setPageInput] =
     useState(String(currentPage));
 
@@ -61,6 +70,8 @@ const ReaderJumpToPage = ({
 
       <View style={styles.inputRow}>
         <TextInput
+          cursorColor={colors.accent}
+          selectionColor={colors.accent}
           style={[
             styles.pageInput,
             pageInput.length > 0 &&
@@ -75,7 +86,7 @@ const ReaderJumpToPage = ({
           }
           keyboardType="number-pad"
           placeholder="Page number"
-          placeholderTextColor="#999"
+          placeholderTextColor={colors.tertiaryText}
           selectTextOnFocus
           accessibilityLabel="Page number"
         />
@@ -100,7 +111,7 @@ const ReaderJumpToPage = ({
             style={[
               styles.goButton,
               {
-                backgroundColor: accentColor,
+                backgroundColor: colors.accent,
                 opacity: isValid ? 1 : 0.45,
               },
             ]}
@@ -117,7 +128,7 @@ const ReaderJumpToPage = ({
           styles.rangeLabel,
           pageInput.length > 0 &&
             !isValid && {
-              color: "#DC2626",
+              color: colors.danger,
             },
         ]}
       >
@@ -132,7 +143,7 @@ const ReaderJumpToPage = ({
           <Ionicons
             name="information-circle-outline"
             size={18}
-            color="#64748B"
+            color={colors.secondaryText}
           />
 
           <Text style={styles.noticeText}>
@@ -169,7 +180,7 @@ const ReaderJumpToPage = ({
             <Ionicons
               name="play-skip-back-outline"
               size={18}
-              color={accentColor}
+              color={colors.accent}
             />
 
             <View>
@@ -218,7 +229,7 @@ const ReaderJumpToPage = ({
             <Ionicons
               name="play-skip-forward-outline"
               size={18}
-              color={accentColor}
+              color={colors.accent}
             />
           </View>
         </MenuOption>
@@ -240,7 +251,7 @@ const ReaderJumpToPage = ({
           <Ionicons
             name="grid-outline"
             size={24}
-            color={accentColor}
+            color={colors.accent}
           />
 
           <View style={styles.details}>
@@ -256,7 +267,7 @@ const ReaderJumpToPage = ({
           <Ionicons
             name="chevron-forward"
             size={18}
-            color="#94A3B8"
+            color={colors.tertiaryText}
           />
         </View>
       </MenuOption>
@@ -264,7 +275,7 @@ const ReaderJumpToPage = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     paddingTop: 14,
     gap: 10,
@@ -272,7 +283,7 @@ const styles = StyleSheet.create({
 
   currentPage: {
     fontSize: 13,
-    color: "#64748B",
+    color: colors.secondaryText,
   },
 
   inputRow: {
@@ -286,27 +297,27 @@ const styles = StyleSheet.create({
     minWidth: 0,
     height: 44,
 
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.surfaceSecondary,
 
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.border,
     borderRadius: 8,
 
     paddingHorizontal: 12,
 
     fontSize: 18,
     fontWeight: "500",
-    color: "#222",
+    color: colors.text,
     fontVariant: ["tabular-nums"],
   },
 
   invalidInput: {
-    borderColor: "#DC2626",
+    borderColor: colors.danger,
   },
 
   totalPages: {
     fontSize: 15,
-    color: "#64748B",
+    color: colors.secondaryText,
     fontVariant: ["tabular-nums"],
   },
 
@@ -322,19 +333,19 @@ const styles = StyleSheet.create({
   goLabel: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: colors.onAccent,
   },
 
   rangeLabel: {
     fontSize: 12,
-    color: "#64748B",
+    color: colors.secondaryText,
   },
 
   notice: {
     flexDirection: "row",
     alignItems: "flex-start",
 
-    backgroundColor: "#F1F5F9",
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 8,
 
     padding: 8,
@@ -345,7 +356,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     lineHeight: 17,
-    color: "#64748B",
+    color: colors.secondaryText,
   },
 
   shortcutRow: {
@@ -362,7 +373,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
 
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.border,
     borderRadius: 8,
 
     paddingHorizontal: 8,
@@ -374,18 +385,18 @@ const styles = StyleSheet.create({
   shortcutLabel: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#334155",
+    color: colors.secondaryText,
   },
 
   shortcutSubtitle: {
     fontSize: 11,
-    color: "#888",
+    color: colors.secondaryText,
     marginTop: 3,
   },
 
   divider: {
     height: 1,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.surfaceSecondary,
     marginVertical: 4,
   },
 
@@ -406,7 +417,7 @@ const styles = StyleSheet.create({
   browseLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#222",
+    color: colors.text,
   },
 });
 

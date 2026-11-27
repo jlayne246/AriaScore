@@ -1,3 +1,4 @@
+import { useAppTheme } from "../utils/theme/useAppTheme";
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -60,6 +61,11 @@ const MetadataEditor = ({
   onManageSetlists,
   canManageSetlists
 }: MetadataEditorProps) => {
+  const { colors } = useAppTheme();
+  const optionStyle = (selected: boolean) => ({
+    backgroundColor: selected ? colors.selectedBackground : colors.surface,
+    borderColor: selected ? colors.accent : colors.border,
+  });
   const [showAllKeyOptions, setShowAllKeyOptions] =
     useState(false);
 
@@ -174,14 +180,12 @@ const MetadataEditor = ({
           {visibleOptions.map(option => (
             <TouchableOpacity
               key={option}
-              className={`bg-white border border-gray-300 rounded-md py-1.5 px-2.5 mr-2 mb-2 ${
-                currentValue === option ? 'bg-green-500 border-green-500' : ''
-              }`}
+              className="border rounded-md py-1.5 px-2.5 mr-2 mb-2"
+              style={optionStyle(currentValue === option)}
               onPress={() => setFormData(prev => ({ ...prev, [field]: option }))}
             >
               <Text
-                className={currentValue === option ? "text-white" : "text-gray-800"}
-                style={{ fontSize: 14, includeFontPadding: true }}
+                style={{ fontSize: 14, includeFontPadding: true, color: currentValue === option ? colors.accent : colors.text }}
               >
                 {option}
               </Text>
@@ -189,21 +193,19 @@ const MetadataEditor = ({
           ))}
   
           {!showAllOptions && hiddenCount > 0 && (
-            <TouchableOpacity
-              className="bg-gray-200 border border-gray-300 rounded-md py-1.5 px-2.5 mr-2 mb-2"
+            <TouchableOpacity className="border rounded-md py-1.5 px-2.5 mr-2 mb-2" style={{ backgroundColor: colors.surfaceSecondary, borderColor: colors.border }}
               onPress={() => setShowAllOptions(true)}
             >
-              <Text className="text-sm text-gray-800">More...</Text>
+              <Text className="text-sm" style={{ color: colors.text }}>More...</Text>
             </TouchableOpacity>
           )}
   
           {showAllOptions && isCustom && (
             <TouchableOpacity
-              className={`border rounded-md py-1.5 px-2.5 mr-2 mb-2 ${
-                isCustom ? "bg-blue-500 border-blue-500" : "bg-white border-gray-300"
-              }`}
+              className="border rounded-md py-1.5 px-2.5 mr-2 mb-2"
+              style={optionStyle(isCustom)}
             >
-              <Text className={`text-sm ${isCustom ? "text-white" : "text-gray-800"}`}>
+              <Text className="text-sm" style={{ color: isCustom ? colors.accent : colors.text }}>
                 {isCustom ? `Custom: ${currentValue}` : "Custom"}
               </Text>
             </TouchableOpacity>
@@ -221,8 +223,8 @@ const MetadataEditor = ({
       }}
     >
       {/* Title */}
-      <Text className="text-sm text-gray-800 font-semibold mt-3 mb-1">GENERAL</Text>
-      <View className="h-px bg-gray-200 my-2" />
+      <Text className="text-sm font-semibold mt-3 mb-1" style={{ color: colors.text }}>GENERAL</Text>
+      <View className="h-px my-2" style={{ backgroundColor: colors.separator }} />
 
       <View className="flex-row items-start my-3">
         {coverThumbnail && (
@@ -234,93 +236,103 @@ const MetadataEditor = ({
               resizeMode: 'contain',
               marginRight: 12,
               borderWidth: 1,
-              borderColor: '#ddd',
+              borderColor: colors.border,
             }}
           />
         )}
 
         <View style={{ flex: 1 }}>
           <View className="mb-3">
-            <Text className="text-base font-medium text-gray-800 mb-2">
+            <Text className="text-base font-medium mb-2" style={{ color: colors.text }}>
               Title
             </Text>
 
             <TextInput
-              className="bg-white border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-800"
+              cursorColor={colors.accent}
+              selectionColor={colors.accent}
+              className="border rounded-lg px-4 py-3 text-base" style={{ backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }}
               value={formData.title}
               onChangeText={(text) =>
                 setFormData(prev => ({ ...prev, title: text }))
               }
               placeholder="Enter title"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.tertiaryText}
             />
           </View>
 
           {formData.document_type === "Single Work" ? (
             <>
               <View className="mb-3">
-                <Text className="text-base font-medium text-gray-800 mb-2">
+                <Text className="text-base font-medium mb-2" style={{ color: colors.text }}>
                   Composer
                 </Text>
 
                 <TextInput
-                  className="bg-white border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-800"
+                  cursorColor={colors.accent}
+                  selectionColor={colors.accent}
+                  className="border rounded-lg px-4 py-3 text-base" style={{ backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }}
                   value={formData.composer}
                   onChangeText={(text) =>
                     setFormData(prev => ({ ...prev, composer: text }))
                   }
                   placeholder="Enter composer name"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.tertiaryText}
                 />
               </View>
 
               <View>
-                <Text className="text-base font-medium text-gray-800 mb-2">
+                <Text className="text-base font-medium mb-2" style={{ color: colors.text }}>
                   Arranger
                 </Text>
 
                 <TextInput
-                  className="bg-white border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-800"
+                  cursorColor={colors.accent}
+                  selectionColor={colors.accent}
+                  className="border rounded-lg px-4 py-3 text-base" style={{ backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }}
                   value={formData.arranger}
                   onChangeText={(text) =>
                     setFormData(prev => ({ ...prev, arranger: text }))
                   }
                   placeholder="Enter arranger name"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.tertiaryText}
                 />
               </View>
             </>
           ) : (
             <>
               <View className="mb-3">
-                <Text className="text-base font-medium text-gray-800 mb-2">
+                <Text className="text-base font-medium mb-2" style={{ color: colors.text }}>
                   Editor
                 </Text>
 
                 <TextInput
-                  className="bg-white border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-800"
+                  cursorColor={colors.accent}
+                  selectionColor={colors.accent}
+                  className="border rounded-lg px-4 py-3 text-base" style={{ backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }}
                   value={formData.editor}
                   onChangeText={(text) =>
                     setFormData(prev => ({ ...prev, editor: text }))
                   }
                   placeholder="Enter editor name"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.tertiaryText}
                 />
               </View>
 
               <View>
-                <Text className="text-base font-medium text-gray-800 mb-2">
+                <Text className="text-base font-medium mb-2" style={{ color: colors.text }}>
                   Publisher
                 </Text>
 
                 <TextInput
-                  className="bg-white border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-800"
+                  cursorColor={colors.accent}
+                  selectionColor={colors.accent}
+                  className="border rounded-lg px-4 py-3 text-base" style={{ backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }}
                   value={formData.publisher}
                   onChangeText={(text) =>
                     setFormData(prev => ({ ...prev, publisher: text }))
                   }
                   placeholder="Enter publisher name"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={colors.tertiaryText}
                 />
               </View>
             </>
@@ -328,24 +340,24 @@ const MetadataEditor = ({
         </View>
       </View>
 
-      <Text className="text-sm text-gray-800 font-semibold mt-3 mb-1">MUSIC</Text>
-      <View className="h-px bg-gray-200 my-2" />
+      <Text className="text-sm font-semibold mt-3 mb-1" style={{ color: colors.text }}>MUSIC</Text>
+      <View className="h-px my-2" style={{ backgroundColor: colors.separator }} />
       {/* Genre */}
       <View className="my-3">
-        <Text className="text-base font-medium text-gray-800 mb-2">Genre</Text>
+        <Text className="text-base font-medium mb-2" style={{ color: colors.text }}>Genre</Text>
 
         <TouchableOpacity
           onPress={onSelectGenre}
           style={{
-            backgroundColor: "white",
+            backgroundColor: colors.surface,
             borderWidth: 1,
-            borderColor: "#D1D5DB",
+            borderColor: colors.border,
             borderRadius: 10,
             paddingHorizontal: 14,
             paddingVertical: 12,
           }}
         >
-          <Text style={{ fontSize: 16, color: formData.genre ? "#111827" : "#9CA3AF" }}>
+          <Text style={{ fontSize: 16, color: formData.genre ? colors.text : colors.tertiaryText }}>
             {formData.genre || "Select genre"}
           </Text>
         </TouchableOpacity>
@@ -353,7 +365,7 @@ const MetadataEditor = ({
 
       {/* Document Type */}
       <View className="my-3">
-        <Text className="text-base font-medium text-gray-800 mb-2">
+        <Text className="text-base font-medium mb-2" style={{ color: colors.text }}>
           Document Type
         </Text>
 
@@ -364,11 +376,8 @@ const MetadataEditor = ({
             return (
               <TouchableOpacity
                 key={type}
-                className={`border rounded-full py-2 px-3 mr-2 mb-2 ${
-                  selected
-                    ? 'bg-blue-500 border-blue-500'
-                    : 'bg-white border-gray-300'
-                }`}
+                className="border rounded-full py-2 px-3 mr-2 mb-2"
+                style={optionStyle(selected)}
                 onPress={() =>
                   setFormData(prev => ({
                     ...prev,
@@ -377,9 +386,7 @@ const MetadataEditor = ({
                 }
               >
                 <Text
-                  className={`text-sm ${
-                    selected ? 'text-white' : 'text-gray-800'
-                  }`}
+                  className="text-sm" style={{ color: selected ? colors.accent : colors.text }}
                 >
                   {type}
                 </Text>
@@ -393,13 +400,15 @@ const MetadataEditor = ({
         <>
           {/* Key Signature */}
           <View className="my-3">
-            <Text className="text-base font-medium text-gray-800 mb-2">Key Signature</Text>
+            <Text className="text-base font-medium mb-2" style={{ color: colors.text }}>Key Signature</Text>
             <TextInput
-              className="bg-white border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-800"
+              cursorColor={colors.accent}
+              selectionColor={colors.accent}
+              className="border rounded-lg px-4 py-3 text-base" style={{ backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }}
               value={formData.key_signature}
               onChangeText={(text) => setFormData(prev => ({ ...prev, key_signature: text }))}
               placeholder="Select or enter key signature"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.tertiaryText}
             />
             {renderQuickSelectButtons(
               keySignatures,
@@ -408,7 +417,7 @@ const MetadataEditor = ({
               setShowAllKeyOptions
             )}
             {isCustomValue(formData.key_signature, keySignatures) && (
-              <Text className="text-xs text-blue-600 mt-1">
+              <Text className="text-xs mt-1" style={{ color: colors.accent }}>
                 Custom key signature will be saved for this score.
               </Text>
             )}
@@ -416,13 +425,15 @@ const MetadataEditor = ({
 
           {/* Time Signature */}
           <View className="my-3">
-            <Text className="text-base font-medium text-gray-800 mb-2">Time Signature</Text>
+            <Text className="text-base font-medium mb-2" style={{ color: colors.text }}>Time Signature</Text>
             <TextInput
-              className="bg-white border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-800"
+              cursorColor={colors.accent}
+              selectionColor={colors.accent}
+              className="border rounded-lg px-4 py-3 text-base" style={{ backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }}
               value={formData.time_signature}
               onChangeText={(text) => setFormData(prev => ({ ...prev, time_signature: text }))}
               placeholder="Select or enter time signature"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.tertiaryText}
             />
             {renderQuickSelectButtons(
               timeSignatures,
@@ -432,7 +443,7 @@ const MetadataEditor = ({
             )}
 
             {isCustomValue(formData.time_signature, timeSignatures) && (
-              <Text className="text-xs text-blue-600 mt-1">
+              <Text className="text-xs mt-1" style={{ color: colors.accent }}>
                 Custom time signature will be saved for this score.
               </Text>
             )}
@@ -442,13 +453,13 @@ const MetadataEditor = ({
 
       
 
-      <Text className="text-sm text-gray-800 font-semibold mt-3 mb-1">DOCUMENT</Text>
-      <View className="h-px bg-gray-200 my-2" />
+      <Text className="text-sm font-semibold mt-3 mb-1" style={{ color: colors.text }}>DOCUMENT</Text>
+      <View className="h-px my-2" style={{ backgroundColor: colors.separator }} />
       {/* Page Count */}
       <View className="my-3">
-        <Text className="text-base font-medium text-gray-800 mb-2">Page Count</Text>
-        <View className="bg-white border border-gray-300 rounded-lg px-4 py-3">
-          <Text className="text-base text-gray-800">
+        <Text className="text-base font-medium mb-2" style={{ color: colors.text }}>Page Count</Text>
+        <View className="border rounded-lg px-4 py-3" style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+          <Text className="text-base" style={{ color: colors.text }}>
             {formData.page_count || 0} pages
           </Text>
         </View>
@@ -460,12 +471,12 @@ const MetadataEditor = ({
       {/* Difficulty */}
       {/* {renderDifficultySelector()} */}
 
-      <Text className="text-sm text-gray-800 font-semibold mt-3 mb-1">ORGANISATION</Text>
-      <View className="h-px bg-gray-200 my-2" />
+      <Text className="text-sm font-semibold mt-3 mb-1" style={{ color: colors.text }}>ORGANISATION</Text>
+      <View className="h-px my-2" style={{ backgroundColor: colors.separator }} />
 
       {/* setlists */}
         <View className="my-3">
-          <Text className="text-base font-medium text-gray-800 mb-2">
+          <Text className="text-base font-medium mb-2" style={{ color: colors.text }}>
             Setlists
           </Text>
 
@@ -473,9 +484,9 @@ const MetadataEditor = ({
             onPress={onManageSetlists}
             disabled={!canManageSetlists}
             style={{
-              backgroundColor: "white",
+              backgroundColor: colors.surface,
               borderWidth: 1,
-              borderColor: "#D1D5DB",
+              borderColor: colors.border,
               borderRadius: 10,
               paddingHorizontal: 14,
               paddingVertical: 14,
@@ -491,7 +502,7 @@ const MetadataEditor = ({
                 style={{
                   fontSize: 16,
                   fontWeight: "600",
-                  color: "#111827",
+                  color: colors.text,
                 }}
               >
                 Manage Setlists
@@ -500,7 +511,7 @@ const MetadataEditor = ({
               <Text
                 style={{
                   fontSize: 13,
-                  color: "#6B7280",
+                  color: colors.secondaryText,
                   marginTop: 3,
                 }}
               >
@@ -513,7 +524,7 @@ const MetadataEditor = ({
             <Ionicons
               name="chevron-forward"
               size={20}
-              color="#9CA3AF"
+              color={colors.tertiaryText}
             />
           </TouchableOpacity>
         </View>
@@ -521,14 +532,14 @@ const MetadataEditor = ({
       {/* Labels */}
       <View className="my-3">
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-base font-medium text-gray-800">Labels</Text>
+          <Text className="text-base font-medium" style={{ color: colors.text }}>Labels</Text>
 
           <TouchableOpacity
             onPress={onAddLabel}
-            className="bg-green-500 px-4 py-2 rounded-md"
-            style={{ minHeight: 36, justifyContent: 'center' }}
+            className="px-4 py-2 rounded-md"
+            style={{ minHeight: 36, justifyContent: 'center', backgroundColor: colors.accent }}
           >
-            <Text className="text-white text-sm font-medium leading-none self-center" style={{ lineHeight: 18 }}>
+            <Text className="text-sm font-medium leading-none self-center" style={{ lineHeight: 18, color: colors.onAccent }}>
               + Add Label
             </Text>
           </TouchableOpacity>
@@ -538,12 +549,13 @@ const MetadataEditor = ({
           {availableLabels.map(label => (
             <TouchableOpacity
               key={label.id}
-              className={`bg-white border border-gray-300 rounded-full py-1.5 px-3 ${selectedLabels.includes(label.name) ? 'bg-purple-500 border-purple-500' : ''
-                }`}
+              className="border rounded-full py-1.5 px-3"
+              style={selectedLabels.includes(label.name)
+                ? { backgroundColor: colors.labelBackground, borderColor: colors.labelText }
+                : optionStyle(false)}
               onPress={() => onToggleLabel(label.name)}
             >
-              <Text className={`text-sm ${selectedLabels.includes(label.name) ? 'text-white' : 'text-gray-800'
-                }`}>
+              <Text className="text-sm" style={{ color: selectedLabels.includes(label.name) ? colors.labelText : colors.text }}>
                 {label.name}
               </Text>
             </TouchableOpacity>

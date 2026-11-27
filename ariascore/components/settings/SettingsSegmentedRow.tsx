@@ -78,7 +78,7 @@ const SettingsSegmentedRow = <T extends string>({
                 flex: 1,
                 paddingVertical: 9,
                 borderRadius: 8,
-                backgroundColor: selected ? colors.elevated : "transparent",
+                backgroundColor: selected ? colors.selectedBackground : "transparent",
                 alignItems: "center",
               }}
             >

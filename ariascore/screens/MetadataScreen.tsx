@@ -1,3 +1,5 @@
+import type { ThemeColors } from "../utils/theme/types";
+import { useAppTheme } from "../utils/theme/useAppTheme";
 import React, {
   useCallback,
   useEffect,
@@ -20,7 +22,6 @@ import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import {
-  ACCENT_COLOR,
   GENRE_OPTIONS,
   Label,
   MusicMetadata,
@@ -85,6 +86,8 @@ export default function MetadataScreen({
   route,
   navigation,
 }: Props) {
+  const { colors } = useAppTheme();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
   const {
     mode,
     musicId,
@@ -395,7 +398,7 @@ export default function MetadataScreen({
               <Ionicons
                 name="chevron-back"
                 size={26}
-                color={ACCENT_COLOR}
+                color={colors.accent}
               />
             </TouchableOpacity>
 
@@ -436,6 +439,8 @@ export default function MetadataScreen({
       ),
     });
   }, [
+    styles,
+    colors,
     handleSave,
     isLoading,
     mode,
@@ -563,6 +568,8 @@ function GenrePickerModal({
   onSelect,
   onClose,
 }: GenrePickerModalProps) {
+  const { colors } = useAppTheme();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
   return (
     <Modal
       visible={visible}
@@ -628,6 +635,8 @@ function AddLabelModal({
   onAdd,
   onClose,
 }: AddLabelModalProps) {
+  const { colors } = useAppTheme();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
   const canAdd = value.trim().length > 0;
 
   return (
@@ -644,6 +653,9 @@ function AddLabelModal({
           </Text>
 
           <TextInput
+            cursorColor={colors.accent}
+            selectionColor={colors.accent}
+            placeholderTextColor={colors.tertiaryText}
             value={value}
             onChangeText={onChangeText}
             placeholder="Enter label name"
@@ -687,17 +699,17 @@ function AddLabelModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: colors.background,
   },
 
   header: {
     height: 92,
-    backgroundColor: "white",
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    borderBottomColor: colors.separator,
     justifyContent: "flex-end",
     paddingHorizontal: 12,
     paddingBottom: 12,
@@ -715,7 +727,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-    color: '#464950',
+    color: colors.text,
     fontWeight: '400',
     fontSize: 24,
     marginLeft: 4,
@@ -728,7 +740,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   headerSaveText: {
-    color: ACCENT_COLOR,
+    color: colors.accent,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -741,7 +753,7 @@ const styles = StyleSheet.create({
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: colors.overlay,
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
@@ -749,21 +761,21 @@ const styles = StyleSheet.create({
   genreModalCard: {
     width: "70%",
     maxWidth: 520,
-    backgroundColor: "white",
+    backgroundColor: colors.elevated,
     borderRadius: 18,
     padding: 20,
   },
   labelModalCard: {
     width: "100%",
     maxWidth: 420,
-    backgroundColor: "white",
+    backgroundColor: colors.elevated,
     borderRadius: 16,
     padding: 20,
   },
   modalTitle: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#111827",
+    color: colors.text,
     marginBottom: 16,
   },
   genreList: {
@@ -775,26 +787,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: colors.surfaceSecondary,
   },
   genreChipSelected: {
-    backgroundColor: ACCENT_COLOR,
+    backgroundColor: colors.genreBackground,
   },
   genreChipText: {
-    color: "#374151",
+    color: colors.text,
     fontWeight: "600",
   },
   genreChipTextSelected: {
-    color: "white",
+    color: colors.genreText,
   },
   labelInput: {
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "#D1D5DB",
+    borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    color: "#111827",
+    color: colors.text,
   },
   modalRightAction: {
     marginTop: 20,
@@ -813,7 +826,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   modalActionText: {
-    color: ACCENT_COLOR,
+    color: colors.accent,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -821,7 +834,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   cancelText: {
-    color: "#6B7280",
+    color: colors.secondaryText,
     fontSize: 16,
     fontWeight: "600",
   },

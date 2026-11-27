@@ -10,8 +10,9 @@ import SettingsToggleRow from "../../components/settings/SettingsToggleRow";
 import SettingsSegmentedRow from "../../components/settings/SettingsSegmentedRow";
 import { RouteProp, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { ACCENT_COLOR, RootStackParamList } from "../../types";
+import { RootStackParamList } from "../../types";
 import { getMusicWithMetadata } from "../../utils/database";
+import { useAppTheme } from "../../utils/theme/useAppTheme";
 
 type Props = {
   route: RouteProp<
@@ -28,6 +29,8 @@ const MusicSettingsScreen = ({ route }: Props) => {
 
   const navigation =
       useNavigation();
+
+  const { colors } = useAppTheme();
 
   const updateMusicSetting = async <K extends keyof ReaderSettings>(
         key: K,
@@ -62,9 +65,9 @@ const MusicSettingsScreen = ({ route }: Props) => {
         <View
             style={{
             height: 92,
-            backgroundColor: 'white',
+            backgroundColor: colors.background,
             borderBottomWidth: 1,
-            borderBottomColor: '#E5E7EB',
+            borderBottomColor: colors.border,
             justifyContent: 'flex-end',
             paddingHorizontal: 20,
             paddingBottom: 12,
@@ -91,7 +94,7 @@ const MusicSettingsScreen = ({ route }: Props) => {
                       <Ionicons
                           name="chevron-back"
                           size={28}
-                          color={ACCENT_COLOR}
+                          color={colors.accent}
                       />
                       </TouchableOpacity>
                   <Text
@@ -99,7 +102,7 @@ const MusicSettingsScreen = ({ route }: Props) => {
                       fontSize: 24,
                       // fontWeight: '700',
                       fontWeight: '300',
-                      color: '#111827',
+                      color: colors.text,
                       }}
                   >
                       Score Settings
@@ -109,7 +112,7 @@ const MusicSettingsScreen = ({ route }: Props) => {
         </View>
         ),
     });
-    }, [navigation]);
+    }, [navigation, colors]);
 
     const resetToGlobal = async () => {
 
@@ -128,14 +131,14 @@ const MusicSettingsScreen = ({ route }: Props) => {
   if (!settings) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.accent} />
       </View>
     );
   }
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#ffffff" }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{
         padding: 20,
         paddingBottom: 40,
@@ -146,6 +149,7 @@ const MusicSettingsScreen = ({ route }: Props) => {
                 style={{
                     fontSize: 20,
                     fontWeight: "700",
+                    color: colors.text,
                 }}
             >
                 {scoreName}
@@ -154,7 +158,7 @@ const MusicSettingsScreen = ({ route }: Props) => {
             <Text
                 style={{
                     marginTop: 4,
-                    color: "#6B7280",
+                    color: colors.secondaryText,
                     fontSize: 15,
                 }}
             >
@@ -309,7 +313,7 @@ const MusicSettingsScreen = ({ route }: Props) => {
             >
                 <Text
                     style={{
-                        color: "#2563EB",
+                        color: colors.accent,
                         fontWeight: "600",
                     }}
                 >

@@ -54,13 +54,6 @@ export default function ThemeProvider({
 }: Props) {
   const systemColorScheme = useColorScheme();
 
-  useEffect(() => {
-  console.log(
-    "System colour scheme:",
-    systemColorScheme
-  );
-}, [systemColorScheme]);
-
   const [preference, setPreferenceState] =
     useState<ThemePreference>("system");
 

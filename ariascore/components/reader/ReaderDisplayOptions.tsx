@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useMemo } from "react";
 
 import {
   View,
@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
+
+import { useAppTheme } from "../../utils/theme/useAppTheme";
+import { ThemeColors } from "../../utils/theme/types";
 
 import { Ionicons } from "@expo/vector-icons";
 
@@ -20,7 +23,6 @@ export type OrientationMode =
   | "landscape";
 
 export interface ReaderDisplayOptionsProps {
-  accentColor: string;
 
   displayMode: DisplayMode;
   coverOffset: boolean;
@@ -71,6 +73,8 @@ const PageIllustration = ({
   double: boolean;
   color: string;
 }) => {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   return (
     <View style={styles.pageIllustration}>
       {Array.from({
@@ -110,7 +114,6 @@ const PageIllustration = ({
 };
 
 const ReaderDisplayOptions = ({
-  accentColor,
   displayMode,
   coverOffset,
   orientationLock,
@@ -119,6 +122,13 @@ const ReaderDisplayOptions = ({
   onCoverOffsetChange,
   onOrientationChange,
 }: ReaderDisplayOptionsProps) => {
+  const { colors } = useAppTheme();
+
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
+
   return (
     <View style={styles.container}>
 
@@ -154,9 +164,9 @@ const ReaderDisplayOptions = ({
                 style={[
                   styles.layoutCard,
                   active && {
-                    borderColor: accentColor,
+                    borderColor: colors.accent,
                     backgroundColor:
-                      `${accentColor}08`,
+                      colors.selectedBackground,
                   },
                 ]}
               >
@@ -164,8 +174,8 @@ const ReaderDisplayOptions = ({
                   double={mode === "double"}
                   color={
                     active
-                      ? accentColor
-                      : "#94A3B8"
+                      ? colors.accent
+                      : colors.tertiaryText
                   }
                 />
 
@@ -173,7 +183,7 @@ const ReaderDisplayOptions = ({
                   style={[
                     styles.layoutLabel,
                     active && {
-                      color: accentColor,
+                      color: colors.accent,
                     },
                   ]}
                 >
@@ -189,8 +199,8 @@ const ReaderDisplayOptions = ({
                   size={18}
                   color={
                     active
-                      ? accentColor
-                      : "#94A3B8"
+                      ? colors.accent
+                      : colors.tertiaryText
                   }
                 />
               </TouchableOpacity>
@@ -225,8 +235,8 @@ const ReaderDisplayOptions = ({
               size={23}
               color={
                 coverOffset
-                  ? accentColor
-                  : "#94A3B8"
+                  ? colors.accent
+                  : colors.tertiaryText
               }
             />
 
@@ -246,7 +256,7 @@ const ReaderDisplayOptions = ({
             <Ionicons
               name="information-circle-outline"
               size={18}
-              color="#64748B"
+              color={colors.secondaryText}
             />
 
             <Text style={styles.noticeText}>
@@ -286,7 +296,7 @@ const ReaderDisplayOptions = ({
               styles.optionRow,
               active && {
                 backgroundColor:
-                  `${accentColor}0D`,
+                  colors.selectedBackground,
               },
             ]}
           >
@@ -295,8 +305,8 @@ const ReaderDisplayOptions = ({
               size={23}
               color={
                 active
-                  ? accentColor
-                  : "#64748B"
+                  ? colors.accent
+                  : colors.secondaryText
               }
             />
 
@@ -305,7 +315,7 @@ const ReaderDisplayOptions = ({
                 style={[
                   styles.optionLabel,
                   active && {
-                    color: accentColor,
+                    color: colors.accent,
                     fontWeight: "600",
                   },
                 ]}
@@ -318,7 +328,7 @@ const ReaderDisplayOptions = ({
               <Ionicons
                 name="checkmark"
                 size={20}
-                color={accentColor}
+                color={colors.accent}
               />
             )}
           </TouchableOpacity>
@@ -328,7 +338,7 @@ const ReaderDisplayOptions = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     paddingTop: 12,
     gap: 8,
@@ -337,7 +347,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#64748B",
+    color: colors.text,
     letterSpacing: 0.7,
     marginBottom: 4,
   },
@@ -355,7 +365,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
 
     borderWidth: 1.5,
-    borderColor: "#E2E8F0",
+    borderColor: colors.border,
     borderRadius: 10,
 
     paddingHorizontal: 8,
@@ -385,7 +395,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     paddingVertical: 7,
 
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.elevated,
 
     justifyContent: "space-between",
   },
@@ -403,7 +413,7 @@ const styles = StyleSheet.create({
   layoutLabel: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#475569",
+    color: colors.secondaryText,
   },
 
   coverSection: {
@@ -432,13 +442,13 @@ const styles = StyleSheet.create({
   optionLabel: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#222",
+    color: colors.text,
   },
 
   description: {
     fontSize: 12,
     lineHeight: 17,
-    color: "#64748B",
+    color: colors.secondaryText,
     marginTop: 4,
   },
 
@@ -447,7 +457,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
 
     padding: 8,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: colors.surfaceSecondary,
     borderRadius: 6,
     gap: 6,
   },
@@ -456,12 +466,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     lineHeight: 17,
-    color: "#64748B",
+    color: colors.secondaryText,
   },
 
   divider: {
     height: 1,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: colors.separator,
     marginVertical: 6,
   },
 });

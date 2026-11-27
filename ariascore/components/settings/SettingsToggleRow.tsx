@@ -1,6 +1,5 @@
 import { Switch, View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { ACCENT_COLOR } from "../../types";
 import { useAppTheme } from "../../utils/theme/useAppTheme";
 
 type Props = {
@@ -55,7 +54,7 @@ export default function SettingsToggleRow({
       <Switch
         value={value}
         onValueChange={onValueChange}
-        thumbColor={colors.accent}
+        thumbColor={value ? colors.accent : colors.thumbInactive}
         trackColor={{
           false: colors.trackInactive,
           true: colors.trackActive,

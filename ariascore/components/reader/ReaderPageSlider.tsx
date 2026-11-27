@@ -1,6 +1,7 @@
 
 import React, {
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -17,6 +18,9 @@ import Slider from "@react-native-community/slider";
 import type { Bookmark } from "../../types";
 import { Ionicons } from "@expo/vector-icons";
 
+import {useAppTheme} from "../../utils/theme/useAppTheme";
+import { ThemeColors } from "../../utils/theme/types";
+
 export interface ReaderPageSliderProps {
   currentPage: number;
   totalPages: number;
@@ -24,7 +28,6 @@ export interface ReaderPageSliderProps {
   minimumPage?: number;
   maximumPage?: number;
 
-  accentColor: string;
 
   thumbnails: Record<number, string>;
   bookmarks?: Bookmark[];
@@ -50,7 +53,6 @@ const ReaderPageSlider = ({
   minimumPage = 1,
   maximumPage = totalPages,
 
-  accentColor,
 
   bookmarks = [],
 
@@ -74,6 +76,12 @@ const ReaderPageSlider = ({
     useState(0);
 
   const scrubbingRef = useRef(false);
+
+  const {colors} = useAppTheme();
+  const styles = useMemo(
+    () => createStyles(colors),
+    [colors]
+  );
 
   const holdTimer = useRef<
     ReturnType<typeof setTimeout> | null
@@ -263,7 +271,7 @@ const ReaderPageSlider = ({
             ) : (
               <View style={styles.thumbnailLoading}>
                 <ActivityIndicator
-                  color={accentColor}
+                  color={colors.accent}
                 />
               </View>
             )}
@@ -283,7 +291,7 @@ const ReaderPageSlider = ({
                         <Ionicons
                             name="bookmark"
                             size={12}
-                            color="#D97706"
+                            color={colors.bookmark}
                         />
 
                         <Text
@@ -319,9 +327,9 @@ const ReaderPageSlider = ({
 
           disabled={pageRange <= 0}
 
-          minimumTrackTintColor={accentColor}
-          maximumTrackTintColor="#D1D5DB"
-          thumbTintColor={accentColor}
+          minimumTrackTintColor={colors.trackActive}
+          maximumTrackTintColor={colors.trackInactive}
+          thumbTintColor={pageRange > 0 ? colors.accent : colors.thumbInactive}
 
           onSlidingStart={handleSlidingStart}
           onValueChange={handleValueChange}
@@ -374,7 +382,7 @@ const ReaderPageSlider = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     width: '100%'
   },
@@ -400,11 +408,11 @@ const styles = StyleSheet.create({
     height: 8,
 
     borderRadius: 2,
-    backgroundColor: "#D97706",
+    backgroundColor: colors.bookmark,
     },
 
     activeBookmarkMarker: {
-    backgroundColor: "#92400E",
+    backgroundColor: colors.bookmarkActive,
     height: 10,
     },
 
@@ -423,13 +431,13 @@ const styles = StyleSheet.create({
 
   endpoint: {
     fontSize: 12,
-    color: "#888",
+    color: colors.secondaryText,
   },
 
   pageLabel: {
     fontSize: 13,
     fontWeight: "500",
-    color: "#444",
+    color: colors.secondaryText,
     fontVariant: ["tabular-nums"],
   },
 
@@ -439,13 +447,13 @@ const styles = StyleSheet.create({
     bottom: 46,
     zIndex: 10,
 
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.elevated,
 
     padding: 8,
 
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#DDDDDD",
+    borderColor: colors.border,
 
     elevation: 8,
 
@@ -469,7 +477,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
 
-    backgroundColor: "#F5F5F5",
+    backgroundColor: colors.surface,
   },
 
   previewLabel: {
@@ -478,14 +486,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     textAlign: "center",
-    color: "#444",
+    color: colors.secondaryText,
   },
 
   previewBookmarks: {
     marginTop: 6,
     paddingTop: 6,
     borderTopWidth: 1,
-    borderTopColor: "#EEEEEE",
+    borderTopColor: colors.separator,
     gap: 4,
     },
 
@@ -500,13 +508,13 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     fontSize: 11,
     fontWeight: "500",
-    color: "#B45309",
+    color: colors.bookmark,
     textAlign: "center",
     },
 
     additionalBookmarks: {
     fontSize: 10,
-    color: "#888888",
+    color: colors.secondaryText,
     textAlign: "center",
     },
 });
