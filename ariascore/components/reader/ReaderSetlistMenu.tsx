@@ -12,6 +12,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
+  ScrollView,
+  Keyboard,
   ActivityIndicator,
   useWindowDimensions,
   Alert,
@@ -63,9 +65,16 @@ interface ReaderSetlistMenuProps {
 
   onManageSetlists?: () => void;
 
+  currentPage: number;
+  totalPages: number;
+
   onSelectEntry: (
     selection: SetlistSelection
   ) => void | Promise<void>;
+
+  onSetlistChanged?: (
+  setlistId: number
+) => void | Promise<void>;
 }
 
 const ReaderSetlistMenu = ({
@@ -78,6 +87,9 @@ const ReaderSetlistMenu = ({
   onClose,
   onSelectEntry,
   onManageSetlists,
+  currentPage,
+  totalPages,
+  onSetlistChanged,
 }: ReaderSetlistMenuProps) => {
   const { width, height } =
     useWindowDimensions();
@@ -119,6 +131,18 @@ const ReaderSetlistMenu = ({
 
     const [creationError, setCreationError] =
     useState<string | null>(null);
+
+  const [entryMode, setEntryMode] =
+    useState<"full" | "excerpt">("full");
+
+  const [entryTitle, setEntryTitle] =
+    useState("");
+
+  const [startPageInput, setStartPageInput] =
+    useState(String(currentPage));
+
+  const [endPageInput, setEndPageInput] =
+    useState(String(currentPage));
 
     const savingRef = useRef(false);
 
@@ -254,6 +278,10 @@ const resetCreationForm = () => {
   setNewSetlistName("");
   setNewSetlistDescription("");
   setAddCurrentScore(true);
+  setEntryMode("full");
+  setEntryTitle("");
+  setStartPageInput(String(currentPage));
+  setEndPageInput(String(currentPage));
   setCreationError(null);
 };
 
@@ -262,87 +290,95 @@ const handleStartCreation = () => {
   setCreating(true);
 };
 
+const handleAddToExisting = () => {
+  if (!selectedSetlist) return;
+  resetCreationForm();
+  setCreating(true);
+};
+
 const handleCancelCreation = () => {
   if (savingRef.current) return;
-
   resetCreationForm();
 };
 
 const handleCreateSetlist = async () => {
+  if (savingRef.current || !canCreateSetlist) return;
+
+  const target = selectedSetlist;
   const name = newSetlistName.trim();
-  const description =
-    newSetlistDescription.trim();
+  const includeScore = Boolean(target) || addCurrentScore;
 
-  if (!name || savingRef.current) {
-    return;
-  }
-
-  const alreadyExists = setlists.some(
-    (setlist) =>
-      setlist.name.trim().toLowerCase() ===
-      name.toLowerCase()
-  );
-
-  if (alreadyExists) {
-    setCreationError(
-      "A setlist with this name already exists."
-    );
+  if (!target && setlists.some(
+    item => item.name.trim().toLowerCase() === name.toLowerCase()
+  )) {
+    setCreationError("A setlist with this name already exists.");
     return;
   }
 
   savingRef.current = true;
   setSaving(true);
   setCreationError(null);
-
-  let createdSetlistId: number | null = null;
+  let createdId: number | null = null;
+  let entryAdded = false;
 
   try {
-    createdSetlistId = await createSetlist(
-      name,
-      description
-    );
+    const setlistId = target
+      ? target.id
+      : (createdId = await createSetlist(name, newSetlistDescription.trim()));
 
-    if (addCurrentScore && currentMusicId) {
+    
+    if (includeScore) {
       await addSetlistEntry(
         currentMusicId,
-        createdSetlistId
+        setlistId,
+        entryTitle.trim() || null,
+        entryMode === "excerpt" ? startPage : null,
+        entryMode === "excerpt" ? endPage : null
       );
+
+      entryAdded = true;
+
+      // Synchronise the active reader context.
+      try {
+        await onSetlistChanged?.(setlistId);
+      } catch (error) {
+        console.error(
+          "Entry saved, but reader context refresh failed:",
+          error
+        );
+      }
     }
 
+
+    Keyboard.dismiss();
     resetCreationForm();
 
-    // Refresh all setlists without switching
-    // the active reader context.
-    await loadSetlists(false);
-
-  } catch (error) {
-    console.error(
-      "Failed to create setlist:",
-      error
-    );
-
-    if (createdSetlistId !== null) {
-      // The setlist exists, but adding the
-      // current score may have failed.
-      resetCreationForm();
-
-      await loadSetlists(false);
-
-      Alert.alert(
-        "Setlist created",
-        "The setlist was created, but the current score could not be added."
-      );
+    if (target) {
+      try {
+        const summaries = await getSetlistSummaries();
+        setSetlists(summaries);
+        await loadEntries(summaries.find(item => item.id === target.id) ?? target);
+      } catch (error) {
+        console.error("Failed to refresh setlists:", error);
+        setError("Entry added, but unable to refresh setlist.");
+      }
     } else {
-      setCreationError(
-        "Unable to create setlist. Please try again."
-      );
+      await loadSetlists(false);
+    }
+  } catch (error) {
+    console.error("Failed to save setlist:", error);
+    if (createdId !== null || entryAdded) {
+      resetCreationForm();
+      await loadSetlists(false);
+      Alert.alert("Setlist saved", "The setlist was created, but the requested entry could not be saved or refreshed.");
+    } else {
+      setCreationError("Unable to save. Please try again.");
     }
   } finally {
     savingRef.current = false;
     setSaving(false);
   }
 };
-
 
   const handleOpen = () => {
     resetCreationForm();
@@ -397,165 +433,128 @@ const handleCreateSetlist = async () => {
     height * 0.45
   );
 
+  const startPage = Number(startPageInput);
+const endPage = Number(endPageInput);
+
+const validExcerpt =
+  /^\d+$/.test(startPageInput) &&
+  /^\d+$/.test(endPageInput) &&
+  Number.isSafeInteger(startPage) &&
+  Number.isSafeInteger(endPage) &&
+  startPage >= 1 &&
+  endPage <= totalPages &&
+  startPage <= endPage;
+
+const excerptPageCount = validExcerpt
+  ? endPage - startPage + 1
+  : 0;
+
+const canCreateSetlist =
+  !saving &&
+  (Boolean(selectedSetlist) || Boolean(newSetlistName.trim())) &&
+  (
+    (!selectedSetlist && !addCurrentScore) ||
+    (currentMusicId > 0 && totalPages > 0 && (entryMode === "full" ||
+    validExcerpt))
+  );
 
     const creationForm = (
-    <View style={styles.creationForm}>
-        <View style={styles.creationHeader}>
-        <TouchableOpacity
-            onPress={handleCancelCreation}
-            disabled={saving}
-            style={styles.backButton}
-            accessibilityLabel="Cancel creation"
-        >
-            <Ionicons
-            name="chevron-back"
-            size={22}
-            color={accentColor}
-            />
+    <ScrollView
+      style={{ maxHeight: height * 0.65 }}
+      contentContainerStyle={styles.creationForm}
+      keyboardShouldPersistTaps="handled"
+    >
+      <View style={styles.creationHeader}>
+        <TouchableOpacity style={styles.backButton} disabled={saving}
+          onPress={handleCancelCreation} accessibilityLabel="Back">
+          <Ionicons name="chevron-back" size={22} color={accentColor} />
         </TouchableOpacity>
-
-        <Text style={styles.heading}>
-            New Setlist
-        </Text>
-        </View>
-
-        {/* NAME */}
-
-        <Text style={styles.fieldLabel}>
-        Name
-        </Text>
-
-        <TextInput
-        style={styles.formInput}
-        placeholder="Setlist name"
-        placeholderTextColor="#999"
-        value={newSetlistName}
-        onChangeText={(value) => {
-            setNewSetlistName(value);
-            setCreationError(null);
-        }}
-        editable={!saving}
-        autoCorrect={false}
-        autoCapitalize="words"
-        />
-
-        {/* DESCRIPTION */}
-
-        <Text style={styles.fieldLabel}>
-        Description (optional)
-        </Text>
-
-        <TextInput
-        style={[
-            styles.formInput,
-            styles.descriptionInput,
-        ]}
-        placeholder="Setlist description"
-        placeholderTextColor="#999"
-        value={newSetlistDescription}
-        onChangeText={setNewSetlistDescription}
-        editable={!saving}
-        multiline
-        />
-
-        {/* ADD CURRENT SCORE */}
-
-        <TouchableOpacity
-        style={styles.checkboxRow}
-        disabled={saving}
-        onPress={() =>
-            setAddCurrentScore((previous) =>
-            !previous
-            )
-        }
-        accessibilityRole="checkbox"
-        accessibilityState={{
-            checked: addCurrentScore,
-            disabled: saving,
-        }}
-        >
-        <Ionicons
-            name={
-            addCurrentScore
-                ? "checkbox"
-                : "square-outline"
-            }
-            size={24}
-            color={
-            addCurrentScore
-                ? accentColor
-                : "#94A3B8"
-            }
-        />
-
         <View style={styles.details}>
-            <Text style={styles.checkboxLabel}>
-            Add current score
-            </Text>
-
-            <Text
-            style={styles.rowSubtitle}
-            numberOfLines={2}
-            >
-            {currentScoreTitle}
-            </Text>
+          <Text style={styles.heading}>{selectedSetlist ? "Add current score" : "New Setlist"}</Text>
+          {selectedSetlist && <Text style={styles.rowSubtitle}>{selectedSetlist.name}</Text>}
         </View>
-        </TouchableOpacity>
+      </View>
 
-        {/* ERROR */}
+      {!selectedSetlist && (
+        <>
+          <Text style={styles.fieldLabel}>Name</Text>
+          <TextInput style={styles.formInput} placeholder="Setlist name"
+            value={newSetlistName} editable={!saving}
+            onChangeText={value => { setNewSetlistName(value); setCreationError(null); }} />
+          <Text style={styles.fieldLabel}>Description (optional)</Text>
+          <TextInput style={[styles.formInput, styles.descriptionInput]}
+            placeholder="Setlist description" multiline editable={!saving}
+            value={newSetlistDescription} onChangeText={setNewSetlistDescription} />
+          <TouchableOpacity style={styles.checkboxRow} disabled={saving}
+            accessibilityRole="checkbox" accessibilityState={{ checked: addCurrentScore }}
+            onPress={() => setAddCurrentScore(previous => !previous)}>
+            <Ionicons name={addCurrentScore ? "checkbox" : "square-outline"}
+              size={24} color={addCurrentScore ? accentColor : "#94A3B8"} />
+            <Text style={styles.checkboxLabel}>Add current score</Text>
+          </TouchableOpacity>
+        </>
+      )}
 
-        {creationError && (
-        <Text style={styles.creationError}>
-            {creationError}
-        </Text>
-        )}
-
-        {/* ACTIONS */}
-
-        <View style={styles.formActions}>
-        <TouchableOpacity
-            onPress={handleCancelCreation}
-            disabled={saving}
-            style={styles.cancelButton}
-        >
-            <Text style={styles.cancelButtonText}>
-            Cancel
-            </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-            onPress={handleCreateSetlist}
-            disabled={
-            saving ||
-            !newSetlistName.trim()
-            }
-            style={[
-            styles.createButton,
-            {
-                backgroundColor: accentColor,
-                opacity:
-                saving ||
-                !newSetlistName.trim()
-                    ? 0.45
-                    : 1,
-            },
-            ]}
-        >
-            {saving ? (
-            <ActivityIndicator
-                color="#FFFFFF"
-                size="small"
-            />
-            ) : (
-            <Text style={styles.createButtonText}>
-                Create Setlist
-            </Text>
-            )}
-        </TouchableOpacity>
+      {(selectedSetlist || addCurrentScore) && (
+        <View style={styles.entryConfiguration}>
+          <Text style={styles.rowTitle}>{currentScoreTitle}</Text>
+          <Text style={styles.rowSubtitle}>{totalPages} pages · Current page {currentPage}</Text>
+          <View style={styles.modeSelector}>
+            {(["full", "excerpt"] as const).map(mode => (
+              <TouchableOpacity key={mode} disabled={saving}
+                onPress={() => { setEntryMode(mode); setCreationError(null); }}
+                accessibilityRole="radio" accessibilityState={{ checked: entryMode === mode }}
+                style={[styles.modeButton, entryMode === mode && { backgroundColor: "#FFFFFF" }]}>
+                <Text style={[styles.modeLabel, entryMode === mode && { color: accentColor, fontWeight: "600" }]}>
+                  {mode === "full" ? "Full score" : "Excerpt"}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={styles.fieldLabel}>Entry title (optional)</Text>
+          <TextInput style={styles.formInput} value={entryTitle}
+            onChangeText={setEntryTitle} placeholder="Custom entry title" editable={!saving} />
+          {entryMode === "excerpt" && (
+            <>
+              <View style={styles.pageRangeRow}>
+                {([
+                  ["Start page", startPageInput, setStartPageInput],
+                  ["End page", endPageInput, setEndPageInput],
+                ] as const).map(([label, value, setter]) => (
+                  <View key={label} style={styles.pageField}>
+                    <Text style={styles.fieldLabel}>{label}</Text>
+                    <TextInput style={styles.formInput} value={value}
+                      onChangeText={text => setter(text.replace(/[^0-9]/g, ""))}
+                      keyboardType="number-pad" selectTextOnFocus editable={!saving} />
+                    <TouchableOpacity disabled={saving} onPress={() => setter(String(currentPage))}>
+                      <Text style={{ color: accentColor, fontSize: 12 }}>Use current page</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+              <Text style={[styles.rowSubtitle, !validExcerpt && { color: "#DC2626" }]}>
+                {validExcerpt
+                  ? `Pages ${startPage}–${endPage} · ${excerptPageCount} ${excerptPageCount === 1 ? "page" : "pages"}`
+                  : `Enter a valid range between 1 and ${totalPages}.`}
+              </Text>
+            </>
+          )}
         </View>
-    </View>
-    );
+      )}
 
+      {creationError && <Text style={styles.creationError}>{creationError}</Text>}
+      <View style={styles.formActions}>
+        <TouchableOpacity disabled={saving} onPress={handleCancelCreation} style={styles.cancelButton}>
+          <Text style={styles.cancelButtonText}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity disabled={!canCreateSetlist} onPress={handleCreateSetlist}
+          style={[styles.createButton, { backgroundColor: accentColor, opacity: canCreateSetlist ? 1 : 0.45 }]}>
+          {saving ? <ActivityIndicator color="#FFFFFF" size="small" /> :
+            <Text style={styles.createButtonText}>{selectedSetlist ? "Add Entry" : "Create Setlist"}</Text>}
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
 
   return (
     <Menu
@@ -572,8 +571,9 @@ const handleCreateSetlist = async () => {
         return !savingRef.current;
     }}
       onSelect={(
-        selection: SetlistSelection
+        selection: SetlistSelection | "manage-setlists"
       ) => {
+        if (selection === "manage-setlists") { onManageSetlists?.(); return; }
         void onSelectEntry(selection);
       }}
     >
@@ -927,6 +927,24 @@ const handleCreateSetlist = async () => {
                     }}
                     />
                 )}
+                {!loading && !error && selectedSetlist && (
+                  <TouchableOpacity style={styles.row} onPress={handleAddToExisting}
+                    accessibilityLabel="Add current score to this setlist">
+                    <Ionicons name="add-circle-outline" size={24} color={accentColor} />
+                    <View style={styles.details}>
+                      <Text style={[styles.rowTitle, { color: accentColor }]}>Add current score</Text>
+                      <Text style={styles.rowSubtitle}>Full score or excerpt</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                {!loading && !error && !selectedSetlist && onManageSetlists && (
+                  <MenuOption value="manage-setlists">
+                    <View style={styles.row}>
+                      <Ionicons name="list-outline" size={22} color={accentColor} />
+                      <Text style={[styles.rowTitle, { color: accentColor, flex: 1 }]}>Manage current score's setlists</Text>
+                    </View>
+                  </MenuOption>
+                )}
                 </>
             )}
         </View>
@@ -1065,6 +1083,12 @@ const styles = StyleSheet.create({
 creationForm: {
   gap: 10,
 },
+entryConfiguration: { gap: 10 },
+modeSelector: { flexDirection: "row", gap: 4, padding: 4, borderRadius: 8, backgroundColor: "#F1F5F9" },
+modeButton: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 6 },
+modeLabel: { fontSize: 13, color: "#64748B" },
+pageRangeRow: { flexDirection: "row", gap: 12 },
+pageField: { flex: 1, minWidth: 0, gap: 6 },
 
 creationHeader: {
   flexDirection: "row",

@@ -2006,6 +2006,25 @@ export async function removeBookmark(bookmarkId: number) {
   );
 }
 
+export const updateBookmarkLabel = async (
+  bookmarkId: number,
+  label?: string
+): Promise<void> => {
+  const db = await openDatabase();
+
+  await db.runAsync(
+    `
+    UPDATE music_bookmarks
+    SET label = ?
+    WHERE id = ?
+    `,
+    [
+      label?.trim() || null,
+      bookmarkId,
+    ]
+  );
+};
+
 export const getBookmarksForScore = async (musicId: number): Promise<Array<{ id: number, page_number: number, label?: string }>> => {
     const db = await openDatabase();
 

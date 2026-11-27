@@ -11,24 +11,19 @@ import { Ionicons } from "@expo/vector-icons";
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 
 interface ReaderTopBarProps {
-  title: string;
-  pageLabel: string;
-  setlistLabel?: string;
-
   accentColor: string;
   performanceMode: boolean;
   annotationsReady: boolean;
 
   onBack: () => void;
   libraryMenu: ReactNode;
-  onOpenLibrary: () => void;
-  onBookmarks: () => void;
+  bookmarksMenu: ReactNode;
   setlistMenu?: ReactNode;
-  onScoreInfo: () => void;
+  scoreInfoMenu: ReactNode;
 
   onTogglePerformanceMode: () => void;
   onAnnotate: () => void;
-  onAudioUtilities?: () => void;
+  musicUtilitiesMenu?: ReactNode;
 
   toolsMenu: ReactNode;
 }
@@ -82,21 +77,17 @@ const ToolbarButton = ({
 };
 
 const ReaderTopBar = ({
-  title,
-  pageLabel,
-  setlistLabel,
   accentColor,
   performanceMode,
   annotationsReady,
   onBack,
   libraryMenu,
-  onOpenLibrary,
-  onBookmarks,
+  bookmarksMenu,
   setlistMenu,
-  onScoreInfo,
+  scoreInfoMenu,
   onTogglePerformanceMode,
   onAnnotate,
-  onAudioUtilities,
+  musicUtilitiesMenu,
   toolsMenu,
 }: ReaderTopBarProps) => {
   const { width } = useWindowDimensions();
@@ -125,42 +116,13 @@ const ReaderTopBar = ({
 
         {libraryMenu}
 
-        <ToolbarButton
-          icon="bookmarks-outline"
-          label="Bookmarks"
-          accentColor={accentColor}
-          onPress={onBookmarks}
-        />
+        {bookmarksMenu}
 
         {setlistMenu}
       </View>
 
       {/* Centre: Score information */}
-      <TouchableOpacity
-        style={styles.scoreTitle}
-        onPress={onScoreInfo}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel="Score information"
-      >
-        <Text
-          style={styles.title}
-          numberOfLines={1}
-        >
-          {title}
-        </Text>
-
-        {!compact && setlistLabel && (
-            <Text
-                style={styles.subtitle}
-                numberOfLines={1}
-            >
-                {setlistLabel}
-                {/* {pageLabel} */}
-            </Text>
-        )}
-        
-      </TouchableOpacity>
+      {scoreInfoMenu}
 
       {/* Right: Reader utilities */}
       <View style={styles.group}>
@@ -188,14 +150,7 @@ const ReaderTopBar = ({
           disabled={!annotationsReady}
         />
 
-        {!compact && onAudioUtilities && (
-          <ToolbarButton
-            icon="musical-notes-outline"
-            label="Audio utilities"
-            accentColor={accentColor}
-            onPress={onAudioUtilities}
-          />
-        )}
+        {!compact && musicUtilitiesMenu}
 
         {toolsMenu}
       </View>

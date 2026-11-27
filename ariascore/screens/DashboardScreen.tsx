@@ -246,8 +246,10 @@ const DashboardScreen = ({}) => {
                 {/* Library */}
                 <View className="flex-1 justify-center items-center">
                     <TouchableOpacity className="p-2 m-1 rounded justify-center items-center w-full" onPress={() => navigation.navigate('Library', {})}>
-                        <MaterialIcons name="library-music" size={48} color="dodgerblue" />
-                        <Text className="text-[16px] text-dodger p-1">Library</Text>
+                        <Ionicons name="library" size={48} color={ACCENT_COLOR}  />
+                        <Text className="text-[16px] p-1" style={{ color: ACCENT_COLOR }}>
+                            Library
+                        </Text>
                     </TouchableOpacity>
                 </View>
 
@@ -256,8 +258,10 @@ const DashboardScreen = ({}) => {
                 {/* Sets */}
                 <View className="flex-1 justify-center items-center">
                     <TouchableOpacity className="p-2 m-1 rounded justify-center items-center w-full" onPress={() => navigation.navigate('Setlists')}>
-                        <Ionicons name="folder-open" size={48} color="dodgerblue" />
-                        <Text className="text-[16px] text-dodger p-1">Sets</Text>
+                        <Ionicons name="list" size={48} color={ACCENT_COLOR} />
+                        <Text className="text-[16px] p-1" style={{ color: ACCENT_COLOR }}>
+                            Sets
+                        </Text>
                     </TouchableOpacity>
                 </View>
 
@@ -266,8 +270,10 @@ const DashboardScreen = ({}) => {
                 {/* Add Score */}
                 <View className="flex-1 justify-center items-center">
                     <TouchableOpacity className="p-2 m-1 rounded justify-center items-center w-full" onPress={handleImport}>
-                        <MaterialIcons name="add" size={48} color="dodgerblue" />
-                        <Text className="text-[16px] text-dodger p-1">Add</Text>
+                        <MaterialIcons name="add" size={48} color={ACCENT_COLOR} />
+                        <Text className="text-[16px] p-1" style={{ color: ACCENT_COLOR }}>
+                            Add
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -275,7 +281,9 @@ const DashboardScreen = ({}) => {
             <View className='flex-1 ml-14'>
                 {__DEV__ && (
                     <>
-                        <Text className="text-dodger text-xl mt-4">Debug Screens</Text>
+                        <Text className="text-xl mt-4" style={{ color: ACCENT_COLOR }}>
+                            Debug Screens
+                        </Text>
                             <Pressable
                                 onPress={() =>
                                     navigation.navigate(
@@ -303,7 +311,9 @@ const DashboardScreen = ({}) => {
                     </>
                 )}
     
-                <Text className="text-dodger text-xl mt-4">Recent Items</Text>
+                <Text className="text-xl mt-4" style={{ color: ACCENT_COLOR }}>
+                    Recent Items
+                </Text>
 
                 {recentMusicItems && (recentMusicItems.length > 0) ? (
                     <FlatList

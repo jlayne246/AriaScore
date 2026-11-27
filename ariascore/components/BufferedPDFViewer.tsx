@@ -43,6 +43,7 @@ import {
   removeBookmark,
   isBookmarked,
   getBookmarksForScore,
+  updateBookmarkLabel,
 } from '../utils/database';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -99,6 +100,18 @@ import ReaderSetlistMenu, {
   type SetlistSelection,
 } from "./reader/ReaderSetlistMenu";
 
+import ReaderToolsMenu, {
+  type ReaderToolAction,
+} from "./reader/ReaderToolsMenu";
+
+import ReaderBookmarksMenu from "./reader/ReaderBookmarksMenu";
+
+import ReaderScoreInfo from "./reader/ReaderScoreInfo";
+
+import ReaderPageBrowser from "./reader/ReaderPageBrowser";
+
+import ReaderMusicUtilitiesMenu from "./reader/ReaderMusicUtilitiesMenu";
+
 type ScoreNavigationCallback =
     () => Promise<void> | void;
 
@@ -124,6 +137,10 @@ interface BufferedPDFViewerProps {
 
   toastVisible?: boolean;
   toastMessage?: string;
+
+  onSetlistChanged?: (
+    setlistId: number
+  ) => void | Promise<void>;
 }
 
 const ACCENT_COLOR = '#2563EB';
@@ -131,8 +148,6 @@ const ACCENT_COLOR = '#2563EB';
 const EMPTY_PAGE_STROKES: StrokeAnnotation[] = [];
 
 const THUMB_COLUMNS = 4;
-const THUMB_ITEM_WIDTH = 120;
-const THUMB_ROW_HEIGHT = 180;
 
 const TOP_CHROME_HEIGHT = 60;
 
@@ -367,165 +382,7 @@ function ActionRow({
   );
 }
 
-function OverflowMenuItem({
-  icon,
-  label,
-  sublabel,
-  onPress,
-  accent = false,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  sublabel?: string;
-  onPress: () => void;
-  accent?: boolean;
-}) {
-  return (
-    <MenuOption onSelect={onPress}>
-      <View style={{
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 16,
-        paddingVertical: sublabel ? 10 : 12,
-      }}>
-        <Ionicons
-          name={icon}
-          size={20}
-          color={accent ? ACCENT_COLOR : "#374151"}
-          style={{ width: 28 }}
-        />
-
-        <View style={{ marginLeft: 10, flex: 1 }}>
-          <Text style={{
-            fontSize: 16,
-            color: accent ? ACCENT_COLOR : "#111827",
-            fontWeight: accent ? "700" : "400",
-          }}>
-            {label}
-          </Text>
-
-          {sublabel && (
-            <Text style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>
-              {sublabel}
-            </Text>
-          )}
-        </View>
-      </View>
-    </MenuOption>
-  );
-}
-
-function OverflowMenuDivider() {
-  return (
-    <View
-      style={{
-        height: 1,
-        backgroundColor: "#E5E7EB",
-        marginVertical: 4,
-        marginHorizontal: 14,
-      }}
-    />
-  );
-}
-
-type ThumbnailItemProps = {
-  pageNumber: number;
-  uri?: string;
-  isCurrentPage: boolean;
-  isBookmarked: boolean;
-  onPress: (page: number) => void;
-};
-
-const ThumbnailItem = React.memo(
-  function ThumbnailItem({
-    pageNumber,
-    uri,
-    isCurrentPage,
-    isBookmarked,
-    onPress,
-  }: ThumbnailItemProps) {
-    return (
-      <TouchableOpacity
-        activeOpacity={0.75}
-        onPress={() => onPress(pageNumber)}
-        style={{
-          width: THUMB_ITEM_WIDTH,
-          alignItems: "center",
-          marginBottom: 18,
-        }}
-      >
-        <View
-          style={{
-            width: 100,
-            height: 140,
-            borderWidth: isCurrentPage ? 3 : 1,
-            borderColor: isCurrentPage
-              ? ACCENT_COLOR
-              : "#ddd",
-            backgroundColor: "#f5f5f5",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {uri ? (
-            <Image
-              source={{ uri }}
-              style={{
-                width: "100%",
-                height: "100%",
-                resizeMode: "contain",
-              }}
-            />
-          ) : (
-            <>
-              <ActivityIndicator />
-
-              <Text
-                style={{
-                  color: "#999",
-                  marginTop: 4,
-                  fontSize: 11,
-                }}
-              >
-                Loading
-              </Text>
-            </>
-          )}
-
-          {isBookmarked && (
-            <View
-              style={{
-                position: "absolute",
-                top: 4,
-                right: 4,
-                backgroundColor: "white",
-                borderRadius: 10,
-                padding: 2,
-              }}
-            >
-              <Ionicons
-                name="bookmark"
-                size={16}
-                color={ACCENT_COLOR}
-              />
-            </View>
-          )}
-        </View>
-
-        <Text
-          style={{
-            marginTop: 4,
-            fontSize: 12,
-          }}
-        >
-          {pageNumber}
-        </Text>
-      </TouchableOpacity>
-    );
-  },
-);
-
-const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings, toastVisible, toastMessage, onNextScore, onPreviousScore, onNextScoreFromPageTurn, onPreviousScoreFromPageTurn }: BufferedPDFViewerProps) => {
+const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings, toastVisible, toastMessage, onNextScore, onPreviousScore, onNextScoreFromPageTurn, onPreviousScoreFromPageTurn, onSetlistChanged }: BufferedPDFViewerProps) => {
   const pagerRef = useRef<PagerView>(null);
   // const renderingPages = useRef<Set<number>>(new Set());
 
@@ -536,8 +393,6 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     );
   const [pageImages, setPageImages] = useState<Record<number, PageImage>>({});
   // const renderingThumbnails = useRef<Set<number>>(new Set());
-  const thumbnailBatchCancelled = useRef(false);
-  const thumbnailListRef = useRef<FlatList<number>>(null);
   const changingScoreRef = useRef(false);
   
   const readyUriRef = useRef<string | null>(null);
@@ -660,7 +515,6 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const thumbnailImagesRef =
     useRef<Record<number, string>>({});
   const [jumpOverlayVisible, setJumpOverlayVisible] = useState(false);
-  const [jumpPage, setJumpPage] = useState('');
   const [displayMode, setDisplayMode] =
     useState<ReaderDisplayMode>(settings.viewMode as ReaderDisplayMode);
 
@@ -673,16 +527,8 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
   const [initialPagerIndex, setInitialPagerIndex] = useState(0);
   // const [bookmarked, setBookmarked] = useState(false);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
-  const [bookmarksOverlayVisible, setBookmarksOverlayVisible] = useState(false);
-  const [bookmarkLabel, setBookmarkLabel] =
-    useState('');
-
-  const [labelOverlayVisible, setLabelOverlayVisible] =
-    useState(false);
   const [scoreInfoVisible, setScoreInfoVisible] = useState(false);
   const [manageSetlistsVisible, setManageSetlistsVisible] = useState(false);
-
-  const [displayOptionsVisible, setDisplayOptionsVisible] = useState(false);
 
   const pageTurnInProgressRef = useRef(false);
 
@@ -1072,24 +918,22 @@ const BufferedPDFViewer = ({ uri, musicId, score, context, initialPage, settings
     navigation.goBack();
   };
 
-  const handleOpenScoreInfo = () => {
-    setScoreInfoVisible(true);
-    setChromeVisible(true);
+  const handleEditScoreMetadata = () => {
+    navigation.navigate("Metadata", {
+      mode: "edit",
+      musicId,
+      pdfUri: uri,
+    });
   };
 
   const handleOpenJump = () => {
-    setJumpPage(currentPage.toString());
     setJumpOverlayVisible(true);
   };
 
-  const handleOpenBookmarks = () => {
-    loadBookmarks();
-    setBookmarksOverlayVisible(true);
+  const handleClosePageBrowser = () => {
+    setJumpOverlayVisible(false);
+    showChromeTemporarily();
   };
-
-  const handleOpenLibrary = () => {
-    console.log("Opening Library Pop-up")
-  }
 
   const handleOpenAnnotations = () => {
     enterAnnotationMode();
@@ -1351,11 +1195,9 @@ const toggleAnnotationToolbarPosition = () => {
   const canUseReaderGestures =
     readerReady &&
     !jumpOverlayVisible &&
-    !bookmarksOverlayVisible &&
-    !labelOverlayVisible &&
     !scoreInfoVisible &&
     !manageSetlistsVisible &&
-    !displayOptionsVisible;
+    !overflowMenuOpen;
 
   const PAGE_ASPECT_RATIO = 1.414;
 
@@ -3098,38 +2940,6 @@ const toggleAnnotationToolbarPosition = () => {
     tapGesture,
   );
 
-  // const longPress = Gesture.LongPress()
-  //   .minDuration(450)
-  //   .onEnd(() => {
-  //     runOnJS(console.log)('Long press: future annotation/context menu');
-  //   });
-
-  // const pinch = Gesture.Pinch()
-  //   .onBegin(() => {
-  //     runOnJS(console.log)('Pinch begin: future zoom');
-  //   });
-
-  // const renderVisibleThumbnailWindow = useCallback(
-  //   (page: number) => {
-  //     const start = Math.max(1, page - 2);
-  //     const end = Math.min(totalPages, page + 6);
-
-  //     for (let p = start; p <= end; p++) {
-  //       renderThumbnail(p);
-  //     }
-  //   },
-  //   [totalPages, renderThumbnail]
-  // );
-
-  // const handleThumbnailViewableItemsChanged = useCallback(
-  //   ({ viewableItems }: { viewableItems: Array<{ item: number }> }) => {
-  //     viewableItems.forEach(({ item }) => {
-  //       renderVisibleThumbnailWindow(item);
-  //     });
-  //   },
-  //   [renderVisibleThumbnailWindow]
-  // );
-
   const renderThumbnailViewport = useCallback(
     async (
       visiblePages: number[],
@@ -3217,10 +3027,6 @@ const toggleAnnotationToolbarPosition = () => {
       [renderThumbnailViewport],
   );
 
-  const thumbnailViewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 10,
-  }).current;
-
   const bookmarkedPages = useMemo(
     () =>
       new Set(
@@ -3234,6 +3040,43 @@ const toggleAnnotationToolbarPosition = () => {
   const bookmarked =
     bookmarkedPages.has(currentPage);
 
+  const browserThumbnailImages = useMemo(() => {
+    const images: Record<number, string> = {};
+
+    Object.entries(pageImages).forEach(
+      ([page, image]) => {
+        if (image?.uri) {
+          images[Number(page)] = image.uri;
+        }
+      }
+    );
+
+    return {
+      ...images,
+      ...thumbnailImages,
+    };
+  }, [
+    pageImages,
+    thumbnailImages,
+  ]);
+
+  const handleBrowserVisiblePages = useCallback(
+    (visiblePages: number[]) => {
+      if (visiblePages.length === 0) {
+        return;
+      }
+
+      const requestId =
+        ++thumbnailViewportRequestRef.current;
+
+      void renderThumbnailViewport(
+        visiblePages,
+        requestId
+      );
+    },
+    [renderThumbnailViewport]
+  );
+
   const handleThumbnailPress = useCallback(
     (pageNumber: number) => {
       goToPage(pageNumber);
@@ -3243,35 +3086,6 @@ const toggleAnnotationToolbarPosition = () => {
     [
       goToPage,
       showChromeTemporarily,
-    ],
-  );
-
-  const renderThumbnailItem = useCallback(
-    ({ item: pageNumber }: { item: number }) => {
-      const uri =
-        thumbnailImages[pageNumber] ??
-        pageImages[pageNumber]?.uri;
-
-      return (
-        <ThumbnailItem
-          pageNumber={pageNumber}
-          uri={uri}
-          isCurrentPage={
-            pageNumber === currentPage
-          }
-          isBookmarked={
-            bookmarkedPages.has(pageNumber)
-          }
-          onPress={handleThumbnailPress}
-        />
-      );
-    },
-    [
-      thumbnailImages,
-      pageImages,
-      currentPage,
-      bookmarkedPages,
-      handleThumbnailPress,
     ],
   );
 
@@ -3432,6 +3246,93 @@ const handleOpenSetlistEntry = async ({
 };
 
 
+const handleReaderToolAction = (
+  action: ReaderToolAction
+) => {
+  switch (action) {
+    case "jump":
+      handleOpenJump();
+      break;
+
+    case "score-settings":
+      navigation.navigate("MusicSettings", {
+        musicId,
+        setlistId: context?.setlistId,
+      });
+      break;
+
+    case "setlist-settings":
+      if (context?.setlistId) {
+        navigation.navigate("SetlistSettings", {
+          setlistId: context.setlistId,
+        });
+      }
+      break;
+
+    case "global-settings":
+      navigation.navigate("Settings");
+      break;
+
+    case "favorite":
+      // Reserved for favourites implementation.
+      break;
+
+    case "export":
+      // Reserved for score export implementation.
+      break;
+  }
+};
+
+
+const handleSelectBookmark = (
+  bookmark: Bookmark
+) => {
+  if (
+    bookmark.page_number < minimumPage ||
+    bookmark.page_number > maximumPage
+  ) {
+    return;
+  }
+
+  goToPage(bookmark.page_number);
+
+  showChromeTemporarily();
+};
+
+const handleAddBookmark = async (
+  page: number,
+  label: string
+) => {
+  await addBookmark(
+    musicId,
+    page,
+    label
+  );
+
+  await loadBookmarks();
+};
+
+const handleRenameBookmark = async (
+  bookmarkId: number,
+  label: string
+) => {
+  await updateBookmarkLabel(
+    bookmarkId,
+    label
+  );
+
+  await loadBookmarks();
+};
+
+const handleDeleteBookmark = async (
+  bookmarkId: number
+) => {
+  await removeBookmark(bookmarkId);
+
+  await loadBookmarks();
+};
+
+
   // console.log("thumbnailPages:", thumbnailPages.length, "totalPages:", totalPages);
 
   return (
@@ -3439,15 +3340,6 @@ const handleOpenSetlistEntry = async ({
       
       {(chromeVisible || annotationMode) && (
         <ReaderTopBar
-          title={score.title}
-          pageLabel={currentPageLabel}
-
-          setlistLabel={
-            context?.setlistName
-              ? `${context.setlistName} · Score ${context.currentIndex} of ${context.totalItems}`
-              : undefined
-          }
-
           accentColor={ACCENT_COLOR}
           performanceMode={effectivePerformanceMode}
           annotationsReady={annotationsReady && !annotationMode}
@@ -3495,158 +3387,132 @@ const handleOpenSetlistEntry = async ({
               onManageSetlists={() => {
                 setManageSetlistsVisible(true);
               }}
+
+              currentPage={currentPage}
+              totalPages={totalPages}
+
+              onSetlistChanged={onSetlistChanged}
+            />
+          }
+          
+          bookmarksMenu={
+            <ReaderBookmarksMenu
+              accentColor={ACCENT_COLOR}
+
+              currentPage={currentPage}
+              minimumPage={minimumPage}
+              maximumPage={maximumPage}
+
+              bookmarks={bookmarks}
+
+              disabled={
+                annotationMode ||
+                annotationSaving
+              }
+
+              onOpen={handleReaderMenuOpen}
+              onClose={handleReaderMenuClose}
+
+              onSelectBookmark={
+                handleSelectBookmark
+              }
+
+              onAddBookmark={
+                handleAddBookmark
+              }
+
+              onRenameBookmark={
+                handleRenameBookmark
+              }
+
+              onDeleteBookmark={
+                handleDeleteBookmark
+              }
+            />
+          }
+          
+          scoreInfoMenu={
+            <ReaderScoreInfo
+              score={score}
+              context={context}
+
+              totalPages={totalPages}
+
+              thumbnailUri={
+                thumbnailImages[1] ??
+                pageImages[1]?.uri
+              }
+
+              accentColor={ACCENT_COLOR}
+
+              disabled={
+                annotationMode ||
+                annotationSaving
+              }
+
+              onOpen={handleReaderMenuOpen}
+              onClose={handleReaderMenuClose}
+
+              onEditMetadata={
+                handleEditScoreMetadata
+              }
             />
           }
 
+          musicUtilitiesMenu={
+            <ReaderMusicUtilitiesMenu
+              accentColor={ACCENT_COLOR}
 
-          onOpenLibrary={handleOpenLibrary}
-          onBookmarks={handleOpenBookmarks}
-          onScoreInfo={handleOpenScoreInfo}
+              disabled={
+                annotationMode ||
+                annotationSaving
+              }
+
+              onOpen={handleReaderMenuOpen}
+              onClose={handleReaderMenuClose}
+            />
+          }
 
           onTogglePerformanceMode={
             handleTogglePerformanceMode
           }
 
           onAnnotate={handleOpenAnnotations}
-
+          
           toolsMenu={
-            <Menu
-              onOpen={() => {
-                setOverflowMenuOpen(true);
+            <ReaderToolsMenu
+              accentColor={ACCENT_COLOR}
 
-                if (chromeHideTimer.current) {
-                  clearTimeout(chromeHideTimer.current);
-                  chromeHideTimer.current = null;
-                }
-              }}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              minimumPage={minimumPage}
+              maximumPage={maximumPage}
 
-              onClose={() => {
-                setOverflowMenuOpen(false);
+              hasSetlist={Boolean(context?.setlistId)}
+
+              disabled={
+                annotationMode ||
+                annotationSaving
+              }
+
+              onOpen={handleReaderMenuOpen}
+              onClose={handleReaderMenuClose}
+
+              onSelectAction={handleReaderToolAction}
+
+              onJumpToPage={(page) => {
+                goToPage(page);
                 showChromeTemporarily();
               }}
-            >
-              <MenuTrigger
-                customStyles={{
-                  triggerWrapper: {
-                    width: 44,
-                    height: 44,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  },
-                }}
-              >
-                <Ionicons
-                  name="briefcase-outline"
-                  size={24}
-                  color={ACCENT_COLOR}
-                />
-              </MenuTrigger>
 
-              <MenuOptions
-                customStyles={{
-                  optionsContainer: {
-                    width: 260,
-                    borderRadius: 14,
-                    paddingVertical: 6,
-                    backgroundColor: "white",
-                    elevation: 10,
-                  },
-                }}
-              >
-                <OverflowMenuItem
-                  icon="grid-outline"
-                  label="Jump to Page"
-                  onPress={handleOpenJump}
-                />
+              displayMode={displayMode}
+              coverOffset={coverOffset}
+              orientationLock={orientationLock}
 
-                <OverflowMenuItem
-                  icon="information-circle-outline"
-                  label="Score Information"
-                  onPress={handleOpenScoreInfo}
-                />
-
-                <OverflowMenuItem
-                  icon="albums-outline"
-                  label="Display Options"
-                  onPress={() => {
-                    setDisplayOptionsVisible(true);
-                    setChromeVisible(true);
-                  }}
-                />
-
-                <OverflowMenuDivider />
-
-                <OverflowMenuItem
-                  icon="bookmark-outline"
-                  label="Add Bookmark"
-                  sublabel={`Page ${currentPage}`}
-                  onPress={() => {
-                    setBookmarkLabel("");
-                    setLabelOverlayVisible(true);
-                    setChromeVisible(true);
-                  }}
-                />
-
-                <OverflowMenuItem
-                  icon="list-outline"
-                  label="Manage Setlists"
-                  onPress={() => {
-                    setManageSetlistsVisible(true);
-                  }}
-                />
-
-                <OverflowMenuDivider />
-
-                <OverflowMenuItem
-                  icon="document-text-outline"
-                  label="Score Settings"
-                  onPress={() => {
-                    navigation.navigate("MusicSettings", {
-                      musicId,
-                      setlistId: context?.setlistId,
-                    });
-                  }}
-                />
-
-                {context?.setlistId && (
-                  <OverflowMenuItem
-                    icon="list-outline"
-                    label="Setlist Settings"
-                    onPress={() => {
-                      navigation.navigate("SetlistSettings", {
-                        setlistId: context.setlistId,
-                      });
-                    }}
-                  />
-                )}
-
-                <OverflowMenuItem
-                  icon="settings-outline"
-                  label="Global Settings"
-                  onPress={() => {
-                    navigation.navigate("Settings");
-                  }}
-                />
-
-                <OverflowMenuDivider />
-
-                <OverflowMenuItem
-                  icon="star-outline"
-                  label="Add to Favorites"
-                  onPress={() => {
-                    console.log("Add to favorites");
-                  }}
-                />
-
-                <OverflowMenuItem
-                  icon="share-outline"
-                  label="Export Score"
-                  onPress={() => {
-                    console.log("Export score");
-                  }}
-                />
-              </MenuOptions>
-            </Menu>
+              onDisplayModeChange={applyDisplayMode}
+              onCoverOffsetChange={applyCoverOffset}
+              onOrientationChange={applyOrientationLock}
+            />
           }
         />
       )}
@@ -3929,490 +3795,36 @@ const handleOpenSetlistEntry = async ({
         />
       )}
 
-
-      {scoreInfoVisible && (
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
-            zIndex: 2200,
-            backgroundColor: 'rgba(0,0,0,0.25)',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 24,
-          }}
-        >
-          <View
-            style={{
-              width: 460,
-              maxWidth: '90%',
-              backgroundColor: 'white',
-              borderRadius: 18,
-              padding: 20,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 18,
-              }}
-            >
-              <Text style={{ fontSize: 22, fontWeight: '700', color: ACCENT_COLOR }}>
-                Score Information
-              </Text>
-
-              <TouchableOpacity
-                onPress={() => {
-                  setScoreInfoVisible(false);
-                  showChromeTemporarily();
-                }}
-              >
-                <Ionicons name="close" size={28} color={ACCENT_COLOR} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ flexDirection: 'row', gap: 14, marginBottom: 20 }}>
-              <View
-                style={{
-                  width: 90,
-                  height: 120,
-                  borderWidth: 1,
-                  borderColor: '#ddd',
-                  backgroundColor: '#f8f8f8',
-                }}
-              >
-                {thumbnailImages[1] || pageImages[1] ? (
-                  <Image
-                    source={{ uri: thumbnailImages[1] ?? pageImages[1]?.uri }}
-                    style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
-                  />
-                ) : null}
-              </View>
-
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 20, fontWeight: '700' }}>
-                  {score.title ?? 'Untitled'}
-                </Text>
-
-                {attribution ? (
-                  <Text style={{ fontWeight: "bold" }}>
-                    {attribution}
-                  </Text>
-                ) : (
-                  <Text style={{ fontStyle: 'italic' }}>
-                    No composer/editor information available
-                  </Text>
-                )}
-
-                <Text style={{ fontSize: 14, color: '#777', marginTop: 4 }}>
-                  {totalPages} pages
-                </Text>
-
-                <View
-                  style={{
-                    alignSelf: 'flex-start',
-                    marginTop: 10,
-                    backgroundColor: '#EEF2FF',
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                    borderRadius: 12,
-                  }}
-                >
-                  <Text style={{ color: ACCENT_COLOR, fontWeight: '600' }}>
-                    {score.document_type}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <InfoSection title="Current Setlist">
-              {context?.setlistId ? (
-                <TouchableOpacity
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    paddingVertical: 10,
-                  }}
-                  onPress={() => {
-                    // navigation.navigate('SetlistDetail', {
-                    //   setlistId: context.setlistId,
-                    // });
-                    if (annotationSavingRef.current) {
-                      return;
-                    }
-
-                    if (annotationMode) {
-                      cancelAnnotationSession();
-                      return;
-                    }
-
-                    navigation.goBack();
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <Ionicons name="list-outline" size={20} color={ACCENT_COLOR} />
-                    <Text style={{ fontSize: 15 }}>
-                      {context.setlistName}
-                    </Text>
-                  </View>
-
-                  <Text style={{ color: '#666' }}>
-                    {context.currentIndex} of {context.totalItems} ›
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <Text style={{ color: '#666', paddingVertical: 10 }}>
-                  Open this score from a setlist to see performance context.
-                </Text>
-              )}
-            </InfoSection>
-
-            <InfoSection title="Labels">
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {score.labels && score.labels.length > 0 ? (
-                    score.labels?.map((label) => (
-                      <View
-                        key={label}
-                        style={{
-                          backgroundColor: '#F3F4F6',
-                          paddingHorizontal: 10,
-                          paddingVertical: 5,
-                          borderRadius: 12,
-                        }}
-                      >
-                        <Text style={{ color: '#555', fontSize: 13 }}>{label}</Text>
-                      </View>
-                  ))
-                ) : (
-                  <Text style={{ color: '#555', fontSize: 13 }}>No labels assigned.</Text>
-                )}
-              </View>
-            </InfoSection>
-
-            <InfoSection title="Notes">
-              <Text style={{ color: '#555', lineHeight: 20 }}>
-                No notes yet.
-              </Text>
-            </InfoSection>
-
-            <InfoSection title="Actions">
-              <ActionRow
-                icon="create-outline"
-                label="Edit Metadata"
-                onPress={() => {
-                  setScoreInfoVisible(false);
-
-                  navigation.navigate("Metadata", {
-                    mode: "edit",
-                    musicId,
-                    pdfUri: uri,
-                  });
-                }}
-              />
-              <ActionRow
-                icon="folder-outline"
-                label="Manage Setlists"
-                onPress={() => {
-                  setScoreInfoVisible(false);
-                  setManageSetlistsVisible(true);
-                }}
-              />
-              <ActionRow icon="star-outline" label="Add to Favorites" />
-              <ActionRow icon="share-outline" label="Export Score" />
-            </InfoSection>
-          </View>
-        </View>
-      )}
-
       {jumpOverlayVisible && (
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
-            zIndex: 2200,
-            backgroundColor: 'rgba(0,0,0,0.25)',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 24,
-          }}
-        >
-          <View
-            style={{
-              width: '74%',
-              maxWidth: 820,
-              height: '78%',
-              backgroundColor: 'white',
-              borderRadius: 18,
-              padding: 18,
-            }}
-          >
-            <View 
-              style={{ flexDirection: 'row', 
-              justifyContent: 'space-between', 
-              // alignSelf: 'flex-end', 
-              alignItems: 'center', // marginTop: 12, 
-              marginBottom: 16, }} 
-            > 
-              <Text style={{ fontSize: 22, fontWeight: '700', color: ACCENT_COLOR }}>
-                Jump to Page
-              </Text>
-              
-              <TouchableOpacity onPress={() => { 
-                setJumpOverlayVisible(false) 
-                showChromeTemporarily(); }}
-              > 
-                
-                <Ionicons name="close" size={28} color={ACCENT_COLOR} /> 
-                
-              </TouchableOpacity> 
-              
-            </View>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                // justifyContent: 'space-between',
-                alignSelf: 'flex-end', 
-                marginBottom: 20,
-              }}
-            >
+        <ReaderPageBrowser
+          accentColor={ACCENT_COLOR}
 
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <Text style={{ fontSize: 16, color: '#666' }}>Page</Text>
+          currentPage={currentPage}
+          totalPages={totalPages}
 
-                <TextInput
-                  value={jumpPage}
-                  onChangeText={setJumpPage}
-                  keyboardType="number-pad"
-                  placeholder={`1-${totalPages}`}
-                  placeholderTextColor="#999"
-                  style={{
-                    width: 70,
-                    borderWidth: 1,
-                    borderColor: '#ccc',
-                    borderRadius: 8,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    fontSize: 18,
-                    color: '#111',
-                  }}
-                />
+          minimumPage={minimumPage}
+          maximumPage={maximumPage}
 
-                <Text style={{ color: '#666', fontSize: 16 }}>
-                  / {totalPages}
-                </Text>
+          thumbnailImages={
+            browserThumbnailImages
+          }
 
-                <TouchableOpacity
-                  onPress={() => {
-                    const page = Number(jumpPage);
-                    if (!Number.isFinite(page)) return;
+          bookmarkedPages={
+            bookmarkedPages
+          }
 
-                    goToPage(page);
-                    setJumpOverlayVisible(false);
-                    showChromeTemporarily();
-                  }}
-                  style={{
-                    backgroundColor: ACCENT_COLOR,
-                    paddingHorizontal: 18,
-                    paddingVertical: 10,
-                    borderRadius: 8,
-                  }}
-                >
-                  <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>
-                    Go
-                  </Text>
-                </TouchableOpacity>
+          onClose={
+            handleClosePageBrowser
+          }
 
-                {/* <TouchableOpacity
-                  onPress={() => {
-                    setJumpOverlayVisible(false);
-                    showChromeTemporarily();
-                  }}
-                  style={{ paddingLeft: 8 }}
-                >
-                  <Ionicons name="close" size={28} color={ACCENT_COLOR} />
-                </TouchableOpacity> */}
-              </View>
-            </View>
+          onSelectPage={
+            handleThumbnailPress
+          }
 
-            <FlatList
-              data={thumbnailPages}
-              keyExtractor={(page) => page.toString()}
-              numColumns={THUMB_COLUMNS}
-
-              ref={thumbnailListRef}
-
-              initialNumToRender={12}
-              maxToRenderPerBatch={12}
-              windowSize={5}
-              removeClippedSubviews
-
-              onLayout={() => {
-                const rowIndex = Math.floor(
-                  (currentPage - minimumPage) /
-                    THUMB_COLUMNS
-                );
-
-                requestAnimationFrame(() => {
-                  thumbnailListRef.current?.scrollToOffset({
-                    offset: rowIndex * THUMB_ROW_HEIGHT,
-                    animated: false,
-                  });
-                });
-              }}
-
-              onViewableItemsChanged={
-                handleThumbnailViewableItemsChanged
-              }
-
-              viewabilityConfig={
-                thumbnailViewabilityConfig
-              }
-
-              contentContainerStyle={{
-                alignItems: 'center',
-                paddingBottom: 20,
-              }}
-
-              columnWrapperStyle={{
-                justifyContent: 'center',
-                gap: 18,
-              }}
-
-              renderItem={renderThumbnailItem}
-            />
-          </View>
-          
-        </View>
-      )}
-
-      {displayOptionsVisible && (
-        <View style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: 2200,
-          backgroundColor: "rgba(0,0,0,0.35)",
-          alignItems: "center",
-          justifyContent: "center",
-        }}>
-          <View style={{
-            width: 420,
-            backgroundColor: "white",
-            borderRadius: 16,
-            padding: 20,
-          }}>
-            <Text
-              style={{
-                fontSize: 22,
-                fontWeight: "700",
-                marginBottom: 16,
-              }}
-            >
-              Display
-            </Text>
-
-            <ActionRow
-              icon={
-                displayMode === "single"
-                  ? "radio-button-on"
-                  : "radio-button-off"
-              }
-              label="Single page"
-              onPress={() => applyDisplayMode("single")}
-            />
-
-            <ActionRow
-              icon={
-                displayMode === "double"
-                  ? "radio-button-on"
-                  : "radio-button-off"
-              }
-              label="Two pages"
-              onPress={() => applyDisplayMode("double")}
-            />
-
-            {displayMode === "double" && (
-              <InfoSection title="Two-Page Layout">
-                <ActionRow
-                  icon={
-                    coverOffset
-                      ? "checkbox"
-                      : "square-outline"
-                  }
-                  label="Treat first page as cover"
-                  onPress={() => applyCoverOffset(!coverOffset)}
-                />
-
-                <Text
-                  style={{
-                    color: "#6B7280",
-                    fontSize: 13,
-                    marginTop: 4,
-                    marginLeft: 38,
-                  }}
-                >
-                  Starts the score with a single cover page before
-                  showing page spreads.
-                </Text>
-              </InfoSection>
-            )}
-
-            <InfoSection title="Orientation">
-              <ActionRow
-                icon={orientationLock === "auto" ? "radio-button-on" : "radio-button-off"}
-                label="Auto rotate"
-                onPress={() => applyOrientationLock("auto")}
-              />
-
-              <ActionRow
-                icon={orientationLock === "portrait" ? "radio-button-on" : "radio-button-off"}
-                label="Portrait"
-                onPress={() => applyOrientationLock("portrait")}
-              />
-
-              <ActionRow
-                icon={orientationLock === "landscape" ? "radio-button-on" : "radio-button-off"}
-                label="Landscape"
-                onPress={() => applyOrientationLock("landscape")}
-              />
-            </InfoSection>
-
-            <TouchableOpacity
-              onPress={() => {
-                setDisplayOptionsVisible(false);
-                showChromeTemporarily();
-              }}
-              style={{
-                marginTop: 18,
-                alignSelf: "flex-end",
-                backgroundColor: ACCENT_COLOR,
-                paddingHorizontal: 18,
-                paddingVertical: 10,
-                borderRadius: 8,
-              }}
-            >
-              <Text style={{ color: "white", fontWeight: "700" }}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+          onVisiblePagesChanged={
+            handleBrowserVisiblePages
+          }
+        />
       )}
 
       {toastVisible && toastMessage && toastMessage.length > 0 && (
@@ -4451,129 +3863,6 @@ const handleOpenSetlistEntry = async ({
         </View>
       )}
 
-      {bookmarksOverlayVisible && (
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
-            zIndex: 2000,
-            backgroundColor: 'rgba(0,0,0,0.35)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <View
-            style={{
-              width: 420,
-              maxHeight: '70%',
-              backgroundColor: 'white',
-              borderRadius: 16,
-              padding: 20,
-            }}
-          >
-            <Text style={{ fontSize: 22, fontWeight: '700', marginBottom: 12 }}>
-              Bookmarks
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => {
-                setBookmarkLabel("");
-                setLabelOverlayVisible(true);
-              }}
-              style={{
-                padding: 12,
-                backgroundColor: "#f5f5f5",
-                borderRadius: 8,
-                marginBottom: 16,
-              }}
-            >
-              <Text style={{ fontSize: 16, color: "#2563EB", fontWeight: "600" }}>
-                Add bookmark on page {currentPage}
-              </Text>
-            </TouchableOpacity>
-
-            <ScrollView style={{ maxHeight: 360 }}>
-              {bookmarks.length === 0 ? (
-                <Text style={{ color: '#666', textAlign: 'center', padding: 16 }}>
-                  No bookmarks yet
-                </Text>
-              ) : (
-                bookmarks.map((bookmark) => (
-                  <TouchableOpacity
-                    key={bookmark.id}
-                    onPress={() => {
-                      goToPage(bookmark.page_number);
-                      setBookmarksOverlayVisible(false);
-                      showChromeTemporarily();
-                    }}
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      paddingVertical: 12,
-                      borderBottomWidth: 1,
-                      borderBottomColor: '#eee',
-                    }}
-                  >
-                    <View>
-                      {bookmark.label ? (
-                        <Text style={{ fontSize: 16, fontWeight: '600' }}>
-                          {bookmark.label}
-                        </Text>
-                      ) : (
-                        <Text style={{ fontSize: 16, fontWeight: '600'  }}>
-                          No label
-                        </Text>
-                      )}
-
-                      <Text style={{ color: '#666', marginTop: 2  }}>
-                        Page {bookmark.page_number}
-                      </Text>
-                    </View>
-
-                    {/* <Ionicons name="bookmark" size={22} color="#2563EB" /> */}
-                    <TouchableOpacity
-                      onPress={async () => {
-                        await removeBookmark(bookmark.id);
-                        await loadBookmarks();
-                      }}
-                    >
-                      <Ionicons name="trash-outline" size={22} color="#DC2626" />
-                    </TouchableOpacity>
-                  </TouchableOpacity>
-                  
-                ))
-              )}
-            </ScrollView>
-
-            <View
-              style={{
-                marginTop: 16,
-                flexDirection: 'row',
-                justifyContent: 'flex-end',
-              }}
-            >
-              <TouchableOpacity
-                onPress={() => setBookmarksOverlayVisible(false)}
-                style={{
-                  padding: 10,
-                  paddingHorizontal: 18,
-                  backgroundColor: '#2563EB',
-                  borderRadius: 8,
-                }}
-              >
-                <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>
-                  Close
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
-
       <FaceGestureCamera
         enabled={
           faceGesturesRunning
@@ -4596,122 +3885,6 @@ const handleOpenSetlistEntry = async ({
           );
         }}
       />
-
-      {labelOverlayVisible && (
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
-            zIndex: 2100,
-            backgroundColor: 'rgba(0,0,0,0.35)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <View
-            style={{
-              width: 400,
-              backgroundColor: 'white',
-              borderRadius: 16,
-              padding: 20,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 22,
-                fontWeight: '700',
-                marginBottom: 12,
-              }}
-            >
-              Add Bookmark
-            </Text>
-
-            <Text
-              style={{
-                color: '#666',
-                marginBottom: 16,
-              }}
-            >
-              Page {currentPage}
-            </Text>
-
-            <TextInput
-              value={bookmarkLabel}
-              onChangeText={setBookmarkLabel}
-              placeholder="Label (optional)"
-              autoFocus
-              style={{
-                borderWidth: 1,
-                borderColor: '#ccc',
-                borderRadius: 8,
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                fontSize: 16,
-              }}
-            />
-
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'flex-end',
-                gap: 12,
-                marginTop: 20,
-              }}
-            >
-              <TouchableOpacity
-                onPress={() =>
-                  setLabelOverlayVisible(false)
-                }
-                style={{
-                  padding: 10,
-                  paddingHorizontal: 18,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 16,
-                  }}
-                >
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={async () => {
-                  if (!musicId) return;
-
-                  await addBookmark(musicId, currentPage, bookmarkLabel.trim());
-
-                  await loadBookmarks();
-
-                  setLabelOverlayVisible(false);
-                  setBookmarksOverlayVisible(true);
-
-                  showChromeTemporarily();
-                }}
-                style={{
-                  backgroundColor: '#2563EB',
-                  paddingHorizontal: 18,
-                  paddingVertical: 10,
-                  borderRadius: 8,
-                }}
-              >
-                <Text
-                  style={{
-                    color: 'white',
-                    fontWeight: '700',
-                  }}
-                >
-                  Save
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
 
       {annotationMode && (
         <View
